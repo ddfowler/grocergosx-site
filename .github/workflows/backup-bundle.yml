@@ -1,0 +1,30 @@
+# Pulls the GrocerGoSx site code bundle archive from the site's Wix Media Manager into this repository
+# (the live site loads its code from that Media Manager folder; this repo is the off-site backup).
+# Runs when this file changes and on demand: Actions -> Backup site code bundle -> Run workflow.
+name: Backup site code bundle
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/backup-bundle.yml
+permissions:
+  contents: write
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the archive from Wix Media and check it
+        run: |
+          curl -fsSL -o ggsx-site-code-bundle.zip "https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/archives/85c3c2_f7c5e0c5aeb4443dad1698fcd359498b.zip"
+          echo "4181fa2e8b7001c768be789f98ccc03aefc260ef5e184e62ddfe7f6c17bcbd18  ggsx-site-code-bundle.zip" | sha256sum -c -
+          rm -rf ggsx-bundle
+          unzip -q -o ggsx-site-code-bundle.zip
+          cp ggsx-bundle/README.md README.md
+      - name: Commit the backup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Backup: GrocerGoSx site code bundle v1.0 (exported 1 Nov 2026)" || echo "Nothing new to commit"
+          git push
