@@ -1,0 +1,66 @@
+<!-- GrocerGoSx First Paint v1.0 (27 Oct 2026): every page change on grocergosx.com is a full page load, and the body-end snippets
+     that draw the phone bars and the code-drawn pages (Home, Shop Now, Restaurants, Pharmacy, Pricing, Villa stocking, Laundry,
+     Errands…) can only run after Wix has painted its own page, so visitors saw the tall Wix header, the plain Editor text and
+     unsized photos for a moment on every page. This puts a white curtain with the GrocerGoSx icon over the page from the very first
+     paint and lifts it once the page has drawn and settled (phone bars in, the page's engine drawn, then no new elements for
+     150 ms or at most 0.7 s later), or after 3.5 seconds at the latest, so nothing can ever stay hidden. Skips bots, the Editor and ?ggsx_nocurtain=1.
+     Wix: Settings → Custom Code → Add Custom Code · Place in: Head · Add to: All pages, Load code once · Type: Essential -->
+<style id="ggsx-fp-css">
+html.gg-wait body::before{content:"";position:fixed;inset:0;z-index:8990;background:#fff}
+html.gg-wait body::after{content:"";position:fixed;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;z-index:8991;border-radius:16px;background:#F4551B url(https://static.wixstatic.com/media/85c3c2_628a738b50ae4491b71edb9b2b1b46ec~mv2.png) center/contain no-repeat;box-shadow:0 8px 24px rgba(244,85,27,.25);animation:ggsx-fp 1.1s ease-in-out infinite}
+@media (max-width:860px){html.gg-wait:not(.ggsx-inapp) body::before{box-shadow:inset 0 calc(56px + env(safe-area-inset-top,0px)) 0 0 #F4551B}}
+html.gg-lift body::before,html.gg-lift body::after{opacity:0;transition:opacity .22s ease;pointer-events:none;animation:none}
+@keyframes ggsx-fp{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+</style>
+<script>
+!function(){
+  var d=document,w=window,h=d.documentElement;
+  try{
+    if(!h||w.__ggsxFP)return;
+    if(w.top!==w.self)return;
+    if(/bot|crawl|spider|slurp|lighthouse|pagespeed|gtmetrix|headless/i.test(navigator.userAgent))return;
+    if(/[?&]ggsx_nocurtain=1/.test(location.search))return;
+    w.__ggsxFP=1;
+  }catch(e){return}
+  var MAX=3500,QUIET=150,GRACE=700,MIN=120,t0=Date.now(),last=t0,readyAt=0,done=false,mo=null;
+  h.classList.add("gg-wait");
+  function lift(){
+    if(done)return;done=true;
+    try{mo&&mo.disconnect()}catch(e){}
+    h.classList.add("gg-lift");
+    setTimeout(function(){h.classList.remove("gg-wait");h.classList.remove("gg-lift")},260);
+  }
+  try{mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){var m=ms[i],j;for(j=0;j<m.addedNodes.length;j++)if(m.addedNodes[j].nodeType===1){last=Date.now();return}for(j=0;j<m.removedNodes.length;j++)if(m.removedNodes[j].nodeType===1){last=Date.now();return}}});mo.observe(d,{childList:true,subtree:true})}catch(e){}
+  var path=location.pathname.replace(/\/+$/,"")||"/";
+  function drawn(sel){return !!d.querySelector(sel)}
+  function waiting(){
+    try{
+      if(path==="/")return !h.classList.contains("gh-on");
+      var P=w.GGSX_PAGES;if(P&&P.pages&&P.pages[path])return !h.classList.contains("gp-on")&&!drawn("#ggsx-page");
+      var S=w.GGSX_SHOP;if(S&&S.path===path)return !drawn("#ggsx-shop");
+      var M=w.GGSX_MORE_PAGES;if(M&&(M.restaurants===path||M.pharmacy===path))return !drawn("#ggsx-more-page");
+      var R=w.GGSX_REST_ADDR;if(R&&R.pages){for(var k in R.pages)if(R.pages[k]===path)return !drawn("#ggsx-more-page")}
+      var L=w.GGSX_LAUNDRY;if(L&&L.path===path)return !drawn("#ggsx-laundry");
+      var E=w.GGSX_ERRANDS;if(E&&E.path===path)return !drawn("#ggsx-errands");
+    }catch(e){}
+    return false;
+  }
+  function bars(){
+    try{
+      if(h.classList.contains("ggsx-inapp"))return true;
+      return !w.matchMedia("(max-width:860px)").matches||drawn(".gg-tabs");
+    }catch(e){return true}
+  }
+  function tick(){
+    if(done)return;
+    var now=Date.now();
+    if(now-t0>=MAX)return lift();
+    var ready=d.readyState!=="loading"&&now-t0>=MIN&&bars()&&!waiting();
+    if(ready&&!readyAt)readyAt=now;
+    if(ready&&(now-last>=QUIET||now-readyAt>=GRACE))return lift();
+    setTimeout(tick,40);
+  }
+  setTimeout(tick,MIN);
+  w.addEventListener("pageshow",function(e){if(e.persisted)lift()});
+}();
+</script>

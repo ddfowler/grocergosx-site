@@ -1,0 +1,193 @@
+<!-- GrocerGoSx Shop 33 Fee Split & Checkout Totals v1.5 (25 Oct 2026: booked-ahead delivery fee, delivery_fee_planned / delivery_fee_planned_french · v1.4: shopping_fee / planned_fee typed as a percentage are the run's rate (Shop 3 gets it through GGSX_MORE.setting), service_fee_min the $ minimum · v1.3: delivery_on_top on the Settings tab, 1 = delivery added on top of the service fee, 0 = taken out of it; reads delivery_fee / delivery_fee_french, old names as a fallback · v1.2: the note under the totals is built from the Settings, rate included, and reads well when a minimum is 0). v1.0: every run except a restaurant-only one shows its fee in two parts: a Delivery Fee (Settings tab delivery_in_fee / delivery_in_fee_french, $25) taken out of the service fee, and the service fee for the rest; the total does not change (15% of the order, min shopping_fee $80 / planned_fee $70, max service_fee_max $120), so $80 shows as $25 delivery + $55 service. Restaurant-only runs keep Shop 26's own minimum with restaurant_only_delivery on top. Checkout: wraps GGSX_CHECKOUT.delFee (Shop 26) and sets GGSX_CHECKOUT.delIn for Shop 3 v1.15; order editor: wraps GGSX_EDIT.h.estimate (Shop 13). v1.1: the totals read simply: Basket, Service fee, Delivery fee (and any restaurant stops), then the Total bar (Shop 25 wording set here: Total, taxes included); the Total (service excl.) row is hidden; one short note under the totals explains the fee (restaurant-only orders get their own note, so Shop 26's 'Restaurant order' line is hidden; a client-code line stays). The /pricing estimator (Pages 7) gets the same labels. Wording: window.GGSX_FEE_SPLIT. Needs Shop 3, 5, 13, 25 and 26 above it. Switch it off to go back to one fee line (delivery Free). Body – end · All pages · Load code on each new page · Essential. -->
+<style>.gc-wrap .gc-est .gfs-hide,.gp-cout .gfs-hide{display:none!important}.gc-wrap .gfs-note{margin:8px 2px 0;font-size:12px;line-height:1.45;color:#6b6b6b}.gc-wrap .gfs-note[hidden]{display:none}</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxFeeSplit) return;
+  W.__ggsxFeeSplit = 1;
+  var S = { del: 25, delFr: 25, min: 80, planned: 70, max: 120, rate: 0.15, ph: 48, onTop: 0, sf: 80, pf: 70, smin: 0, rateStd: 0.15, ratePlan: 0.15, dp: -1, dpf: -1 };
+  function derive() {   /* v1.4: shopping_fee / planned_fee typed as a percentage are the run's rate, with service_fee_min as the $ minimum */
+    S.rateStd = S.sf <= 1 ? S.sf : S.rate; S.ratePlan = S.pf <= 1 ? S.pf : S.rate;
+    S.min = S.sf <= 1 ? S.smin : S.sf; S.planned = S.pf <= 1 ? S.smin : S.pf;
+  }
+  var S2 = { rmin: 10, rminFr: 20, rdel: 25 };
+  var TXT = W.GGSX_FEE_SPLIT = {
+    fee: 'Service fee', del: 'Delivery fee', total: 'Total', sub: 'taxes included',
+    run: 'Prices include taxes. Service and delivery together are 15% of your basket, never less than {min} ({planned} when you book 48 hours ahead) and never more than {max}.',
+    rest: 'Menu prices, taxes included. Restaurant orders: 15% service fee, at least {rmin} ({rminFr} on the French side), plus {rdel} delivery.'
+  };
+  if (W.GGSX_TOTAL) { W.GGSX_TOTAL.label = TXT.total; W.GGSX_TOTAL.sub = TXT.sub; }   /* Shop 25's Total bar */
+
+  function num(v, d) { var s = String(v == null ? '' : v), x = parseFloat(s); return x >= 0 ? (/%/.test(s) ? x / 100 : x) : d; }   /* '15%' = 0.15; 0 counts */
+  function pick(s, a, b) { return s[a] != null && String(s[a]).trim() !== '' ? s[a] : s[b]; }   /* new key name first, old one as a fallback */
+  function french(s) { return /french|saint-martin/i.test(String(s || '')); }
+  function dPlan(fr) { return fr ? (S.dpf >= 0 ? S.dpf : S.delFr) : (S.dp >= 0 ? S.dp : S.del); }   /* v1.5: delivery_fee_planned(_french); not set = the standard fee */
+  function del(side) { var fr = french(side); return planned() ? dPlan(fr) : (fr ? S.delFr : S.del); }
+  function load() {
+    var M = W.GGSX_MORE;
+    if (!M || !M.load) return;
+    M.load().then(function (d) {
+      var s = (d && d.set) || {};
+      S.del = num(pick(s, 'delivery_fee', 'delivery_in_fee'), S.del);
+      S.delFr = num(pick(s, 'delivery_fee_french', 'delivery_in_fee_french'), S.delFr);
+      S.onTop = /^(1|true|yes|y|on|x)$/i.test(String(s.delivery_on_top == null ? '' : s.delivery_on_top).trim()) ? 1 : 0;   /* v1.3 */
+      S.sf = num(s.shopping_fee, S.sf);
+      S.pf = num(s.planned_fee, S.pf);
+      S.smin = num(s.service_fee_min, S.smin);
+      S.dp = num(s.delivery_fee_planned, -1);
+      S.dpf = num(s.delivery_fee_planned_french, -1);
+      S.max = num(s.service_fee_max, S.max);
+      S.rate = num(s.service_fee_rate, S.rate);
+      S.ph = num(s.planned_hours, S.ph);
+      S2.rmin = num(s.restaurant_only_fee, S2.rmin);
+      S2.rminFr = num(s.restaurant_only_fee_french, S2.rminFr);
+      S2.rdel = num(s.restaurant_only_delivery, S2.rdel);
+      derive();
+    }).catch(function () {});
+  }
+
+  /* checkout lines: {id, n, name, price}; restaurant dishes have ids rest:<vendor>:…; laundry is left out, as in Shop 26 */
+  function kind(lines) {
+    var rest = 0, other = 0;
+    (lines || []).forEach(function (l) {
+      if (!l || !((+l.n || 0) > 0)) return;
+      var id = String(l.id || '');
+      if (/^laundry:/.test(id) || /^laundry, wash/i.test(String(l.name || ''))) return;
+      if (/^rest:/.test(id)) rest++; else other++;
+    });
+    return { restOnly: rest > 0 && !other, any: rest + other > 0 };
+  }
+
+  /* Shop 3 asks GGSX_MORE.setting for service_fee_rate, shopping_fee and planned_fee: answer with this run's rate and $ minimum */
+  function planned() {   /* as Shop 3 works it out: a partner link, or a delivery window planned_hours or more ahead */
+    try { if (W.GGSX_REF && W.GGSX_REF.get().name) return true; } catch (e) {}
+    var f = D.querySelector('.gc-wrap'), d = f && f.querySelector('input[name=date]'), w = f && f.querySelector('select[name=win]');
+    var n = /^(\d{4})-(\d{2})-(\d{2})/.exec(d ? d.value : ''), a = /(\d{1,2}):(\d{2})/.exec(w ? w.value : '');
+    return !!n && new Date(+n[1], n[2] - 1, +n[3], a ? +a[1] : 8, a ? +a[2] : 30) - Date.now() >= S.ph * 36e5;
+  }
+  function wrapSetting() {
+    var M = W.GGSX_MORE;
+    if (!M || !M.setting || M.setting.__rate) return;
+    var base = M.setting;
+    M.setting = function (key) {
+      var v = base.apply(this, arguments);
+      try {
+        if (key === 'shopping_fee') return S.sf <= 1 ? S.smin : v;
+        if (key === 'planned_fee') return S.pf <= 1 ? S.smin : v;
+        if (key === 'service_fee_rate' && !kind(basket()).restOnly) { var p = planned(); if (p ? S.pf <= 1 : S.sf <= 1) return p ? S.pf : S.sf; }
+      } catch (e) {}
+      return v;
+    };
+    M.setting.__rate = 1;
+  }
+
+  function hook() {
+    var C = W.GGSX_CHECKOUT;
+    if (!C) return;
+    if (C.delFee && !C.delFee.__split) {
+      var base = C.delFee;
+      C.delFee = function (lines, side) {
+        var d = 0, k = kind(lines);
+        try { d = +base.apply(this, arguments) || 0; } catch (e) {}
+        return d || (k.any && !k.restOnly ? del(side) : 0);
+      };
+      C.delFee.__split = 1;
+    }
+    if (!C.delIn) C.delIn = function (lines) { var k = kind(lines); return !S.onTop && k.any && !k.restOnly; };   /* delivery_on_top 1: added, not taken out of the fee */
+  }
+
+  /* order editor (Shop 13): lines are [name, …, qty, price]; a run whose delivery is still 0 gets it carved out of its fee */
+  function wrapEdit() {
+    var E = W.GGSX_EDIT, H = E && E.h;
+    if (!H || !H.estimate || H.__split) return;
+    H.__split = 1;
+    var base = H.estimate;
+    H.estimate = function (lines, side) {
+      var t = base.apply(this, arguments);
+      try {
+        if (t && !(+t.del > 0) && +t.sub > 0) {
+          var d = del(side);
+          if (S.onTop) { t.del = d; t.total = Math.round((+t.total + d) * 100) / 100; }   /* on top of the fee */
+          else if (+t.fee > 0) { d = Math.min(d, +t.fee); t.fee = Math.round((+t.fee - d) * 100) / 100; t.del = d; }   /* out of the fee */
+        }
+      } catch (e) {}
+      return t;
+    };
+  }
+
+  /* the totals: plain labels, no "service excl." row, one note under them */
+  function basket() {
+    try {
+      var b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null'), out = [], k;
+      if (b && b.items) for (k in b.items) out.push(b.items[k]);
+      return out;
+    } catch (e) { return []; }
+  }
+  function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(n % 1 ? 2 : 0); }
+  function fill(t) {
+    return t.replace('{min}', money(S.min)).replace('{planned}', money(S.planned)).replace('{max}', money(S.max))
+      .replace('{rmin}', money(S2.rmin)).replace('{rminFr}', money(S2.rminFr)).replace('{rdel}', money(S2.rdel));
+  }
+  function pct(x) { return Math.round(x * 1000) / 10 + '%'; }
+  function runNote() {   /* reads well whatever the Settings say, a 0 included */
+    var t = (S.onTop ? 'Prices include taxes. The service fee is ' : 'Prices include taxes. Service and delivery together are ') + pct(S.rateStd) + ' of your basket' + (S.ratePlan !== S.rateStd ? ' (' + pct(S.ratePlan) + ' when you book ' + S.ph + ' hours ahead)' : '');
+    if (S.min > 0) t += ', never less than ' + money(S.min) + (S.planned > 0 && S.planned !== S.min ? ' (' + money(S.planned) + ' when you book ' + S.ph + ' hours ahead)' : '');
+    else if (S.planned > 0) t += ', at least ' + money(S.planned) + ' when you book ' + S.ph + ' hours ahead';
+    if (S.max > 0) t += (S.min > 0 || S.planned > 0 ? ' and' : ',') + ' never more than ' + money(S.max);
+    if (S.onTop) t += '; delivery is ' + money(S.del) + (S.delFr !== S.del ? ' (' + money(S.delFr) + ' on the French side)' : '') + ' on top'
+      + (dPlan(0) !== S.del || dPlan(1) !== S.delFr ? ', ' + money(dPlan(0)) + (dPlan(1) !== dPlan(0) ? ' Dutch side, ' + money(dPlan(1)) + ' French side' : '') + ' when you book ' + S.ph + ' hours ahead' : '');
+    return t + '.';
+  }
+  function restNote() {
+    var t = 'Menu prices, taxes included. Restaurant orders: ' + pct(S.rate) + ' service fee';
+    if (S2.rmin > 0) t += ', at least ' + money(S2.rmin) + (S2.rminFr !== S2.rmin ? ' (' + money(S2.rminFr) + ' on the French side)' : '');
+    return t + (S2.rdel > 0 ? (S2.rmin > 0 ? ',' : '') + ' plus ' + money(S2.rdel) + ' delivery.' : '.');
+  }
+  function relabel(rows, tag) {
+    var dash = false, delRow = null;
+    rows.forEach(function (r) {
+      var s = r.querySelector(tag), t = s && s.firstChild && s.firstChild.nodeType === 3 ? s.firstChild : null, x = t ? t.textContent.trim() : '';
+      var v = r.querySelector(tag === 'span' ? 'b' : 'dd');
+      if (x === 'Taxes / Service Fee' || x === TXT.fee) { if (x !== TXT.fee) t.textContent = TXT.fee; dash = !!(v && /^\s*—\s*$/.test(v.textContent)); }
+      else if (x === 'Delivery Fee' || x === TXT.del) { if (x !== TXT.del) t.textContent = TXT.del; delRow = v; }
+      else if (/^Total \(service excl\.\)$/.test(x)) r.classList.add('gfs-hide');
+      if (r.classList.contains('gt-bar') && !r.classList.contains('gt-ph') && t) {   /* Shop 25's Total bar */
+        var sm = s.querySelector('small');
+        if (t.textContent !== TXT.total) t.textContent = TXT.total;
+        if (sm && sm.textContent !== TXT.sub) sm.textContent = TXT.sub;
+      }
+    });
+    if (dash && delRow && delRow.textContent !== '—') delRow.textContent = '—';   /* order can't be placed yet: no amounts */
+  }
+  function present() {
+    if (W.GGSX_TOTAL && W.GGSX_TOTAL.label !== TXT.total) { W.GGSX_TOTAL.label = TXT.total; W.GGSX_TOTAL.sub = TXT.sub; }
+    var est = D.querySelector('.gc-wrap .gc-est');
+    if (est) {
+      var rows = Array.prototype.slice.call(est.children), k = kind(basket());
+      relabel(rows, 'span');
+      Array.prototype.forEach.call(est.querySelectorAll('.rof-cap'), function (c) { if (/^Restaurant order/.test(c.textContent)) c.classList.add('gfs-hide'); });
+      var note = est.parentNode && est.parentNode.querySelector(':scope > .gfs-note');
+      if (!note && est.parentNode) {
+        note = D.createElement('p');
+        note.className = 'gfs-note';
+        var after = est.nextElementSibling && est.nextElementSibling.classList.contains('gc-min') ? est.nextElementSibling : est;
+        est.parentNode.insertBefore(note, after.nextSibling);
+      }
+      if (note) { note.hidden = !k.any; note.textContent = k.restOnly ? restNote() : runNote(); }
+      if (!est.__gfs) { est.__gfs = 1; new MutationObserver(present).observe(est, { childList: true, subtree: true }); }   /* subtree: Shop 26 adds its line inside a row */
+    }
+    Array.prototype.forEach.call(D.querySelectorAll('dl.gp-cout'), function (dl) {   /* the /pricing estimator */
+      relabel(Array.prototype.slice.call(dl.children), 'dt');
+      if (!dl.__gfs) { dl.__gfs = 1; new MutationObserver(present).observe(dl, { childList: true, subtree: true }); }
+    });
+  }
+
+  function all() { hook(); wrapSetting(); wrapEdit(); present(); }
+  load();
+  all();
+  var tries = 0;
+  (function again() { all(); if (++tries < 20) setTimeout(again, 500); })();
+  D.addEventListener('ggsx-checkout-build', function () { setTimeout(all, 0); });
+  D.addEventListener('ggsx-checkout-open', function () { setTimeout(all, 0); });
+})();
+</script>

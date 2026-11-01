@@ -1,0 +1,252 @@
+<!-- GrocerGoSx Shop 26 Restaurant-only Fee & Client Codes v1.3 (24 Oct 2026): a run with restaurant food only (laundry add-on ok) gets its own Service Fee minimum and Delivery Fee from the Settings tab (restaurant_only_fee / _french $10 / $20, restaurant_only_delivery / _french $25 / $25), still 15%, max $120, via GGSX_CHECKOUT.minFee and .delFee (Shop 3) and GGSX_EDIT.h.estimate (Shop 13). Client codes (Codes tab, type fee_min) show under Taxes / Service Fee and go into the order Notes. Earlier: v1.0 min $50/$60, v1.1 fee caption, v1.2 client codes. Needs Shop 3, 5, 13. Body – end · All pages · Load code on each new page · Essential. -->
+<style>.gc-wrap .gc-est .rof-cap{display:block;margin:2px 0 0;font-size:12px;font-weight:400;line-height:1.3;color:#6b6b6b}.gc-wrap .ggc{margin:2px 0 12px}.gc-wrap .ggc[hidden],.gc-wrap .ggc [hidden]{display:none!important}.gc-wrap .ggc-open{background:none;border:0;padding:0;font:inherit;font-size:14px;color:#f4551b;text-decoration:underline;cursor:pointer}.gc-wrap .ggc-box{display:flex;gap:8px;margin-top:8px}.gc-wrap .ggc-box input{flex:1;min-width:0;padding:10px 12px;border:1.5px solid #d9d2c7;border-radius:10px;font:inherit;font-size:16px;text-transform:uppercase;background:#fff;color:#1b1b1b}.gc-wrap .ggc-apply{flex:none;padding:10px 16px;border:1.5px solid #f4551b;border-radius:10px;background:#fff;color:#f4551b;font:inherit;font-size:15px;font-weight:600;cursor:pointer}.gc-wrap .ggc-msg{display:block;margin-top:6px;font-size:13px;line-height:1.4;color:#6b6b6b}.gc-wrap .ggc-msg.ok{color:#1d7a3a}.gc-wrap .ggc-msg.err{color:#b3261e}.gc-wrap .ggc-rm{background:none;border:0;padding:0 0 0 6px;font:inherit;font-size:13px;color:#6b6b6b;text-decoration:underline;cursor:pointer}</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxRestOnly) return;
+  W.__ggsxRestOnly = 1;
+  var S = { dutch: 10, french: 20, rate: 0.15, max: 120, del: 25, delFr: 25 }, SIDE = {};
+
+  function num(v, d) { v = parseFloat(v); return v >= 0 ? v : d; }
+  function isFrench(s) { return /french|saint-martin/i.test(String(s || '')); }
+  function minFee(french) { return french ? S.french : S.dutch; }
+
+  /* rates and each restaurant's side from the Vendors & Menus sheet (Shop 5 loads and caches it) */
+  function load() {
+    var M = W.GGSX_MORE;
+    if (!M || !M.load) return;
+    M.load().then(function (d) {
+      var s = (d && d.set) || {};
+      S.dutch = num(s.restaurant_only_fee, S.dutch);
+      S.french = num(s.restaurant_only_fee_french, S.french);
+      S.del = num(s.restaurant_only_delivery, S.del);
+      S.delFr = num(s.restaurant_only_delivery_french, S.delFr);
+      S.rate = num(s.service_fee_rate, S.rate) || 0.15;
+      S.max = num(s.service_fee_max, S.max) || 120;
+      ((d && d.vendors) || []).forEach(function (v) {
+        var fr = isFrench(v.side);
+        if (v.vendor_id) SIDE['id:' + v.vendor_id] = fr;
+        if (v.name) SIDE['nm:' + String(v.name).toLowerCase()] = fr;
+      });
+    }).catch(function () {});
+  }
+
+  /* Shop Now checkout (Shop 3): basket lines { id, name, n, price }; restaurant dishes have ids rest:<vendor>:… */
+  function checkoutMin(lines, side, dflt) {
+    try {
+      var rest = 0, other = 0, french = isFrench(side);
+      (lines || []).forEach(function (l) {
+        if (!l || !((+l.n || 0) > 0)) return;
+        var id = String(l.id || '');
+        if (/^laundry:/.test(id) || /^laundry, wash/i.test(String(l.name || ''))) return;
+        var m = /^rest:([^:]+):/.exec(id);
+        if (m) { rest++; if (SIDE['id:' + m[1]]) french = true; }
+        else other++;
+      });
+      var m = rest && !other ? minFee(french) : dflt, c = applied();
+      if (c && c.type === 'fee_min' && c.value >= 0) m = Math.min(m, c.value);
+      return m;
+    } catch (e) { return dflt; }
+  }
+
+  /* order editor (Shop 13): lines are [name, …, qty, price]; restaurant dishes end in "(Restaurant name)" */
+  /* v1.3: restaurant-only Delivery Fee for Shop 3 */
+  function checkoutDel(lines, side) {
+    try { var k = kind((lines || []).filter(function (l) { return l && (+l.n || 0) > 0; }), side); return k.only ? (k.french ? S.delFr : S.del) : 0; } catch (e) { return 0; }
+  }
+
+  function wrapEstimate() {
+    var E = W.GGSX_EDIT, H = E && E.h;
+    if (!H || !H.estimate || H.__restOnly) return;
+    H.__restOnly = 1;
+    var base = H.estimate;
+    H.estimate = function (lines, side) {
+      var t = base.apply(this, arguments);
+      try {
+        var V = (E.fees && E.fees.vendors) || {}, nv = 0, other = 0, lau = 0, french = isFrench(side), seen = {};
+        (lines || []).forEach(function (l) {
+          var name = String((l && l[0]) || ''), amt = (+(l && l[2]) || 0) * (+(l && l[3]) || 0);
+          if (/^laundry, wash/i.test(name)) { lau += amt; return; }
+          var m = /\(([^()]+)\)\s*$/.exec(name), v = m ? m[1].trim().toLowerCase() : '';
+          if (v && V[v]) { if (!seen[v]) { seen[v] = 1; nv++; } if (SIDE['nm:' + v]) french = true; }
+          else other++;
+        });
+        if (t && nv && !other) {
+          var fee = Math.min(Math.max(Math.round((t.sub - lau) * S.rate * 100) / 100, minFee(french)), S.max);
+          t.total += fee - t.fee;
+          t.fee = fee;
+          var dl = french ? S.delFr : S.del;
+          t.total += dl - (+t.del || 0);
+          t.del = dl;
+        }
+      } catch (e) {}
+      return t;
+    };
+  }
+
+  /* client codes (v1.2): the Codes tab of the Vendors & Menus sheet; the applied code is kept for this browser tab until the order is sent */
+  var KEY = 'ggsx_client_code', CODES = null, CTXT = { open: 'Have a client code?', ph: 'Enter code', apply: 'Apply', checking: 'Checking…', ok: 'Code {c} applied.', bad: 'That code isn’t valid.', fail: 'Couldn’t check the code. Please try again.', rm: 'Remove', cap: 'Client code ' };
+  function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, '').toUpperCase(); }
+  function applied() { try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+  function today() {
+    try { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lower_Princes' }); }
+    catch (e) { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  }
+  function loadCodes() {
+    if (CODES) return CODES;
+    var id = (W.GGSX_MORE && W.GGSX_MORE.sheetId) || '1-h6W54Wbscz_5zMAVU0myRr0PCYoVW_sJZo4XWe2MXE';
+    CODES = fetch('https://docs.google.com/spreadsheets/d/' + id + '/gviz/tq?tqx=out:json&headers=1&sheet=Codes&t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var j = JSON.parse(t.slice(t.indexOf('(') + 1, t.lastIndexOf(')'))), cols = j.table.cols.map(function (c) { return String(c.label || '').trim().toLowerCase(); });
+        return (j.table.rows || []).map(function (r) {
+          var o = {};
+          (r.c || []).forEach(function (c, i) { var v = c ? c.v : ''; if (typeof v === 'string' && /^Date\(/.test(v) && c.f) v = c.f; o[cols[i]] = v; });
+          return o;
+        });
+      });
+    CODES.catch(function () { CODES = null; });
+    return CODES;
+  }
+  function rerender() {
+    var s = D.querySelector('.gc-wrap select[name=side]');
+    if (s) s.dispatchEvent(new Event('input', { bubbles: true }));
+    setTimeout(paint, 0);
+  }
+  function codeUi(form) {
+    var est = form.querySelector('.gc-est');
+    if (!est) return null;
+    var ui = form.querySelector('.ggc');
+    if (ui) return ui;
+    ui = D.createElement('div'); ui.className = 'ggc';
+    ui.innerHTML = '<button type="button" class="ggc-open"></button><div class="ggc-box" hidden><input type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"><button type="button" class="ggc-apply"></button></div><small class="ggc-msg" role="status"></small>';
+    var open = ui.querySelector('.ggc-open'), box = ui.querySelector('.ggc-box'), inp = box.querySelector('input'), btn = box.querySelector('.ggc-apply'), msg = ui.querySelector('.ggc-msg');
+    open.textContent = CTXT.open; inp.placeholder = CTXT.ph; btn.textContent = CTXT.apply;
+    function say(t, cls) { msg.className = 'ggc-msg' + (cls ? ' ' + cls : ''); msg.textContent = t || ''; }
+    function show() {
+      var c = applied();
+      if (c) {
+        open.hidden = true; box.hidden = true; say(CTXT.ok.replace('{c}', c.code), 'ok');
+        var rm = D.createElement('button'); rm.type = 'button'; rm.className = 'ggc-rm'; rm.textContent = CTXT.rm;
+        rm.onclick = function () { try { sessionStorage.removeItem(KEY); } catch (e) {} show(); rerender(); };
+        msg.appendChild(rm);
+      } else { open.hidden = false; say(''); }
+    }
+    open.onclick = function () { open.hidden = true; box.hidden = false; inp.focus(); };
+    function go() {
+      var want = norm(inp.value);
+      if (!want) return;
+      say(CTXT.checking);
+      loadCodes().then(function (rows) {
+        var t = today(), row = rows.filter(function (r) {
+          return norm(r.code) === want && /^(true|yes|y|1|x|✓|✔)$/i.test(String(r.active).trim()) && (!r.expires || String(r.expires).trim() >= t);
+        })[0], v = row ? parseFloat(row.value) : NaN, type = row ? String(row.type || 'fee_min').trim().toLowerCase() : '';
+        if (!row || type !== 'fee_min' || !(v >= 0)) { say(CTXT.bad, 'err'); return; }
+        try { sessionStorage.setItem(KEY, JSON.stringify({ code: want, type: type, value: v })); } catch (e) {}
+        show(); rerender();
+      }).catch(function () { say(CTXT.fail, 'err'); });
+    }
+    btn.onclick = go;
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    est.parentNode.insertBefore(ui, est);
+    show();
+    return ui;
+  }
+  function syncUi() {
+    var form = D.querySelector('.gc-wrap .gc-form') || D.querySelector('.gc-wrap form');
+    if (!form) return;
+    var ui = codeUi(form), est = form.querySelector('.gc-est');
+    if (!ui || !est) return;
+    var want = getComputedStyle(est).display === 'none';
+    if (ui.hidden !== want) ui.hidden = want;
+  }
+  D.addEventListener('submit', function (e) {
+    var f = e.target, c = applied();
+    if (!c || !f || !f.classList || !f.classList.contains('gc-form')) return;
+    var n = f.querySelector('textarea[name=notes]');
+    if (n && n.value.indexOf(CTXT.cap + c.code) < 0) n.value = (n.value ? n.value.replace(/\s+$/, '') + '\n' : '') + CTXT.cap + c.code;
+  }, true);
+  D.addEventListener('ggsx-checkout-submit', function () { setTimeout(function () { try { sessionStorage.removeItem(KEY); } catch (e) {} }, 4000); });
+
+  /* checkout display (v1.1): restaurant-only baskets show the Service Fee amount and rule; the summary line names menu prices */
+  var TXT = { cap: 'Restaurant order: 15%, min ', fr: ' (French side)', grocer: ' at GrocerGoSx prices', one: ' at the menu price', many: ' at menu prices', mixed: ' at GrocerGoSx and menu prices' };
+  function basket() {
+    try {
+      var b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null');
+      return b && b.items ? Object.keys(b.items).map(function (k) { return b.items[k]; }).filter(function (e) { return e && (+e.n || 0) > 0; }) : [];
+    } catch (e) { return []; }
+  }
+  function kind(lines, side) {
+    var rest = 0, other = 0, french = isFrench(side);
+    lines.forEach(function (l) {
+      var id = String(l.id || '');
+      if (/^laundry:/.test(id) || /^laundry, wash/i.test(String(l.name || ''))) return;
+      var m = /^rest:([^:]+):/.exec(id);
+      if (m) { rest++; if (SIDE['id:' + m[1]]) french = true; } else other++;
+    });
+    return { only: rest > 0 && !other, any: rest > 0, french: french };
+  }
+  function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(2); }
+  function amount(el) {
+    var m = /(\d[\d,]*(?:\.\d+)?)/.exec(String((el && el.textContent) || '').replace(/,/g, ''));
+    return m ? parseFloat(m[1]) : NaN;
+  }
+  function paint() {
+    var wrap = D.querySelector('.gc-wrap');
+    if (!wrap) return;
+    var sideEl = wrap.querySelector('select[name=side]'), k = kind(basket(), sideEl ? sideEl.value : '');
+    var sum = wrap.querySelector('.gc-sum');
+    if (sum && k.any) {
+      var t = sum.textContent, i = t.lastIndexOf(TXT.grocer);
+      if (i > -1 && i === t.length - TXT.grocer.length) sum.textContent = t.slice(0, i) + (k.only ? (/^1 item\b/.test(t) ? TXT.one : TXT.many) : TXT.mixed);
+    }
+    syncUi();
+    var est = wrap.querySelector('.gc-est'), code = applied();
+    if (!est || (!k.only && !code)) return;
+    var feeRow = null, excl = NaN, grand = NaN;
+    Array.prototype.forEach.call(est.children, function (r) {
+      var s = r.querySelector('span'), label = s && s.firstChild ? String(s.firstChild.textContent || '').trim() : '';
+      if (/^Taxes \/ Service Fee/.test(label)) feeRow = r;
+      else if (/^Total \(service excl\.\)/.test(label)) excl = amount(r.querySelector('b'));
+      if (r.classList.contains('gc-tot')) grand = amount(r.querySelector('b'));
+    });
+    if (!feeRow || feeRow.getAttribute('data-rof')) return;
+    var fee = Math.round((grand - excl) * 100) / 100, b = feeRow.querySelector('b'), s = feeRow.querySelector('span');
+    if (!(fee > 0) || !b || !s) return;
+    feeRow.setAttribute('data-rof', '1');
+    b.textContent = money(fee);
+    var cap = D.createElement('small');
+    cap.className = 'rof-cap';
+    cap.textContent = code ? CTXT.cap + code.code : TXT.cap + '$' + minFee(k.french) + (k.french ? TXT.fr : '');
+    s.appendChild(cap);
+  }
+  function watch() {
+    var wrap = D.querySelector('.gc-wrap');
+    if (!wrap) return;
+    [wrap.querySelector('.gc-est'), wrap.querySelector('.gc-sum')].forEach(function (el, i) {
+      if (el && !el.__rof12) {
+        el.__rof12 = 1;
+        new MutationObserver(paint).observe(el, i ? { childList: true, characterData: true, subtree: true } : { childList: true });
+      }
+    });
+    paint();
+  }
+  D.addEventListener('click', function (e) { if (e.target && e.target.closest && e.target.closest('.gc-wrap')) setTimeout(syncUi, 60); }, true);
+  D.addEventListener('change', function (e) { if (e.target && e.target.closest && e.target.closest('.gc-wrap')) setTimeout(syncUi, 60); }, true);
+  W.GGSX_REST_ONLY = { text: TXT, paint: paint, codes: CTXT, applied: applied };
+
+  function hook() {
+    var C = W.GGSX_CHECKOUT;
+    if (C && !C.minFee) C.minFee = checkoutMin;
+    if (C && !C.delFee) C.delFee = checkoutDel;
+    wrapEstimate();
+  }
+
+  load();
+  hook();
+  D.addEventListener('ggsx-checkout-build', function () { hook(); setTimeout(watch, 0); });
+  D.addEventListener('ggsx-checkout-open', function () { hook(); setTimeout(watch, 0); setTimeout(watch, 400); });
+  W.addEventListener('ggsx-basket', function () { setTimeout(paint, 0); });
+  W.addEventListener('load', hook);
+})();
+</script>

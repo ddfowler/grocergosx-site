@@ -1,0 +1,132 @@
+<!-- v1.3.3 (27 Oct 2026): five CSS rules for the Run Builder page (removed from the site on 17 Oct) dropped. -->
+<!-- v1.3.2 (27 Oct 2026): paint() only writes the tab state and basket badge when they change; before, every repaint replaced the badge text, which the Header Basket snippet saw as a page change and answered in kind, so the two repainted each other about 60 times a second on every page. -->
+<!-- GrocerGoSx App Shell (phones): on screens 860px and under every page gets a slim orange top bar (logo, search, cart, account),
+     a bottom tab bar (Home · Villa · Shop · Chat · More), a More sheet with the full site menu, and app-style touches
+     (rounded photos, 48px buttons). The tall site header and the floating chat bubble are hidden on phones – the Chat tab opens the
+     chat. Desktop is unchanged. On the Run Builder page the slim top bar steps aside for the flow's own bar, but the tab bar stays.
+     Wix: Settings → Custom Code → Add Custom Code · Place in: Body – end · Add to: All pages, Load code on each new page · Type: Essential
+     v1.3.1 (17 Oct 2026): the basket icon opens the basket itself when already on Shop Now (the site swallows same-page #links).
+     v1.3 (16 Oct 2026): Wix Stores is gone – the Shop tab, the top-bar search and the basket icon go to the Shop Now page, the badge counts
+     the grocery basket, and the old store links left the More menu. Tabs, extra menu links, the WhatsApp fallback number and the logo are the settings at the top of the script. -->
+<style>
+.gg-top,.gg-tabs,.gg-more,.gg-search{display:none}
+@media (max-width:860px){
+html.gg-m{--gg-font:"Avenir Light",avenir-lt-w01_35-light1475496,Avenir,"Helvetica Neue",Arial,sans-serif}
+.gg-top,.gg-tabs,.gg-search,.gg-sheet{font-family:var(--gg-font)}
+html.gg-m:not(.ggsx-app):not(.gg-hdr) header{display:none!important}
+html.gg-m .minimizedButtonV2{display:none!important}
+html.gg-m.gg-chat .gg-top,html.gg-m.gg-chat .gg-tabs,html.gg-m.gg-chat .gg-search,html.gg-m.gg-chat .ggsx-app-top,html.gg-m.gg-chat .ggsx-app-bar,html.gg-m.gg-chat .ggsx-app-toast{display:none!important}
+html.gg-m:not(.ggsx-app) #SITE_CONTAINER{padding-top:calc(56px + env(safe-area-inset-top,0))}
+html.gg-m #SITE_CONTAINER{padding-bottom:calc(72px + env(safe-area-inset-bottom,0))}
+html.gg-m:not(.ggsx-app) .gg-top{display:flex;position:fixed;top:0;left:0;right:0;z-index:9000;height:calc(56px + env(safe-area-inset-top,0));padding:env(safe-area-inset-top,0) 6px 0 16px;align-items:center;gap:2px;background:linear-gradient(90deg,#F4581F,#F58453);box-shadow:0 1px 0 rgba(0,0,0,.06)}
+.gg-top .gg-logo{flex:1;min-width:0;display:flex;align-items:center;height:100%;text-decoration:none}
+.gg-top .gg-logo img{height:30px;width:auto;display:block}
+.gg-ib{width:44px;height:44px;flex:none;border:0;background:none;color:#fff;display:flex;align-items:center;justify-content:center;position:relative;text-decoration:none;cursor:pointer;padding:0;font:inherit;-webkit-tap-highlight-color:transparent}
+.gg-ib svg,.gg-tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gg-badge{position:absolute;top:4px;right:3px;min-width:18px;height:18px;border-radius:999px;background:#fff;color:#F4551B;font-size:11px;font-weight:700;line-height:18px;text-align:center;padding:0 4px}
+.gg-badge:empty,.gg-badge[data-n="0"]{display:none}
+html.gg-m:not(.ggsx-app) .gg-search{display:none;position:fixed;top:calc(56px + env(safe-area-inset-top,0));left:0;right:0;z-index:9000;background:#fff;padding:10px 16px;border-bottom:1px solid #e9e4dd;gap:8px;margin:0}
+html.gg-m:not(.ggsx-app) .gg-search.open{display:flex}
+.gg-search input{flex:1;min-width:0;height:44px;border:1.5px solid #cfc9c1;border-radius:12px;padding:0 12px;font:inherit;font-size:16px;background:#fff;color:#1b1b1b}
+.gg-search button{height:44px;padding:0 16px;border-radius:999px;border:0;background:#F4551B;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+html.gg-m .gg-tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:9000;box-sizing:border-box;height:calc(64px + env(safe-area-inset-bottom,0));background:#fff;border-top:1px solid #e9e4dd;padding:5px 4px env(safe-area-inset-bottom,0);margin:0}
+.gg-tab{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:50px;padding:2px;box-sizing:border-box;border:0;background:none;color:#6b6b6b;font:inherit;font-size:11px;line-height:1.1;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.gg-tab.on{color:#F4551B;font-weight:700}
+html.gg-m .gg-more{display:block;position:fixed;inset:0;z-index:9100;background:rgba(27,27,27,.55);opacity:0;pointer-events:none;transition:opacity .2s}
+html.gg-m .gg-more.open{opacity:1;pointer-events:auto}
+.gg-sheet{position:absolute;left:0;right:0;bottom:0;max-height:84vh;overflow:auto;background:#fff;border-radius:20px 20px 0 0;padding:8px 12px calc(16px + env(safe-area-inset-bottom,0));transform:translateY(24px);transition:transform .25s;color:#1b1b1b}
+.gg-more.open .gg-sheet{transform:none}
+.gg-sheet-h{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 6px 12px}
+.gg-sheet-h b{font-family:Benzin,sans-serif;font-size:18px}
+.gg-sheet-h .gg-ib{color:#1b1b1b}
+.gg-sheet a{display:flex;align-items:center;justify-content:space-between;padding:14px 12px;border-radius:12px;color:#1b1b1b;text-decoration:none;font-size:16px;line-height:1.2}
+.gg-sheet a.on{background:#fff1ea;color:#F4551B;font-weight:700}
+.gg-sheet a::after{content:"\203A";color:#cfc9c1;font-size:24px;line-height:1}
+.gg-sheet hr{border:0;border-top:1px solid #e9e4dd;margin:6px 8px}
+html.gg-m wow-image.gg-round,html.gg-m wow-image.gg-round img{border-radius:16px!important;overflow:hidden}
+}
+</style>
+<script>
+!function(){
+  var TABS=[{k:"home",t:"Home",h:"/",i:"home"},{k:"run",t:"Villa",h:"/villa-stocking",i:"run"},{k:"shop",t:"Shop",h:"/shop-now",i:"shop",m:/^\/(shop-now|category|product-page|cart-page)(\/|$)/},{k:"chat",t:"Chat",i:"chat"},{k:"more",t:"More",i:"more"}];
+  var EXTRA=[{t:"Shop groceries",h:"/shop-now"},{t:"Restaurants",h:"/restaurants"},{t:"Pharmacy",h:"/pharmacy"},{t:"Villa stocking",h:"/villa-stocking"},{t:"Stocking packages",h:"/stocking-packages"},{t:"Yacht provisioning",h:"/yacht-provisioning"},{t:"For hosts & managers",h:"/partners"},{t:"Pricing & fees",h:"/pricing"},{t:"Service area",h:"/service-area"},{t:"Blog",h:"/blog"}];
+  var WA="590690779119", LOGO="https://static.wixstatic.com/media/85c3c2_862c7c7deba142b5a50ca891db1246aa~mv2.png", BASKET="ggsx_basket", SHOP="/shop-now";
+  var ICON={home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+    run:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 13l2 2 4-4"/>',
+    shop:'<path d="M6 8h12l1 12H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+    chat:'<path d="M4 5h16v11H9l-5 4z"/>',
+    more:'<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>',
+    search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+    user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    x:'<path d="M6 6l12 12M18 6L6 18"/>'};
+  var t=document,SH=null;
+  function h(tag,attrs,kids){var el=t.createElement(tag),k;if(attrs)for(k in attrs){if(attrs[k]==null)continue;"class"===k?el.className=attrs[k]:"text"===k?el.textContent=attrs[k]:"on"===k.slice(0,2)?el.addEventListener(k.slice(2),attrs[k]):el.setAttribute(k,attrs[k])}(kids||[]).forEach(function(c){c&&el.appendChild("string"==typeof c?t.createTextNode(c):c)});return el}
+  function svg(k){var s=t.createElementNS("http://www.w3.org/2000/svg","svg");s.setAttribute("viewBox","0 0 24 24");s.setAttribute("aria-hidden","true");s.innerHTML=ICON[k];return s}
+  function path(){return location.pathname.replace(/\/+$/,"")||"/"}
+  function same(a,b){return(a||"").replace(/\/+$/,"")===(b||"").replace(/\/+$/,"")||(a==="/"&&b==="")}
+  function isOn(tab){var p=path();if(tab.m)return tab.m.test(p);return!!tab.h&&(tab.h==="/"?p==="/":same(p,tab.h))}
+  function hdr(){return t.querySelector("header")}
+  function basketCount(){try{var b=JSON.parse(localStorage.getItem(BASKET)||"null"),n=0,k;if(b&&b.items)for(k in b.items)n+=b.items[k].n||0;return n}catch(e){return 0}}
+  function openChat(){var b=t.querySelector(".minimizedButtonV2");if(b){b.click();return}window.open("https://wa.me/"+WA,"_blank","noopener")}
+  function account(){var b=hdr()&&hdr().querySelector(".login-social-bar__container");if(!b)return;if(/--login(\s|$)/.test(b.className)){b.click();return}t.documentElement.classList.toggle("gg-hdr");try{t.documentElement.classList.contains("gg-hdr")&&hdr().scrollIntoView()}catch(e){}}
+  function menuLinks(){
+    var nav=[],extra=[],seen={};
+    function add(list,txt,href){if(!txt||!href)return;var a=t.createElement("a");a.href=href;var p=a.pathname.replace(/\/+$/,"")||"/";if(a.origin!==location.origin||seen[p])return;seen[p]=1;list.push({t:txt,h:p})}
+    var H=hdr();H&&[].forEach.call(H.querySelectorAll("nav a, ul a"),function(a){var s=a.textContent.replace(/\s+/g," ").trim();s&&!/cart/i.test(a.getAttribute("aria-label")||"")&&add(nav,s,a.getAttribute("href"))});
+    EXTRA.forEach(function(x){add(extra,x.t,x.h)});
+    return{nav:nav,extra:extra}
+  }
+  function build(){
+    if(SH)return;
+    var badge=h("span",{class:"gg-badge","data-n":"0"}),cart;
+    var sIn=h("input",{type:"search",placeholder:"Search groceries",autocomplete:"off","aria-label":"Search"});
+    var search=h("form",{class:"gg-search",onsubmit:function(e){e.preventDefault();var q=sIn.value.trim();if(q)location.href=SHOP+"#q/"+encodeURIComponent(q)}},[sIn,h("button",{type:"submit",text:"Search"})]);
+    window.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a.gg-ib[href$=\"#basket\"]"):null;if(!a)return;e.preventDefault();e.stopPropagation();location.pathname.replace(/\/+$/,"")===SHOP?(location.hash==="#basket"?window.dispatchEvent(new HashChangeEvent("hashchange")):location.hash="basket"):location.href=SHOP+"#basket"},!0);
+    var top=h("div",{class:"gg-top"},[
+      h("a",{class:"gg-logo",href:"/","aria-label":"GrocerGoSx home"},[h("img",{src:LOGO,alt:"GrocerGoSx"})]),
+      h("button",{type:"button",class:"gg-ib","aria-label":"Search",onclick:function(){var o=search.classList.toggle("open");o&&setTimeout(function(){try{sIn.focus()}catch(e){}},50)}},[svg("search")]),
+      cart=h("a",{class:"gg-ib",href:SHOP+"#basket","aria-label":"Basket"},[svg("shop"),badge]),
+      h("button",{type:"button",class:"gg-ib","aria-label":"Account",onclick:account},[svg("user")])
+    ]);
+    var list=h("div"),more,sheet=h("div",{class:"gg-sheet",role:"dialog","aria-label":"Site menu"},[h("div",{class:"gg-sheet-h"},[h("b",{text:"Menu"}),h("button",{type:"button",class:"gg-ib","aria-label":"Close",onclick:function(){closeMore()}},[svg("x")])]),list]);
+    more=h("div",{class:"gg-more",onclick:function(e){e.target===more&&closeMore()}},[sheet]);
+    var tabs=h("nav",{class:"gg-tabs","aria-label":"App navigation"},TABS.map(function(tab){
+      var kids=[svg(tab.i),h("span",{text:tab.t})];
+      if(tab.k==="chat")return h("button",{type:"button",class:"gg-tab",onclick:openChat},kids);
+      if(tab.k==="more")return h("button",{type:"button",class:"gg-tab","aria-haspopup":"dialog",onclick:function(){more.classList.contains("open")?closeMore():openMore()}},kids);
+      return h("a",{class:"gg-tab","data-k":tab.k,href:tab.h},kids)
+    }));
+    function openMore(){
+      list.innerHTML="";var p=path(),L=menuLinks();
+      function row(l){return h("a",{href:l.h,class:same(p,l.h)?"on":null,text:l.t})}
+      L.nav.forEach(function(l){list.appendChild(row(l))});L.nav.length&&L.extra.length&&list.appendChild(h("hr"));L.extra.forEach(function(l){list.appendChild(row(l))});
+      more.classList.add("open");tabs.querySelector('[aria-haspopup]').classList.add("on");t.addEventListener("keydown",esc)
+    }
+    function closeMore(){more.classList.remove("open");tabs.querySelector('[aria-haspopup]').classList.remove("on");t.removeEventListener("keydown",esc)}
+    function esc(e){"Escape"===e.key&&closeMore()}
+    t.body.appendChild(top);t.body.appendChild(search);t.body.appendChild(tabs);t.body.appendChild(more);
+    SH={top:top,tabs:tabs,badge:badge,cart:cart,search:search,close:closeMore};
+    window.addEventListener("ggsx-basket",paint);window.addEventListener("storage",function(e){e.key===BASKET&&paint()})
+  }
+  function paint(){
+    if(!SH)return;
+    [].forEach.call(SH.tabs.querySelectorAll("a.gg-tab"),function(a){var tab=TABS.filter(function(x){return x.k===a.getAttribute("data-k")})[0],on=tab&&isOn(tab);a.classList.toggle("on",!!on);on?a.getAttribute("aria-current")!=="page"&&a.setAttribute("aria-current","page"):a.hasAttribute("aria-current")&&a.removeAttribute("aria-current")});
+    var n=String(basketCount());if(SH.badge.getAttribute("data-n")!==n){SH.badge.textContent=n;SH.badge.setAttribute("data-n",n)}
+    [].forEach.call(t.querySelectorAll("wow-image:not(.gg-round)"),function(w){if(w.closest("header,footer"))return;var r=w.getBoundingClientRect();r.width>=140&&r.height>=100&&w.classList.add("gg-round")})
+  }
+  var lastPath=null,pend=false;
+  t.documentElement.classList.add("gg-m");
+  function attach(){
+    if(pend)return;pend=true;
+    (window.requestAnimationFrame||setTimeout)(function(){pend=false;tick()})
+  }
+  function tick(){
+    if(!t.body)return;
+    build();
+    if(lastPath!==location.pathname){lastPath=location.pathname;SH&&SH.close();SH&&SH.search.classList.remove("open");t.documentElement.classList.remove("gg-hdr")}
+    t.documentElement.classList.toggle("gg-chat",!!t.querySelector(".expandedChat"));
+    paint()
+  }
+  new MutationObserver(attach).observe(t.documentElement,{childList:true,subtree:true});attach()
+}();
+</script>

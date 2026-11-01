@@ -1,0 +1,35 @@
+<!-- v1.4 (27 Oct 2026): the links now wrap onto several lines. They were written with no spaces between them and each link is no-wrap, so the whole row was one 1,400 px line that overflowed phone screens and let the page scroll sideways / zoom out. The row is now a wrapping flex row and can never be wider than the page. -->
+<!-- v1.3 (27 Oct 2026): the row now goes at the end of the page area (#SITE_PAGES), directly under the footer. It used to be inserted as a sibling of the footer, but on this site the footer sits inside the page's layout grid, so a sibling with no grid position was auto-placed in the first free cell: the top of the page, under the header (Dwayne: "I don't like that the sitemap menu bar showing on top"). -->
+<!-- v1.2 (27 Oct 2026): the row is added only once the page has finished loading (it used to appear at the top of the page for a moment and then be removed by Wix's own rendering, so it never stayed on the page) and is put back if Wix re-renders the footer during the first 20 seconds. -->
+<!-- GrocerGoSx Footer Site Map v1.1 (20 Oct 2026: Privacy Policy link added; v1.0 18 Oct 2026): adds a compact "Site map" link row directly under the site footer on every page (all main pages plus the XML sitemap) for visitors and search engines. Colours are copied from the footer at load. Wix: Settings → Custom Code · Body – end · All pages, load on each new page · Essential. Disable or delete this snippet to remove the row. -->
+<style id="gg-sm-style">
+#gg-sitemap{box-sizing:border-box;width:100%;max-width:100%;overflow:hidden;display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;padding:14px 16px 18px;font-family:"avenir-lt-w01_35-light1475496","Avenir Light","Avenir",Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.9;text-align:center}
+#gg-sitemap .gg-sm-label{flex:0 0 100%;display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.65;margin-bottom:4px}
+#gg-sitemap a{color:inherit;text-decoration:none;white-space:nowrap;opacity:.85}
+#gg-sitemap a:hover{color:#F4551B;opacity:1;text-decoration:underline}
+#gg-sitemap .gg-sm-sep{opacity:.4;margin:0 6px}
+@media (max-width:860px){#gg-sitemap{font-size:12px;padding:12px 14px 16px}}
+</style>
+<script>
+(function(){
+  var LINKS=[["Home","/"],["Shop Now","/shop-now"],["Restaurants","/restaurants"],["Pharmacy","/pharmacy"],["Villa Stocking","/villa-stocking"],["Stocking Packages","/stocking-packages"],["Yacht Provisioning","/yacht-provisioning"],["Concierge Services","/concierge-services"],["All Services","/services-hub"],["How It Works","/how-it-works"],["Pricing & Fees","/pricing"],["Delivery Area","/service-area"],["Hosts & Partners","/partners"],["Blog","/blog"],["Contact","/contact"],["Privacy Policy","/#privacy-policy"],["XML Sitemap","/sitemap.xml"]];
+  function alpha(c){var m=/rgba?\(([^)]+)\)/.exec(c||"");if(!m)return 0;var p=m[1].split(",");return p.length>3?parseFloat(p[3]):1}
+  function bgOf(root){var q=[root],n=0,w=root.getBoundingClientRect().width||1;while(q.length&&n<80){var el=q.shift();n++;var cs=getComputedStyle(el);if(alpha(cs.backgroundColor)>0&&el.getBoundingClientRect().width>=w*0.6)return cs.backgroundColor;for(var i=0;i<el.children.length;i++)q.push(el.children[i])}return null}
+  function fgOf(root){var t=root.querySelector("a,p,span,h2,h3,h4");return t?getComputedStyle(t).color:null}
+  function build(){
+    if(document.getElementById("gg-sitemap"))return true;
+    var f=document.getElementById("SITE_FOOTER")||document.querySelector("footer");
+    if(!f)return false;
+    var nav=document.createElement("nav");nav.id="gg-sitemap";nav.setAttribute("aria-label","Site map");
+    nav.style.background=bgOf(f)||"#ffffff";nav.style.color=fgOf(f)||"#222222";
+    var h='<span class="gg-sm-label">Site map</span>';
+    LINKS.forEach(function(l,i){h+=(i?'<span class="gg-sm-sep">\u00b7</span>':"")+'<a href="'+l[1]+'">'+l[0]+"</a>"});
+    nav.innerHTML=h;
+    var pages=document.getElementById("SITE_PAGES");
+    if(pages&&pages.contains(f))pages.appendChild(nav);else f.insertAdjacentElement("afterend",nav);
+    return true;
+  }
+  function start(){var t0=Date.now();(function tick(){build();if(Date.now()-t0<20000)setTimeout(tick,500)})()}
+  if(document.readyState==="complete")setTimeout(start,300);else window.addEventListener("load",function(){setTimeout(start,300)});
+})();
+</script>

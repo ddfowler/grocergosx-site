@@ -1,0 +1,203 @@
+<!-- GrocerGoSx Shop 10 Client Live Page v1.0.2 (17 Oct 2026; v1.0.1 reads GGSX_TRACK from Shop 8 v1.0.1; v1.0.2 treats a record that only holds order edits (Shop 13–15) as "waiting" instead of "couldn't confirm"): the client's own view of their shop at /shop-now#track/… (the link in their
+     order confirmation email, the "Send live link" message and every update email). Shows their items with photos (Shop 7) and each
+     item's status as you tick the run sheet: waiting, got it, substituted (with the name and price), out of stock. Refreshes every
+     8 seconds while open, pops up a note when something changes, and lists every change in one card with WhatsApp / text buttons.
+     Only shows updates signed for this order (Shop 8). Needs Shop 4, 7 and 8 above it.
+     Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<style>
+.gl-view .hide{display:none!important}
+.gl-view .gr-body{padding-bottom:40px}
+.gl-view .gl-when{margin:2px 0 10px;color:#3a3a3a}
+.gl-view .gl-state{font-weight:700}
+.gl-view .gl-upd{margin-top:8px;font-size:12px;color:#6b6b6b}
+.gl-view .gl-upd i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2f9e55;margin-right:6px;vertical-align:1px;animation:glp 2s infinite}
+.gl-view .gl-upd.off i{background:#cfc9c1;animation:none}
+@keyframes glp{50%{opacity:.3}}
+.gl-view .gl-chg h3{font-family:Benzin,"Helvetica Neue",Arial,sans-serif;font-size:16px;margin:0 0 8px}
+.gl-view .gl-chg ul{margin:0 0 10px;padding-left:18px}
+.gl-view .gl-chg li{margin-bottom:6px}
+.gl-view .gl-chg p{margin:0 0 8px;font-size:14px;color:#3a3a3a}
+.gl-view .gl-row{display:flex;flex-wrap:wrap;gap:8px}
+.gl-view .gl-pill{display:inline-flex;align-items:center;min-height:40px;border:1.5px solid #cfc9c1;border-radius:999px;background:#fff;color:#1b1b1b;font:inherit;font-size:14px;font-weight:700;padding:0 16px;text-decoration:none}
+.gl-view .gl-pill.main{background:#F4551B;border-color:#F4551B;color:#fff}
+.gl-view .gl-chip{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:#f3efe9;color:#6b6b6b}
+.gl-view .gr-item.got .gl-chip{background:#e8f5ec;color:#1e7a3a}
+.gl-view .gr-item.sub .gl-chip{background:#fff1e0;color:#b45309}
+.gl-view .gr-item.out .gl-chip{background:#fde8e8;color:#b42318}
+.gl-view .gr-item.flash{animation:glf 1.4s ease 2}
+@keyframes glf{50%{box-shadow:0 0 0 4px rgba(244,85,27,.35)}}
+.gl-view .gl-foot{text-align:center;font-size:12px;color:#6b6b6b;margin:16px 0}
+.gl-note{position:fixed;left:12px;right:12px;top:calc(72px + env(safe-area-inset-top,0px));z-index:21;max-width:600px;margin:0 auto;background:#1b1b1b;color:#fff;border-radius:16px;padding:12px 16px;font-size:15px;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.25);cursor:pointer}
+.gl-note b{display:block;color:#F4551B;margin-bottom:2px}
+</style>
+<style>/* 20 Oct 2026: the "Changes to your order" card (and its WhatsApp / Text buttons) is hidden at Dwayne's request; delete this line to bring it back */
+.gl-chg{display:none!important}</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxLiveView) return;
+  W.__ggsxLiveView = 1;
+  var T = {
+    title: 'Your shop, live',
+    hi: 'Hi ',
+    yours: 'Your order',
+    delivery: 'Delivery: ',
+    wait: "We haven't started shopping yet. This page updates by itself once we do.",
+    shopping: 'Shopping now: ',
+    of: ' of ',
+    done: ' items done',
+    all: "All done! We're packing your order for delivery.",
+    changes: 'Changes to your order',
+    ask: 'Questions about a change? Message us:',
+    updated: 'Live · updated ',
+    waiting: 'Live · waiting for us to start',
+    offline: 'Reconnecting…',
+    bad: "Couldn't confirm the latest update, so this shows the last confirmed one.",
+    broken: 'This link looks incomplete. Please open the link from your GrocerGoSx email or message.',
+    foot: 'This page refreshes by itself while it is open.',
+    news: 'Update on your order',
+    more: ' more',
+    chip: { '': 'Waiting', got: 'Got it ✓', sub: 'Substituted', out: 'Out of stock' },
+    skipped: ' · skipped as you asked',
+    close: 'Close'
+  };
+  var C, cur = null, base = D.title, tries = 0;
+
+  function boot() {
+    C = W.GGSX_TRACK;
+    if (!C || !C.keys) { if (++tries < 40) setTimeout(boot, 250); return; }
+    W.addEventListener('hashchange', route);
+    D.addEventListener('visibilitychange', function () {
+      if (!cur || D.visibilityState !== 'visible') return;
+      cur.unseen = 0; D.title = base; poll();
+    });
+    route();
+  }
+  function route() {
+    var P = C.fromHash('track');
+    if (cur && cur.P === P) return;
+    if (cur) close();
+    if (P) open(P);
+  }
+  function close() {
+    clearTimeout(cur.t);
+    cur.wrap.remove();
+    D.documentElement.classList.remove('gr-lock');
+    D.title = base;
+    cur = null;
+  }
+
+  function open(P) {
+    var el = C.el, order = C.decode(P), wrap = el('div', { class: 'gr-wrap open gl-view' }), body = el('div', { class: 'gr-body' });
+    cur = { P: P, order: order, wrap: wrap, prev: null };
+    D.documentElement.classList.add('gr-lock');
+    wrap.appendChild(el('div', { class: 'gr-top' }, [el('b', { text: T.title }),
+      el('button', { type: 'button', class: 'gr-x', 'aria-label': T.close, text: '×', onclick: function () { location.hash = ''; } })]));
+    wrap.appendChild(body);
+    if (!order) { body.appendChild(el('div', { class: 'gr-card', text: T.broken })); D.body.appendChild(wrap); return; }
+    var c = order.c || {}, lines = order.i,
+        hello = 'Hi GrocerGoSx, about my order for ' + C.when(c) + ': ',
+        state = el('div', { class: 'gl-state', text: T.wait }),
+        fill = el('i'),
+        upd = el('div', { class: 'gl-upd off' }, [el('i'), el('span', { text: T.offline })]),
+        ul = el('ul'),
+        chg = el('div', { class: 'gr-card gl-chg hide' }, [el('h3', { text: T.changes }), ul, el('p', { text: T.ask }), el('div', { class: 'gl-row' }, [
+          el('a', { class: 'gl-pill main', href: C.wa(C.whatsapp, hello), target: '_blank', rel: 'noopener', text: 'WhatsApp' }),
+          el('a', { class: 'gl-pill', href: C.sms(C.whatsapp, hello), text: 'Text' })])]),
+        list = el('div', { class: 'gr-list' });
+    body.appendChild(el('div', { class: 'gr-card' }, [el('h2', { text: c.f ? T.hi + c.f : T.yours }),
+      el('div', { class: 'gl-when', text: T.delivery + C.when(c) }), state, el('div', { class: 'gr-bar' }, [fill]), upd]));
+    body.appendChild(chg);
+    var items = lines.map(function (ln) {
+      var chip = el('span', { class: 'gl-chip', text: T.chip[''] }),
+          it = el('div', { class: 'gr-item' }, [el('div', { class: 'gr-it-h' }, [
+            el('div', { class: 'gr-it-n' }, [el('b', { text: ln[2] + ' × ' }), C.itemName(ln)]),
+            el('div', { class: 'gr-it-p', text: C.money(ln[2] * ln[3]) })]), chip]);
+      list.appendChild(it);
+      return { it: it, chip: chip };
+    });
+    body.appendChild(list);
+    body.appendChild(el('p', { class: 'gl-foot', text: T.foot }));
+    cur.ui = { state: state, fill: fill, upd: upd, chg: chg, ul: ul, items: items };
+    D.body.appendChild(wrap);
+    W.scrollTo(0, 0);
+    if (!W.crypto || !crypto.subtle) { upd.lastChild.textContent = T.offline; return; }
+    var me = cur;
+    C.keys(P).then(function (K) { me.K = K; poll(); });
+  }
+
+  function live(me, text) { me.ui.upd.className = 'gl-upd'; me.ui.upd.lastChild.textContent = text; }
+  function poll() {
+    var me = cur;
+    if (!me || !me.K) return;
+    clearTimeout(me.t);
+    C.load(me.K.id).then(function (rec) {
+      if (me !== cur) return;
+      if (!rec || !rec.state) { live(me, T.waiting); render(me, null); return; }
+      return C.sign(me.K, String(rec.state || '')).then(function (sig) {
+        if (me !== cur) return;
+        var S = null;
+        try { S = sig === rec.sig ? JSON.parse(rec.state) : null; } catch (e) {}
+        if (!S) { live(me, T.bad); return; }
+        live(me, T.updated + C.hhmm(S.u || rec.at || Date.now()));
+        render(me, S);
+      });
+    }).catch(function () {
+      if (me !== cur) return;
+      me.ui.upd.className = 'gl-upd off'; me.ui.upd.lastChild.textContent = T.offline;
+    }).then(function () {
+      if (me === cur) me.t = setTimeout(poll, D.visibilityState === 'hidden' ? 60000 : 8000);
+    });
+  }
+
+  function render(me, S) {
+    var lines = me.order.i, u = me.ui, done = 0, rule = me.order.r || 'sub';
+    var R = S || { s: {}, n: {}, p: {} };
+    lines.forEach(function (ln, i) {
+      var st = (R.s || {})[i] || '', x = u.items[i], text = T.chip[st] || T.chip[''];
+      if (st) done++;
+      if (st === 'sub') {
+        var nm = String((R.n || {})[i] || '').trim(), pr = C.money((R.p || {})[i]);
+        text = T.chip.sub + (nm ? ': ' + nm : '') + (pr ? ' · ' + pr : '');
+      }
+      if (st === 'out' && (ln[4] || rule) === 'skip') text += T.skipped;
+      x.it.className = 'gr-item' + (st ? ' ' + st : '');
+      x.chip.textContent = text;
+    });
+    u.ul.innerHTML = '';
+    lines.forEach(function (ln, i) {
+      var st = (R.s || {})[i];
+      if (st === 'sub' || st === 'out') u.ul.appendChild(C.el('li', { text: C.change(me.order, i, R) }));
+    });
+    u.chg.classList.toggle('hide', !u.ul.children.length);
+    u.state.textContent = !S ? T.wait : done >= lines.length ? T.all : T.shopping + done + T.of + lines.length + T.done;
+    u.fill.style.width = Math.round(100 * done / Math.max(1, lines.length)) + '%';
+    var news = [];
+    if (me.prev) {
+      var seen = {};
+      lines.forEach(function (ln, i) { seen[i] = C.sigOf(me.prev, i); });
+      news = C.news(R, lines, seen);
+    }
+    me.prev = R;
+    if (news.length) notify(me, news, R);
+  }
+
+  function notify(me, idx, S) {
+    var u = me.ui, old = me.wrap.querySelector('.gl-note'),
+        note = C.el('div', { class: 'gl-note', role: 'status' }, [C.el('b', { text: T.news }),
+          C.change(me.order, idx[0], S) + (idx.length > 1 ? ' (+' + (idx.length - 1) + T.more + ')' : '')]);
+    if (old) old.remove();
+    note.addEventListener('click', function () {
+      note.remove();
+      try { u.chg.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    });
+    me.wrap.appendChild(note);
+    setTimeout(function () { note.remove(); }, 9000);
+    idx.forEach(function (i) { var it = u.items[i].it; it.classList.remove('flash'); void it.offsetWidth; it.classList.add('flash'); });
+    try { if (navigator.vibrate) navigator.vibrate([120, 60, 120]); } catch (e) {}
+    if (D.visibilityState === 'hidden') { me.unseen = (me.unseen || 0) + idx.length; D.title = '(' + me.unseen + ') ' + base; }
+  }
+
+  if (D.body) boot(); else D.addEventListener('DOMContentLoaded', boot);
+})();
+</script>

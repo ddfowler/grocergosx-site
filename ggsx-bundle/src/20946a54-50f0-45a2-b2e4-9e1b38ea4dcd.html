@@ -1,0 +1,182 @@
+<!-- GrocerGoSx Shop 32 Restaurant Menu Bar v1.0.1 (24 Oct 2026; v1.0.1 shortens the search hint to "Search" on phones while the basket shows beside it): on a restaurant's page (Shop 29/30) one bar stays frozen under the top of the screen while the client scrolls: the menu search (Shop 28), the basket (items · total, taps through to the basket and checkout) and, on long menus, tabs for the menu's sections that follow the scroll and jump to a section when tapped. The menu itself is more compact: two columns of dishes on computers and tablets, and descriptions cut to two lines. The basket box above the menu and the "Done · View basket" button at the bottom are hidden on these pages, as the frozen bar replaces them. Needs Shop 5, 6, 11, 28, 29 (and 30 for the restaurant addresses) above it. Switch it off to go back to the plain restaurant page. Body – end · All pages · Load code on each new page · Essential. -->
+<style>
+.gm-sheet.gr-page.gmb-on .gm-foot{display:none}
+html.gr-on #ggsx-more-page>.gp-bask{display:none!important}
+.gm-sheet.gr-page .gmb-bar{position:sticky;top:var(--gr-top,0px);z-index:7;background:#fff;padding:10px 0 0;border-bottom:1px solid #efeae3}
+.gm-sheet.gr-page .gmb-bar[hidden]{display:none}
+.gm-sheet.gr-page .gmb-row{display:flex;align-items:flex-start;justify-content:flex-end;gap:10px;padding-bottom:10px}
+.gm-sheet.gr-page .gmb-bar .gq-wrap{position:static;flex:1;min-width:0;padding:0;border:0;background:none}
+.gm-sheet.gr-page .gmb-bk{display:inline-flex;align-items:center;gap:8px;flex:none;height:44px;padding:0 18px 0 14px;border:0;border-radius:999px;background:#F4551B;color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer;white-space:nowrap;box-shadow:0 4px 14px rgba(244,85,27,.25)}
+.gm-sheet.gr-page .gmb-bk[hidden]{display:none}
+.gm-sheet.gr-page .gmb-bk svg{width:20px;height:20px;flex:none}
+.gm-sheet.gr-page .gmb-bk i{font-style:normal;font-weight:400;opacity:.9}
+.gm-sheet.gr-page .gmb-tabs{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;margin:0;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+.gm-sheet.gr-page .gmb-tabs::-webkit-scrollbar{display:none}
+.gm-sheet.gr-page .gmb-tabs{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.gm-sheet.gr-page .gmb-tabs[hidden]{display:none}
+.gm-sheet.gr-page .gmb-tab{flex:none;height:34px;padding:0 14px;border:1.5px solid #e4ddd3;border-radius:999px;background:#fff;color:#1b1b1b;font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.gm-sheet.gr-page .gmb-tab:hover{border-color:#F4551B}
+.gm-sheet.gr-page .gmb-tab.on{background:#F4551B;border-color:#F4551B;color:#fff}
+.gm-sheet.gr-page .gmb-tab[hidden]{display:none}
+.gm-sheet.gr-page .gm-it small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gm-sheet.gr-page .gm-item.gmb-open .gm-it small{display:block}
+.gm-sheet.gr-page .gm-body h4{scroll-margin-top:140px}
+@media (min-width:900px){
+.gm-sheet.gr-page .gm-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:36px;align-items:start}
+.gm-sheet.gr-page .gm-body>*:not(.gm-item){grid-column:1/-1}
+}
+@media (max-width:860px){
+.gm-sheet.gr-page .gmb-bk{height:44px;padding:0 14px 0 12px}
+.gm-sheet.gr-page .gmb-bk .gmb-w{display:none}
+}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxMenuBar) return;
+  W.__ggsxMenuBar = 1;
+  var TXT = W.GGSX_MENU_BAR = {
+    item: ' item', items: ' items', view: 'View basket', short: 'Search',
+    basket: '/shop-now#basket',   /* Shop 30's address wins when it is there */
+    minSections: 3, minItems: 15
+  };
+  var BAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>';
+  var CUR = null, busy = false, spyBusy = false;
+
+  function el(tag, cls, txt) { var e = D.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function money(v) { var M = W.GGSX_MORE; return M && M.money ? M.money(v) : '$' + (Math.round(v * 100) / 100).toFixed(2); }
+  function basketUrl() { var A = W.GGSX_REST_ADDR; return (A && A.basket) || TXT.basket; }
+  function topBar() {
+    var bar = D.querySelector('html.gg-m .gg-top');
+    return bar && getComputedStyle(bar).display !== 'none' ? bar.getBoundingClientRect().height : 0;
+  }
+  function readBasket() {
+    try { var b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null'); if (b && b.items) return b; } catch (e) {}
+    return { items: {} };
+  }
+
+  /* ---------- the frozen bar ---------- */
+  function build(s) {
+    var box = s.querySelector('.gm-box'), body = s.querySelector('.gm-body');
+    if (!box || !body) return null;
+    var bar = el('div', 'gmb-bar'), row = el('div', 'gmb-row'), bk = el('button', 'gmb-bk'), tabs = el('div', 'gmb-tabs');
+    bk.type = 'button';
+    bk.innerHTML = BAG + '<span class="gmb-c"></span><i class="gmb-t"></i><span class="gmb-w"></span>';
+    bk.addEventListener('click', function () { location.assign(basketUrl()); });
+    tabs.setAttribute('role', 'tablist');
+    row.appendChild(bk);
+    bar.appendChild(row);
+    bar.appendChild(tabs);
+    box.insertBefore(bar, body);
+    var st = { s: s, box: box, body: body, bar: bar, row: row, bk: bk, tabs: tabs, heads: [] };
+    s.classList.add('gmb-on');
+    tabsBuild(st);
+    return st;
+  }
+
+  function adoptSearch(st) {   /* Shop 28's search box joins the frozen bar */
+    var w = st.box.querySelector(':scope > .gq-wrap');
+    if (w && w.parentNode !== st.row) st.row.insertBefore(w, st.bk);
+  }
+
+  function paint(st) {
+    if (!st) return;
+    var b = readBasket(), n = 0, sum = 0, k, it;
+    for (k in b.items) { it = b.items[k] || {}; n += +it.n || 0; sum += (+it.n || 0) * (+it.price || 0); }
+    st.bk.hidden = !n;
+    st.bk.querySelector('.gmb-c').textContent = n + (n === 1 ? TXT.item : TXT.items);
+    st.bk.querySelector('.gmb-t').textContent = '· ' + money(sum);
+    st.bk.querySelector('.gmb-w').textContent = '· ' + TXT.view;
+    st.bk.setAttribute('aria-label', TXT.view + ': ' + n + (n === 1 ? TXT.item : TXT.items) + ', ' + money(sum));
+    st.bar.hidden = !n && !st.row.querySelector('.gq-wrap') && st.tabs.hidden;
+    var inp = st.row.querySelector('.gq-in'), narrow = W.matchMedia && W.matchMedia('(max-width:860px)').matches;
+    if (inp) inp.placeholder = narrow && n ? TXT.short : ((W.GGSX_MENU_SEARCH && W.GGSX_MENU_SEARCH.ph) || 'Search the menu');
+  }
+
+  /* ---------- section tabs ---------- */
+  function label(t) { return String(t || '').replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(); }
+  function tabsBuild(st) {
+    var hs = Array.prototype.filter.call(st.body.children, function (e) { return e.tagName === 'H4'; });
+    var items = st.body.querySelectorAll('.gm-item').length;
+    st.heads = hs;
+    st.tabs.innerHTML = '';
+    if (hs.length < TXT.minSections || items < TXT.minItems) { st.tabs.hidden = true; return; }
+    st.tabs.hidden = false;
+    hs.forEach(function (h) {
+      var b = el('button', 'gmb-tab', label(h.textContent));
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.addEventListener('click', function () { jump(st, h); });
+      h.__gmbTab = b;
+      st.tabs.appendChild(b);
+    });
+  }
+  function stuckBottom(st) { return topBar() + st.bar.getBoundingClientRect().height; }
+  function jump(st, h) {
+    var y = h.getBoundingClientRect().top + (W.pageYOffset || 0) - stuckBottom(st) - 6;
+    try { W.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (e) { W.scrollTo(0, Math.max(0, y)); }
+    on(st, h);
+  }
+  function on(st, h) {
+    st.heads.forEach(function (x) { if (x.__gmbTab) x.__gmbTab.classList.toggle('on', x === h); });
+    var t = h && h.__gmbTab;
+    if (!t) return;
+    var L = t.offsetLeft, R = L + t.offsetWidth, sl = st.tabs.scrollLeft, w = st.tabs.clientWidth;
+    if (L < sl + 12 || R > sl + w - 12) st.tabs.scrollLeft = Math.max(0, L - 24);
+  }
+  function spy() {
+    spyBusy = false;
+    var st = CUR;
+    if (!st || st.tabs.hidden || !st.heads.length) return;
+    var line = stuckBottom(st) + 14, cur = null, first = null;
+    st.heads.forEach(function (h) {
+      var hidden = h.classList.contains('gq-hide');
+      if (h.__gmbTab) h.__gmbTab.hidden = hidden;
+      if (hidden) return;
+      if (!first) first = h;
+      if (h.getBoundingClientRect().top <= line) cur = h;
+    });
+    on(st, cur || first);
+  }
+  function spySoon() { if (!spyBusy) { spyBusy = true; (W.requestAnimationFrame || setTimeout)(spy); } }
+
+  /* ---------- keep up with the page ---------- */
+  function check() {
+    busy = false;
+    var s = D.querySelector('.gm-sheet.gr-page[data-v]');
+    if (!s) return;   /* the page can be re-drawn for a moment; keep the bar we built */
+    var fresh = false;
+    if (s.__gmb && s.contains(s.__gmb.bar)) { if (CUR !== s.__gmb) { CUR = s.__gmb; fresh = true; } }
+    else { CUR = build(s); if (CUR) s.__gmb = CUR; fresh = true; }
+    if (!CUR) return;
+    var had = !!CUR.row.querySelector('.gq-wrap');
+    adoptSearch(CUR);
+    var n = CUR.body.querySelectorAll('.gm-item').length;
+    if (n !== CUR.n) { CUR.n = n; tabsBuild(CUR); fresh = true; }
+    if (fresh || had !== !!CUR.row.querySelector('.gq-wrap')) { paint(CUR); spySoon(); }
+  }
+  function soon() { if (!busy) { busy = true; Promise.resolve().then(check); } }
+
+  /* a dish's full description shows while its Customize panel is open */
+  D.addEventListener('click', function (e) {
+    var it = e.target && e.target.closest ? e.target.closest('.gm-sheet.gr-page .gm-item') : null;
+    if (it) setTimeout(function () { var o = it.querySelector('.gm-opts'); it.classList.toggle('gmb-open', !!(o && o.offsetParent)); }, 0);
+  }, true);
+
+  /* typing in the search while scrolled down: show the results under the frozen bar */
+  D.addEventListener('input', function (e) {
+    var t = e.target, st = CUR;
+    if (!st || !t || !t.classList || !t.classList.contains('gq-in') || !st.bar.contains(t)) return;
+    var want = st.body.getBoundingClientRect().top + (W.pageYOffset || 0) - stuckBottom(st);
+    if ((W.pageYOffset || 0) > want) W.scrollTo(0, Math.max(0, want));
+    spySoon();
+  }, true);
+
+  W.addEventListener('scroll', spySoon, { passive: true });
+  W.addEventListener('resize', spySoon);
+  W.addEventListener('ggsx-basket', function () { paint(CUR); });
+  W.addEventListener('storage', function (e) { if (e.key === 'ggsx_basket') paint(CUR); });
+  new MutationObserver(soon).observe(D.body, { childList: true, subtree: true });
+  check();
+})();
+</script>

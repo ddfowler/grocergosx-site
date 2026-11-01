@@ -1,0 +1,51 @@
+<!-- GrocerGoSx Bundle Loader v1.1 (1 Nov 2026). Loads the site's Body-end code from ONE cached file (ggsx-body.js, built from the 60 Body-end
+     snippets, hosted in this site's own Media Manager → folder "Site code bundle") instead of 60 inline snippets, which Wix inlined twice in every
+     page (about 1.3 MB of the HTML, roughly a third of it); the bundle is downloaded once and cached for 180 days.
+     Modern browsers fetch the gzip copy (180 KB) and unpack it with DecompressionStream; older ones load the plain copy (586 KB) as a normal script.
+     Skips itself while the inline snippets are still enabled (window.GGSX_PAGES / __ggsxNote / __ggsxSeo exist), so there is never a double run,
+     and re-runs on each new page like the inline code did. Body end · all pages · load on each new page · Essential.
+     Roll back: re-enable the inline snippets in Settings → Custom Code and disable this one. New build: upload the new .txt files to the
+     "Site code bundle" media folder (files are immutable, so a new build is a new URL) and change GZ / PLAIN below. -->
+<script>
+(function () {
+  var W = window, D = document;
+  var GZ = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_d2afda9e935446149673f46b8d91ab29.txt';     /* ggsx-body.js v1.0, gzip (180 KB) */
+  var PLAIN = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_804de5b6f4324218bba9512cf2d22eda.txt';  /* ggsx-body.js v1.0, plain (586 KB) */
+  function warn(m, e) { try { console.warn('[GGSX loader] ' + m, e || ''); } catch (x) {} }
+  function inject(code) {
+    var s = D.createElement('script');
+    s.text = code + '\n//# sourceURL=ggsx-body.js';
+    (D.body || D.head).appendChild(s);
+  }
+  function plain() {
+    var s = D.createElement('script');
+    s.src = PLAIN;
+    s.async = false;
+    s.onerror = function () { warn('bundle failed to load: ' + PLAIN); };
+    (D.body || D.head).appendChild(s);
+  }
+  function go() {
+    if (!W.__GGSX_BUNDLE && (W.GGSX_PAGES || W.__ggsxNote || W.__ggsxSeo)) return;   /* inline snippets still active: let them run */
+    var B = W.__GGSX_BUNDLE = W.__GGSX_BUNDLE || { v: '1.0', loader: '1.1' };
+    if (B.code) { inject(B.code); return; }          /* new page in the same visit: re-run the kept code */
+    if (B.loading) return;                           /* first fetch still in flight: it injects when done */
+    if (B.from === 'plain') { plain(); return; }     /* this browser uses the plain file (cached after the first page) */
+    if (W.fetch && W.DecompressionStream && W.Response && W.ReadableStream && W.ReadableStream.prototype.pipeThrough) {
+      B.loading = true;
+      fetch(GZ).then(function (r) {
+        if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+        return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text();
+      }).then(function (code) {
+        if (!code || code.length < 10000) throw new Error('short response');
+        B.code = code; B.loading = false; B.from = 'gzip';
+        inject(code);
+      }).catch(function (e) {
+        B.loading = false; B.from = 'plain';
+        warn('compressed bundle failed, using the plain file', e);
+        plain();
+      });
+    } else { B.from = 'plain'; plain(); }
+  }
+  setTimeout(go, 0);   /* after every inline script on the page has run */
+})();
+</script>

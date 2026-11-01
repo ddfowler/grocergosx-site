@@ -1,0 +1,150 @@
+<!-- GrocerGoSx Add to Home Screen v1.0 (17 Oct 2026): on phones, about 20 seconds into a visitor's first visit, a slim card slides up
+     inviting them to add GrocerGoSx to their home screen. Android / Chrome: one tap opens the phone's own "Install app" dialog.
+     iPhone: a two-step how-to (Share → Add to Home Screen), because Apple does not let websites trigger it. Never shows when the site
+     is already running from the home screen, on desktop, in the Editor, to bots, or while the checkout, run sheet, live page or
+     order editor is open. Closing it hides it for 7 days, "Not now" for 30, and once added it never comes back.
+     Texts and timings live in GGSX_A2HS below. Needs the "GrocerGoSx App Icon" head snippet (manifest + icons).
+     Testing on a desktop: in the browser console run  sessionStorage.setItem('ggsx_a2hs_test','ios')  (or 'android') and reload —
+     the card appears after 2 seconds; sessionStorage.removeItem('ggsx_a2hs_test') to stop.
+     Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<style>
+.ga-card{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:9300;background:#fff;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.22);padding:14px 14px 12px;font-family:"Helvetica Neue",Arial,sans-serif;color:#1b1b1b;transform:translateY(140%);transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+.ga-card.in{transform:none}
+.ga-row{display:flex;align-items:flex-start;gap:12px}
+.ga-ic{flex:0 0 52px;width:52px;height:52px;border-radius:13px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.ga-t{flex:1;min-width:0;padding-right:22px}
+.ga-t b{display:block;font-size:15px;line-height:1.3;margin-bottom:3px}
+.ga-t span{display:block;font-size:13px;line-height:1.4;color:#4a4a4a}
+.ga-x{position:absolute;top:8px;right:8px;width:32px;height:32px;border:0;background:none;font-size:22px;line-height:32px;color:#8a8a8a;cursor:pointer}
+.ga-btns{display:flex;gap:8px;margin-top:12px}
+.ga-btn{flex:1;min-height:44px;border-radius:999px;border:1.5px solid #cfc9c1;background:#fff;color:#1b1b1b;font:700 15px "Helvetica Neue",Arial,sans-serif;cursor:pointer}
+.ga-btn.main{flex:1.6;background:#F4551B;border-color:#F4551B;color:#fff}
+.ga-dim{position:fixed;inset:0;z-index:9310;background:rgba(0,0,0,.45);opacity:0;transition:opacity .3s}
+.ga-dim.in{opacity:1}
+.ga-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9320;background:#fff;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));font-family:"Helvetica Neue",Arial,sans-serif;color:#1b1b1b;transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.ga-sheet.in{transform:none}
+.ga-sheet h3{margin:0 0 14px;font-size:18px;line-height:1.3;padding-right:36px}
+.ga-step{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #efeae3;font-size:15px;line-height:1.4}
+.ga-step i{flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:#F4551B;color:#fff;font-style:normal;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.ga-step svg{width:22px;height:22px;vertical-align:-5px;margin:0 2px;fill:none;stroke:#1b1b1b;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ga-step b{font-weight:700}
+.ga-sheet .ga-btn{width:100%;margin-top:14px}
+.ga-toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9330;max-width:90vw;background:#1b1b1b;color:#fff;border-radius:999px;padding:11px 18px;font:14px "Helvetica Neue",Arial,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxA2hs) return;
+  W.__ggsxA2hs = 1;
+  var A = W.GGSX_A2HS = {
+    delay: 20000,                 /* ms into the visit before the card appears (counted across pages) */
+    snoozeClose: 7, snoozeLater: 30, /* days hidden after closing / after "Not now" */
+    icon: 'https://static.wixstatic.com/media/85c3c2_89d6c2819fca4139a4596d017de1dc7a~mv2.png',   /* grocergosx-app-icon-192 */
+    copy: {
+      title: 'Get GrocerGoSx on your home screen',
+      text: 'One tap to order groceries, restaurant pick-ups and pharmacy runs — no app store needed.',
+      install: 'Add to home screen', how: 'Show me how', later: 'Not now', done: 'Got it',
+      sheetTitle: 'Add GrocerGoSx to your home screen',
+      ios: ['Tap the <b>Share</b> button {share} in Safari’s bar', 'Scroll down and tap <b>Add to Home Screen</b> {plus}', 'Tap <b>Add</b> — that’s it'],
+      iosOther: ['Tap the <b>Share</b> button {share} (next to the address bar)', 'Tap <b>Add to Home Screen</b> {plus}', 'Tap <b>Add</b> — that’s it'],
+      android: ['Tap the <b>menu</b> {dots} in the top corner', 'Tap <b>Add to Home screen</b> (or <b>Install app</b>)', 'Tap <b>Add</b> — that’s it'],
+      installed: 'Added! Look for GrocerGoSx on your home screen.'
+    }
+  };
+  var KEY = 'ggsx_a2hs', T0 = 'ggsx_a2hs_t0', ua = navigator.userAgent, BIP = null, card = null, test = '';
+  try { test = sessionStorage.getItem('ggsx_a2hs_test') || ''; } catch (e) {}
+  var iOS = test === 'ios' || (!test && (/iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))),
+      android = test === 'android' || (!test && /Android/.test(ua)),
+      safari = iOS && (test || (/Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|GSA/.test(ua))),
+      standalone = (W.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  var SVG = {
+    share: '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 11v9h14v-9"/></svg>',
+    plus: '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg>',
+    dots: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6" fill="#1b1b1b"/><circle cx="12" cy="12" r="1.6" fill="#1b1b1b"/><circle cx="12" cy="19" r="1.6" fill="#1b1b1b"/></svg>'
+  };
+
+  function el(tag, attrs, kids) {
+    var e = D.createElement(tag), k;
+    for (k in attrs || {}) { if (attrs[k] == null) continue; if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else if (k === 'html') e.innerHTML = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  }
+  function state() { try { return JSON.parse(localStorage.getItem(KEY) || 'null') || {}; } catch (e) { return {}; } }
+  function remember(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+  function snooze(days) { remember({ until: Date.now() + days * 864e5 }); }
+  function eligible() {
+    if (standalone || !(iOS || android)) return false;
+    if (!test && !(W.matchMedia && matchMedia('(max-width: 860px)').matches)) return false;
+    if (/\.wix\.com$|wixsite\.com$/.test(location.hostname) || navigator.webdriver || /bot|crawl|spider|lighthouse/i.test(ua)) return false;
+    var s = state();
+    return !s.installed && !(s.until && s.until > Date.now());
+  }
+  function busy() {
+    var h = D.documentElement.classList;
+    return h.contains('gc-lock') || h.contains('gr-lock') || h.contains('gm-lock') || !!D.querySelector('.ge-wrap, .ggsx-splash, #ggsx-splash') || D.visibilityState !== 'visible';
+  }
+  function toast(text) { var t = el('div', { class: 'ga-toast', role: 'status', text: text }); D.body.appendChild(t); setTimeout(function () { t.remove(); }, 4000); }
+
+  /* ---------- the card ---------- */
+  function show() {
+    if (card || !eligible()) return;
+    if (busy()) { setTimeout(show, 5000); return; }
+    var c = A.copy, canInstall = !!BIP;
+    card = el('div', { class: 'ga-card', role: 'dialog', 'aria-label': c.title }, [
+      el('div', { class: 'ga-row' }, [
+        el('img', { class: 'ga-ic', src: A.icon, alt: '' }),
+        el('div', { class: 'ga-t' }, [el('b', { text: c.title }), el('span', { text: c.text })])]),
+      el('button', { type: 'button', class: 'ga-x', 'aria-label': 'Close', text: '×', onclick: function () { hide(); snooze(A.snoozeClose); } }),
+      el('div', { class: 'ga-btns' }, [
+        el('button', { type: 'button', class: 'ga-btn', text: c.later, onclick: function () { hide(); snooze(A.snoozeLater); } }),
+        el('button', { type: 'button', class: 'ga-btn main', text: canInstall ? c.install : c.how, onclick: function () { if (BIP) install(); else sheet(); } })])
+    ]);
+    D.body.appendChild(card);
+    snooze(A.snoozeClose);               /* shown once; closing or ignoring it = 7 days of quiet */
+    requestAnimationFrame(function () { requestAnimationFrame(function () { card.classList.add('in'); }); });
+  }
+  function hide() { if (!card) return; var k = card; card = null; k.classList.remove('in'); setTimeout(function () { k.remove(); }, 450); }
+
+  /* Android / Chrome: the phone's own install dialog */
+  function install() {
+    var p = BIP; BIP = null;
+    p.prompt();
+    (p.userChoice || Promise.resolve({})).then(function (r) {
+      if (r && r.outcome === 'accepted') { remember({ installed: 1 }); hide(); toast(A.copy.installed); }
+      else { hide(); snooze(A.snoozeLater); }
+    }).catch(function () { hide(); });
+  }
+  W.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); BIP = e;
+    if (card) { var b = card.querySelector('.ga-btn.main'); if (b) b.textContent = A.copy.install; }
+  });
+  W.addEventListener('appinstalled', function () { remember({ installed: 1 }); hide(); toast(A.copy.installed); });
+
+  /* iPhone, and Android browsers without the install dialog: the two taps, illustrated */
+  function sheet() {
+    var c = A.copy, steps = iOS ? (safari ? c.ios : c.iosOther) : c.android,
+        dim = el('div', { class: 'ga-dim' }), sh;
+    function close() { dim.classList.remove('in'); sh.classList.remove('in'); setTimeout(function () { dim.remove(); sh.remove(); }, 350); }
+    sh = el('div', { class: 'ga-sheet', role: 'dialog', 'aria-label': c.sheetTitle }, [
+      el('h3', { text: c.sheetTitle }),
+      el('button', { type: 'button', class: 'ga-x', 'aria-label': 'Close', text: '×', onclick: close })
+    ].concat(steps.map(function (s, i) {
+      return el('div', { class: 'ga-step' }, [el('i', { text: String(i + 1) }), el('div', { html: s.replace('{share}', SVG.share).replace('{plus}', SVG.plus).replace('{dots}', SVG.dots) })]);
+    })).concat([el('button', { type: 'button', class: 'ga-btn main', text: c.done, onclick: close })]));
+    dim.addEventListener('click', close);
+    hide(); snooze(A.snoozeLater);
+    D.body.appendChild(dim); D.body.appendChild(sh);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { dim.classList.add('in'); sh.classList.add('in'); }); });
+  }
+
+  /* ---------- when ---------- */
+  function boot() {
+    if (!eligible()) return;
+    var t0 = 0;
+    try { t0 = +sessionStorage.getItem(T0) || 0; if (!t0) { t0 = Date.now(); sessionStorage.setItem(T0, String(t0)); } } catch (e) { t0 = Date.now(); }
+    var wait = test ? 2000 : Math.max(1500, A.delay - (Date.now() - t0));
+    setTimeout(show, wait);
+  }
+  if (D.body) boot(); else D.addEventListener('DOMContentLoaded', boot);
+})();
+</script>

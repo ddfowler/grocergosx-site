@@ -1,0 +1,206 @@
+<!-- GrocerGoSx Shop 7 Run Sheet Photos v1.1 (17 Oct 2026): puts each item's photo beside it on the shopper run sheet (/shop-now#run/…,
+     built by Shop 4) and, since v1.1, on the client's live page (/shop-now#track/…, Shop 10). Photos come from the image column of the Products tab (the copy Shop 2 already loaded on the page, or the sheet
+     itself); tap a photo to see it full-screen. Restaurant dishes show the restaurant's logo (Vendors tab, logo column), pharmacy lines
+     show Rx, anything without a picture shows its first letter. Needs Shop 2 and Shop 4 above it.
+     Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. Nothing to edit here. -->
+<style>
+.gr-it-h.grp-on{align-items:center}
+.gr-it-h .grp-ph{flex:none;box-sizing:border-box;width:76px;height:76px;border-radius:12px;border:1px solid #f3dccf;background:#fff1ea;color:#F4551B;display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:Benzin,"Helvetica Neue",Arial,sans-serif;font-size:24px;line-height:1}
+.gr-it-h .grp-ph b{font-weight:700}
+.gr-it-h .grp-ph.img{background:#fff;border-color:#e9e4dd}
+.gr-it-h .grp-ph.zoom{cursor:zoom-in}
+.gr-it-h .grp-ph img{display:block;width:100%;height:100%;object-fit:contain}
+.gr-it-h .grp-ph:focus-visible{outline:3px solid #F4551B;outline-offset:2px}
+.grp-view{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;box-sizing:border-box;padding:calc(68px + env(safe-area-inset-top,0px)) 16px calc(28px + env(safe-area-inset-bottom,0px));background:rgba(20,20,20,.94);cursor:zoom-out}
+.grp-view img{display:block;max-width:100%;max-height:68vh;object-fit:contain;border-radius:16px;background:#fff}
+.grp-view p{margin:0;max-width:560px;color:#fff;font-size:16px;font-weight:700;line-height:1.35;text-align:center}
+.grp-vx{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font:inherit;font-size:28px;line-height:44px;padding:0;cursor:pointer}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxRunPhotos) return;
+  W.__ggsxRunPhotos = 1;
+  var CFG = W.GGSX_SHOP || {},
+      SHEET = CFG.sheetId || '1-h6W54Wbscz_5zMAVU0myRr0PCYoVW_sJZo4XWe2MXE',
+      TAB_PRODUCTS = (CFG.tabs && CFG.tabs.products) || 'Products',
+      TAB_VENDORS = 'Vendors',
+      CACHE = 'ggsx_shop_cache',      /* Shop 2's copy of the Products tab for this browser tab */
+      THUMB = 160, BIG = 1000,         /* picture widths requested for the list and the full-screen view */
+      PROD = null, VEND = null;
+
+  function el(tag, attrs, kids) {
+    var e = D.createElement(tag), k;
+    for (k in attrs || {}) {
+      if (attrs[k] == null) continue;
+      if (k === 'class') e.className = attrs[k];
+      else if (k === 'text') e.textContent = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  }
+  function norm(s) { return String(s == null ? '' : s).toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+  /* Same picture handling as the shop: Wix Media Manager links get a resized copy, Google Drive links a direct image link. */
+  function pic(u, w) {
+    u = String(u || '').trim();
+    var m = /static\.wixstatic\.com\/media\/([^\/?#]+)/.exec(u);
+    if (m) return 'https://static.wixstatic.com/media/' + m[1] + '/v1/fit/w_' + w + ',h_' + w + ',q_80,enc_auto/' + m[1];
+    m = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]+)/.exec(u);
+    return m ? 'https://lh3.googleusercontent.com/d/' + m[1] + '=w' + w : u;
+  }
+
+  function parseCsv(text) {
+    var rows = [], row = [], cell = '', q = false, i, ch;
+    for (i = 0; i < text.length; i++) {
+      ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    var head = (rows.shift() || []).map(function (c) { return c.trim().toLowerCase(); });
+    return rows.map(function (r) { var o = {}; head.forEach(function (k, j) { o[k] = (r[j] || '').trim(); }); return o; });
+  }
+  function tab(name) {
+    var url = 'https://docs.google.com/spreadsheets/d/' + SHEET + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(name) + '&t=' + Math.floor(Date.now() / 6e4);
+    return fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(name + ' ' + r.status); return r.text(); }).then(parseCsv);
+  }
+
+  /* Products: use the shop's own copy (Shop 2 loads it on this page), waiting up to 12 s for it; otherwise read the sheet. */
+  function cached(freshOnly) {
+    try {
+      var c = JSON.parse(sessionStorage.getItem(CACHE) || 'null');
+      if (c && c.p && (!freshOnly || Date.now() - c.t < 6e5)) return c.p;
+    } catch (e) {}
+    return null;
+  }
+  function products() {
+    if (PROD) return PROD;
+    PROD = new Promise(function (done) {
+      var n = 0;
+      (function poll() {
+        var rows = cached(true);
+        if (rows) return done(rows);
+        if (++n < 30) return setTimeout(poll, 400);
+        var old = cached(false);
+        tab(TAB_PRODUCTS).then(done, function () { done(old || []); });
+      })();
+    }).then(function (rows) {
+      var map = {};
+      rows.forEach(function (r) {
+        var name = r.product || r.name, img = r.image;
+        if (!name || !img) return;
+        var exact = norm(name) + '|' + norm(r.size), loose = norm(name);
+        if (!map[exact]) map[exact] = img;
+        if (!map[loose]) map[loose] = img;
+      });
+      return map;
+    });
+    return PROD;
+  }
+  function vendors() {
+    if (!VEND) VEND = tab(TAB_VENDORS).then(function (rows) {
+      var map = {};
+      rows.forEach(function (v) { if (v.name && v.logo) map[norm(v.name)] = v.logo; });
+      return map;
+    }, function () { return {}; });
+    return VEND;
+  }
+
+  /* The run sheet's order lines, read from the link the same way Shop 4 reads them: [name, size, qty, price, rule]. */
+  function orderLines() {
+    var m = /^#(?:run|track)\/([A-Za-z0-9_-]+)/.exec(location.hash);
+    if (!m) return null;
+    try {
+      var d = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))));
+      return d && d.i || null;
+    } catch (e) { return null; }
+  }
+  function caption(ln) { return ln[2] + ' × ' + ln[0] + (ln[1] ? ' ' + ln[1] : ''); }
+  function vendorOf(name) { var m = /\(([^()]+)\)\s*$/.exec(name); return m ? m[1].trim() : ''; }
+  function initial(s) { var c = String(s || '').replace(/[^0-9A-Za-zÀ-ÿ]/g, '').charAt(0); return (c || '?').toUpperCase(); }
+
+  function letterTile(t, fb) {
+    t.className = 'grp-ph';
+    t.innerHTML = '';
+    t.appendChild(el('b', { text: fb }));
+    t.setAttribute('aria-hidden', 'true');
+    t.removeAttribute('role'); t.removeAttribute('tabindex'); t.removeAttribute('aria-label');
+    t.onclick = t.onkeydown = null;
+  }
+  function photoTile(t, url, ln, zoom, fb) {
+    var im = el('img', { src: pic(url, THUMB), alt: '', decoding: 'async', loading: 'lazy' });
+    im.addEventListener('error', function () { letterTile(t, fb); });
+    t.className = 'grp-ph img';
+    t.innerHTML = '';
+    t.appendChild(im);
+    if (!zoom) return;
+    t.classList.add('zoom');
+    t.removeAttribute('aria-hidden');
+    t.setAttribute('role', 'button');
+    t.setAttribute('tabindex', '0');
+    t.setAttribute('aria-label', 'Show photo: ' + caption(ln));
+    t.onclick = function (e) { e.stopPropagation(); showBig(t, url, ln); };
+    t.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showBig(t, url, ln); } };
+  }
+  function showBig(t, url, ln) {
+    var host = (t.closest && t.closest('.gr-wrap')) || D.body,
+        cap = caption(ln), big = pic(url, BIG),
+        img = el('img', { src: pic(url, THUMB), alt: cap }),
+        x = el('button', { type: 'button', class: 'grp-vx', 'aria-label': 'Close', text: '×' }),
+        v = el('div', { class: 'grp-view', role: 'dialog', 'aria-modal': 'true', 'aria-label': cap }, [x, img, el('p', { text: cap })]),
+        hi = new Image();
+    hi.onload = function () { img.src = big; };
+    hi.src = big;
+    v.addEventListener('click', function () { v.remove(); try { t.focus(); } catch (e) {} });
+    host.appendChild(v);
+    try { x.focus(); } catch (e) {}
+  }
+
+  function dress(wrap) {
+    if (wrap.__grp) return;
+    var L = orderLines(), items = wrap.querySelectorAll('.gr-item');
+    if (!L || !items.length) return;
+    wrap.__grp = 1;
+    var todo = [];
+    Array.prototype.forEach.call(items, function (it, i) {
+      var ln = L[i], head = it.querySelector('.gr-it-h');
+      if (!ln || !head || head.querySelector('.grp-ph')) return;
+      var name = String(ln[0] || ''), vend = vendorOf(name), pharm = /^pharmacy\b/i.test(name),
+          fb = pharm ? 'Rx' : initial(vend || name),
+          t = el('span', { class: 'grp-ph', 'aria-hidden': 'true' }, [el('b', { text: fb })]);
+      head.insertBefore(t, head.firstChild);
+      head.classList.add('grp-on');
+      if (!pharm) todo.push({ t: t, ln: ln, vend: vend, fb: fb });
+    });
+    if (!todo.length) return;
+    products().then(function (P) {
+      var needLogo = [];
+      todo.forEach(function (x) {
+        var n = norm(x.ln[0]), src = P[n + '|' + norm(x.ln[1])] || P[n];
+        if (src) photoTile(x.t, src, x.ln, true, x.fb);
+        else if (x.vend) needLogo.push(x);
+      });
+      if (needLogo.length) vendors().then(function (V) {
+        needLogo.forEach(function (x) { var src = V[norm(x.vend)]; if (src) photoTile(x.t, src, x.ln, false, x.fb); });
+      });
+    });
+  }
+
+  function scan() { Array.prototype.forEach.call(D.querySelectorAll('.gr-wrap'), dress); }
+  function start() {
+    scan();
+    new MutationObserver(scan).observe(D.body, { childList: true });
+    D.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var v = D.querySelector('.grp-view');
+      if (v) v.click();
+    });
+  }
+  if (D.body) start(); else D.addEventListener('DOMContentLoaded', start);
+})();
+</script>

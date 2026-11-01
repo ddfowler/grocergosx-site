@@ -1,0 +1,174 @@
+<!-- GrocerGoSx Shop 12 Checkout Polish v1.0.2 (20 Oct 2026; v1.0.2: the date picker can reach up to 366 days ahead, set by the sheet's window_days with a
+     180-day fallback (was 7 days, sheet values capped below 60); v1.0.1: the thank-you "Track my order" button opens the live page itself, because
+     the site's own link handling swallows in-page link clicks without a hashchange): (1) delivery windows that have already passed, or that fall inside the
+     sheet's lead time (Settings tab lead_hours, default 3), switch themselves off for the chosen date; the date picker stops at
+     window_days ahead; an order with a window that is no longer open is blocked with a clear message. (2) Channel-neutral wording
+     ("by message", not "on WhatsApp") in the checkout and the thank-you screen. (3) The thank-you screen recaps delivery, address and
+     basket, links the client's live tracking page (Shop 8) and says what happens next. Needs Shop 3 above it (Shop 5 and 8 optional).
+     Texts and fallbacks are in GGSX_POLISH below. Restore: disable this snippet.
+     Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<style>
+.gc-hint{font-size:12px;font-weight:400;color:#6b6b6b;margin-top:2px;line-height:1.4}
+.gc-hint.bad{color:#d93025;font-weight:700}
+.gc-recap{text-align:left;background:#f6f3ee;border-radius:14px;padding:14px 16px;margin:0 0 16px;font-size:14px;line-height:1.5;color:#1b1b1b}
+.gc-recap b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#6b6b6b;margin-bottom:2px}
+.gc-thanks .gc-recap p{margin:0 0 10px;font-size:14px;line-height:1.5;color:#1b1b1b}
+.gc-thanks .gc-recap p:last-child{margin-bottom:0}
+.gc-next{list-style:decimal;text-align:left;margin:0 0 18px;padding:0 0 0 20px;font-size:14px;line-height:1.5;color:#3a3a3a}
+.gc-next li{margin-bottom:4px}
+.gc-nt{text-align:left;font-size:13px;font-weight:700;color:#3a3a3a;margin:0 0 6px}
+.gc-track{display:flex;align-items:center;justify-content:center;min-height:48px;padding:0 20px;border-radius:999px;background:#F4551B;color:#fff;font-weight:700;font-size:16px;text-decoration:none;margin:0 0 12px}
+.gc-thanks .gc-btn.gc-sec{background:#fff;color:#1b1b1b;border:1.5px solid #cfc9c1;width:100%}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxPolish) return;
+  W.__ggsxPolish = 1;
+  var P = W.GGSX_POLISH = {
+    tz: 'America/Lower_Princes',
+    leadHours: 3, windowDays: 180,              /* fallbacks: the sheet's Settings tab (lead_hours, window_days up to 366) wins */
+    linkField: 'live_link_4b8e',
+    copy: {
+      lead: "Tell us where and when, and we'll shop it. No payment now — we confirm by message and send your invoice after shopping.",
+      thanksLead: "We'll confirm by message shortly (WhatsApp, iMessage or text) and send your invoice / payment link once we've shopped. A copy of your order is on its way to ",
+      hint: "Orders need at least {h} hours' notice.",
+      tooLate: ' — too late for this day',
+      noneToday: "Today's windows have passed — please pick tomorrow or later.",
+      pickWindow: "That window is no longer open for the date you picked — please choose another.",
+      delivery: 'Delivery', address: 'Address', basket: 'Your basket', estimate: 'estimate incl. fees',
+      track: 'Track my order', nextTitle: 'What happens next',
+      next: ['We confirm your order by message.',
+             'We shop in your window and message you about anything unavailable.',
+             "You get your invoice / payment link once we've shopped.",
+             'Your order is delivered to your door.']
+    }
+  };
+  var CK = W.GGSX_CHECKOUT, INP = null, HINT = null;
+
+  function el(tag, attrs, kids) {
+    var e = D.createElement(tag), k;
+    for (k in attrs || {}) { if (attrs[k] == null) continue; if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  }
+  /* ---------- island time ---------- */
+  function now() {
+    try {
+      var o = {}, f = new Intl.DateTimeFormat('en-GB', { timeZone: P.tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      f.formatToParts(new Date()).forEach(function (p) { o[p.type] = p.value; });
+      var h = parseInt(o.hour, 10); if (h === 24) h = 0;
+      return { ymd: o.year + '-' + o.month + '-' + o.day, mins: h * 60 + parseInt(o.minute, 10) };
+    } catch (e) {
+      var d = new Date();
+      return { ymd: d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2), mins: d.getHours() * 60 + d.getMinutes() };
+    }
+  }
+  function dayNo(ymd) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || ''); return m ? Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5) : null; }
+  function addDays(ymd, n) { var d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function pretty(ymd) { var d = new Date(ymd + 'T12:00:00Z'); return isNaN(d) ? ymd : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+  /* ---------- windows ---------- */
+  function endOf(label, all) {
+    var m = /(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})/.exec(label);
+    if (m) return (+m[3]) * 60 + (+m[4]);
+    var mx = 0; (all || []).forEach(function (w) { var k = /(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})/.exec(w); if (k) mx = Math.max(mx, (+k[3]) * 60 + (+k[4])); });
+    return mx || 23 * 60;                      /* "Any time": open as long as the last window is */
+  }
+  function open(ymd, label, all) {
+    var t = now(), d = dayNo(ymd || t.ymd), td = dayNo(t.ymd);
+    if (d == null) return true;
+    if (d < td) return false;
+    return (d - td) * 1440 + endOf(label, all) > t.mins + P.leadHours * 60;
+  }
+  function refresh() {
+    if (!INP || !INP.win) return;
+    var win = INP.win, date = INP.date, t = now(), all = [], any = false, ymd = date.value || t.ymd;
+    Array.prototype.forEach.call(win.options, function (o) { if (o.value) all.push(o.value); });
+    date.min = t.ymd;
+    date.max = addDays(t.ymd, P.windowDays);
+    Array.prototype.forEach.call(win.options, function (o) {
+      if (!o.value) return;
+      if (!o.getAttribute('data-base')) o.setAttribute('data-base', o.textContent);
+      var ok = open(ymd, o.value, all);
+      o.disabled = !ok;
+      o.textContent = o.getAttribute('data-base') + (ok ? '' : P.copy.tooLate);
+      if (ok) any = true;
+    });
+    if (win.value && win.selectedOptions[0] && win.selectedOptions[0].disabled) win.value = '';
+    if (!HINT) { HINT = el('div', { class: 'gc-hint' }); win.parentNode.appendChild(HINT); }
+    var hours = P.leadHours % 1 ? P.leadHours : Math.round(P.leadHours);
+    HINT.textContent = any ? (hours > 0 ? P.copy.hint.replace('{h}', hours) : '') : P.copy.noneToday;
+    HINT.className = 'gc-hint' + (any ? '' : ' bad');
+  }
+  function guard(e) {
+    if (!INP) return;
+    var win = INP.win, all = [];
+    Array.prototype.forEach.call(win.options, function (o) { if (o.value) all.push(o.value); });
+    if (win.value && !open(INP.date.value, win.value, all)) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      refresh();
+      win.classList.add('bad');
+      var err = D.querySelector('.gc-form .gc-err'); if (err) err.textContent = P.copy.pickWindow;
+      try { win.focus(); } catch (x) {}
+    }
+  }
+  /* open an in-page link (/shop-now#track/…) ourselves: the site's own click handling cancels same-page #links and pushes the URL
+     without a hashchange. A capture listener on window runs before it, so the Track button never reaches it. */
+  function openLink(url) {
+    var u; try { u = new URL(url, location.href); } catch (e) { location.href = url; return; }
+    var same = u.origin === location.origin && u.pathname.replace(/\/+$/, '') === location.pathname.replace(/\/+$/, '');
+    if (!same || !u.hash) { location.href = url; return; }
+    if (location.hash !== u.hash) location.hash = u.hash;
+    else { try { W.dispatchEvent(new HashChangeEvent('hashchange')); } catch (e) { W.dispatchEvent(new Event('hashchange')); } }
+  }
+  W.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a.gc-track') : null;
+    if (!a) return;
+    e.preventDefault(); e.stopPropagation();
+    openLink(a.getAttribute('href'));
+  }, true);
+  /* the sheet's own notice and horizon, when Shop 5's loader is there */
+  function settings() {
+    var M = W.GGSX_MORE;
+    if (!M || !M.load) return;
+    M.load().then(function (d) {
+      var s = (d && d.set) || {}, lh = parseFloat(s.lead_hours), wd = parseInt(s.window_days, 10);
+      if (lh >= 0 && lh < 72) P.leadHours = lh;
+      if (wd > 0 && wd <= 366) P.windowDays = wd;
+      refresh();
+    }).catch(function () {});
+  }
+  /* ---------- wording ---------- */
+  if (CK && CK.copy) { CK.copy.lead = P.copy.lead; CK.copy.thanksLead = P.copy.thanksLead; }
+  D.addEventListener('ggsx-checkout-build', function (e) {
+    var d = e.detail || {};
+    INP = d.inputs || null;
+    var lead = D.querySelector('.gc-box .gc-lead'); if (lead) lead.textContent = P.copy.lead;
+    if (d.form) {
+      d.form.parentNode.addEventListener('submit', guard, true);
+      if (INP && INP.date) INP.date.addEventListener('change', refresh);
+      if (INP && INP.win) INP.win.addEventListener('change', function () { INP.win.classList.remove('bad'); });
+    }
+    refresh(); settings();
+  });
+  D.addEventListener('ggsx-checkout-open', function () { refresh(); });
+  /* ---------- thank-you screen ---------- */
+  D.addEventListener('ggsx-checkout-sent', function (e) {
+    var f = (e.detail || {}).fields || {}, k = (CK && CK.t) || {}, box = D.querySelector('.gc-box .gc-thanks');
+    if (!box) return;
+    var btn = box.querySelector('.gc-btn'), order = String(f[k.order] || ''),
+        bt = /Basket total: (\$[\d.,]+) \(([^)]+)\)/.exec(order), est = /: (\$[\d.,]+)\s*\nFinal total/.exec(order),
+        live = f[(W.GGSX_TRACK && W.GGSX_TRACK.linkField) || P.linkField] || '',
+        recap = el('div', { class: 'gc-recap' }, [
+          el('p', {}, [el('b', { text: P.copy.delivery }), pretty(f[k.date] || '') + (f[k.win] ? ' · ' + f[k.win] : '')]),
+          el('p', {}, [el('b', { text: P.copy.address }), (f[k.address] || '') + (f[k.side] ? ' (' + f[k.side] + ')' : '')]),
+          bt ? el('p', {}, [el('b', { text: P.copy.basket }), bt[2].replace(/,.*$/, '') + ' · ' + bt[1] + (est ? ' · ' + P.copy.estimate + ' ' + est[1] : '')]) : null
+        ]),
+        next = el('ol', { class: 'gc-next' }, P.copy.next.map(function (t) { return el('li', { text: t }); }));
+    box.insertBefore(recap, btn);
+    if (live) { box.insertBefore(el('a', { class: 'gc-track', href: live, text: P.copy.track }), btn); if (btn) btn.classList.add('gc-sec'); }
+    box.insertBefore(el('div', { class: 'gc-nt', text: P.copy.nextTitle }), btn);
+    box.insertBefore(next, btn);
+  });
+})();
+</script>

@@ -1,0 +1,150 @@
+<!-- GrocerGoSx Shop 28 Menu Search v1.0 (24 Oct 2026): a search bar at the top of a restaurant's menu, for restaurants ticked in the Vendors tab's menu_search column (Hanami first). As the client types, only dishes where every typed word starts a word in the name, description, section or choices stay (capitals and accents ignored); empty sections hide, a match count shows, and a "Nothing on the menu matches" line when nothing does. × clears it; Esc clears it before it closes the menu. Needs Shop 5 and 6 above it. Body – end · All pages · Load code on each new page · Essential. -->
+<style>
+.gm-sheet .gq-wrap{flex:none;padding:10px 20px;border-bottom:1px solid #efeae3;background:#fff}
+.gm-sheet .gq-field{position:relative}
+.gm-sheet .gq-field svg{position:absolute;left:15px;top:50%;width:18px;height:18px;margin-top:-9px;color:#8a837b;pointer-events:none}
+.gm-sheet .gq-in{display:block;width:100%;height:44px;margin:0;font:inherit;font-size:16px;color:#1b1b1b;background:#f6f3ee;border:1.5px solid #e4ddd3;border-radius:999px;padding:0 46px 0 42px;outline:none;-webkit-appearance:none;appearance:none}
+.gm-sheet .gq-in:focus{border-color:#F4551B;background:#fff}
+.gm-sheet .gq-in::-webkit-search-cancel-button,.gm-sheet .gq-in::-webkit-search-decoration{-webkit-appearance:none;display:none}
+.gm-sheet .gq-in::placeholder{color:#8a837b;opacity:1}
+.gm-sheet .gq-x{position:absolute;right:5px;top:50%;width:34px;height:34px;margin-top:-17px;border:0;border-radius:50%;background:#e9e3db;color:#1b1b1b;font-size:20px;line-height:34px;padding:0;display:none}
+.gm-sheet .gq-wrap.on .gq-x{display:block}
+.gm-sheet .gq-n{margin:6px 8px 0;font-size:12px;line-height:1.3;color:#6b6b6b;display:none}
+.gm-sheet .gq-wrap.on .gq-n{display:block}
+.gm-sheet .gq-hide{display:none!important}
+.gm-sheet .gq-none{margin:28px 0;text-align:center;color:#6b6b6b}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxMenuSearch) return;
+  W.__ggsxMenuSearch = 1;
+  var TXT = W.GGSX_MENU_SEARCH = {
+    ph: 'Search the menu',
+    clear: 'Clear search',
+    one: '1 match',
+    many: '{c} matches',
+    none: 'Nothing on the menu matches “{q}”.'
+  };
+  var ON = {}, OPTS = [], tries = 0;
+
+  function norm(s) {
+    s = String(s == null ? '' : s).toLowerCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+    return s.replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+  /* every typed word must start a word on the dish (so "ice" finds ice cream, not rice); "rolls" also finds "roll" */
+  function has(hay, w) {
+    if (hay.indexOf(' ' + w) >= 0) return true;
+    return w.length > 3 && w.charAt(w.length - 1) === 's' && hay.indexOf(' ' + w.slice(0, -1) + ' ') >= 0;
+  }
+
+  function load() {
+    var M = W.GGSX_MORE;
+    if (!M || !M.load) { if (tries++ < 40) setTimeout(load, 500); return; }
+    M.load().then(function (d) {
+      ((d && d.vendors) || []).forEach(function (v) {
+        if (v && v.vendor_id && M.truthy(v.menu_search)) ON[v.vendor_id] = 1;
+      });
+      OPTS = (d && d.options) || [];
+      scan();
+    }).catch(function () {});
+  }
+
+  function scan() {
+    var s = D.querySelector('.gm-sheet[data-v]');
+    if (!s || s.__gq || !ON[s.getAttribute('data-v')]) return;
+    var box = s.querySelector('.gm-box'), body = s.querySelector('.gm-body');
+    if (!box || !body) return;
+    s.__gq = 1;
+    build(s.getAttribute('data-v'), box, body);
+  }
+
+  /* the choices a dish offers, by the same rule Shop 6 uses (applies_to = blank, the section or the dish) */
+  function choices(vid, sec, item) {
+    var a = sec.toLowerCase(), b = item.toLowerCase(), out = [];
+    OPTS.forEach(function (o) {
+      if (!o || o.vendor_id !== vid) return;
+      var t = String(o.applies_to || '').toLowerCase();
+      if (!t || t === a || t === b) out.push(o.option);
+    });
+    return out.join(' ');
+  }
+
+  function build(vid, box, body) {
+    var wrap = D.createElement('div'), field = D.createElement('div'), inp = D.createElement('input'),
+        x = D.createElement('button'), n = D.createElement('p'), none = null, rows = null;
+    wrap.className = 'gq-wrap';
+    field.className = 'gq-field';
+    field.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+    inp.type = 'search';
+    inp.className = 'gq-in';
+    inp.placeholder = TXT.ph;
+    inp.setAttribute('aria-label', TXT.ph);
+    inp.setAttribute('autocomplete', 'off');
+    inp.setAttribute('autocorrect', 'off');
+    inp.setAttribute('autocapitalize', 'off');
+    inp.setAttribute('spellcheck', 'false');
+    inp.setAttribute('enterkeyhint', 'search');
+    x.type = 'button';
+    x.className = 'gq-x';
+    x.setAttribute('aria-label', TXT.clear);
+    x.textContent = '×';
+    n.className = 'gq-n';
+    n.setAttribute('aria-live', 'polite');
+    field.appendChild(inp);
+    field.appendChild(x);
+    wrap.appendChild(field);
+    wrap.appendChild(n);
+    box.insertBefore(wrap, body);
+
+    function index() {
+      rows = [];
+      var sec = null;
+      Array.prototype.forEach.call(body.children, function (el) {
+        if (el.tagName === 'H4') { sec = { el: el, name: el.textContent, items: [] }; rows.push(sec); return; }
+        if (!el.classList.contains('gm-item')) return;
+        if (!sec) { sec = { el: null, name: 'Menu', items: [] }; rows.push(sec); }
+        var nm = el.querySelector('.gm-in'), note = el.querySelector('.gm-it small'), name = nm ? nm.textContent : '';
+        sec.items.push({ el: el, hay: ' ' + norm([sec.name, name, note ? note.textContent : '', choices(vid, sec.name, name)].join(' ')) + ' ' });
+      });
+    }
+
+    function run() {
+      if (!rows) index();
+      var q = inp.value, ws = norm(q).split(' ').filter(Boolean), shown = 0;
+      /* keep the sheet the height it opened at, so it doesn't jump as results shrink */
+      if (ws.length && !box.__gqh) { box.__gqh = 1; box.style.minHeight = 'min(' + Math.round(box.getBoundingClientRect().height) + 'px, 92vh)'; }
+      wrap.classList.toggle('on', !!q);
+      rows.forEach(function (sec) {
+        var any = false;
+        sec.items.forEach(function (it) {
+          var ok = ws.every(function (w) { return has(it.hay, w); });
+          it.el.classList.toggle('gq-hide', !ok);
+          if (ok) { any = true; shown++; }
+        });
+        if (sec.el) sec.el.classList.toggle('gq-hide', !any);
+      });
+      n.textContent = ws.length && shown ? (shown === 1 ? TXT.one : TXT.many.replace('{c}', shown)) : '';
+      if (ws.length && !shown) {
+        if (!none) { none = D.createElement('p'); none.className = 'gq-none'; }
+        none.textContent = TXT.none.replace('{q}', q.trim());
+        if (!none.parentNode) body.appendChild(none);
+      } else if (none && none.parentNode) {
+        none.parentNode.removeChild(none);
+      }
+      body.scrollTop = 0;
+    }
+
+    inp.addEventListener('input', run);
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+      else if (e.key === 'Escape' && inp.value) { e.preventDefault(); e.stopPropagation(); inp.value = ''; run(); }
+    });
+    x.addEventListener('click', function () { inp.value = ''; run(); inp.focus(); });
+  }
+
+  new MutationObserver(scan).observe(D.body, { childList: true });
+  load();
+})();
+</script>

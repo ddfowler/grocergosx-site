@@ -1,0 +1,179 @@
+<!-- GrocerGoSx Shop 15 Order Editor v1.0.1 (18 Oct 2026; v1.0.1 uses Shop 13's H.rank for search results): the "Edit order" / "Edit my order" screen that Shop 14 opens on the run sheet and
+     on the client's live page — quantity steppers, remove / undo, add items from the Products tab (search) or as a custom line with an
+     optional price, a note, live basket and estimate totals, then Save (shopper, with "Email the client") or Send (client). After
+     saving it shows the change summary; the shopper also gets WhatsApp / Text buttons with the message ready. Needs Shop 13 and 14 above it.
+     Texts: GGSX_EDIT.editorCopy below. Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<style>
+.ge-wrap{position:fixed;inset:0;z-index:9600;background:#f6f3ee;overflow:auto;-webkit-overflow-scrolling:touch;font-family:"Avenir Light",avenir-lt-w01_35-light1475496,Avenir,"Helvetica Neue",Arial,sans-serif;color:#1b1b1b;font-size:15px;line-height:1.45}
+html.ge-lock,html.ge-lock body{overflow:hidden!important}
+.ge-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;background:#F4551B;color:#fff;padding:12px 16px;font-family:Benzin,"Helvetica Neue",Arial,sans-serif;font-size:18px}
+.ge-top button{width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:26px;line-height:40px;cursor:pointer;padding:0}
+.ge-body{max-width:640px;margin:0 auto;padding:14px 14px 200px}
+.ge-card{background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.ge-card h3{font-family:Benzin,"Helvetica Neue",Arial,sans-serif;font-size:16px;margin:0 0 8px}
+.ge-it,.ge-r{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #efeae3}
+.ge-it:first-child,.ge-r:first-child{border-top:0}
+.ge-in{flex:1;min-width:0}
+.ge-in b{display:block;font-weight:700;line-height:1.3}
+.ge-in small{color:#6b6b6b;font-size:12px}
+.ge-new{display:inline-block;font-style:normal;font-size:11px;font-weight:700;color:#F4551B;background:#fff1ea;border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.ge-it.rm .ge-in b{text-decoration:line-through;color:#8f8a84}
+.ge-step{display:inline-flex;align-items:center;border:1.5px solid #cfc9c1;border-radius:999px;background:#fff;flex:none}
+.ge-step button{width:40px;height:40px;border:0;background:none;font:inherit;font-size:20px;color:#F4551B;cursor:pointer;padding:0}
+.ge-step span{min-width:24px;text-align:center;font-weight:700}
+.ge-x{width:36px;height:36px;border:0;border-radius:50%;background:#f3efe9;color:#6b6b6b;font-size:20px;line-height:36px;cursor:pointer;padding:0;flex:none}
+.ge-undo,.ge-add{min-height:36px;border:1.5px solid #cfc9c1;border-radius:999px;background:#fff;font:inherit;font-size:13px;font-weight:700;padding:0 14px;cursor:pointer;flex:none;color:#1b1b1b}
+.ge-add{background:#F4551B;border-color:#F4551B;color:#fff}
+.ge-q{width:100%;box-sizing:border-box;font:inherit;font-size:16px;border:1.5px solid #cfc9c1;border-radius:12px;padding:11px 12px;-webkit-appearance:none;outline:none;background:#fff}
+.ge-q:focus,.ge-cr input:focus,.ge-note:focus{border-color:#F4551B}
+.ge-muted{color:#6b6b6b;font-size:13px;padding:8px 0}
+.ge-custom{border-top:1px solid #efeae3;padding-top:10px;margin-top:4px}
+.ge-custom b{display:block;font-size:13px;margin-bottom:6px}
+.ge-cr{display:flex;gap:8px}
+.ge-cr input{font:inherit;font-size:15px;border:1.5px solid #cfc9c1;border-radius:10px;padding:8px 10px;min-width:0;-webkit-appearance:none;outline:none}
+.ge-cr input:first-child{flex:2}
+.ge-cr input:nth-child(2){flex:1;max-width:120px}
+.ge-note{width:100%;box-sizing:border-box;font:inherit;font-size:15px;border:1.5px solid #cfc9c1;border-radius:12px;padding:10px 12px;resize:vertical;min-height:60px;outline:none}
+.ge-foot{position:fixed;left:0;right:0;bottom:0;z-index:3;background:rgba(246,243,238,.97);box-shadow:0 -6px 20px rgba(0,0,0,.08);padding:10px 14px calc(10px + env(safe-area-inset-bottom,0))}
+.ge-fi{max-width:640px;margin:0 auto}
+.ge-tot div{display:flex;justify-content:space-between;font-size:13px;color:#6b6b6b;padding:1px 0}
+.ge-tot div.big{font-size:16px;color:#1b1b1b;font-weight:700}
+.ge-tot b{color:#F4551B}
+.ge-chk{display:flex;align-items:center;gap:8px;font-size:13px;margin:6px 0 0;cursor:pointer}
+.ge-chk input{width:18px;height:18px;margin:0}
+.ge-err{color:#d93025;font-size:13px;margin-top:4px}
+.ge-err:empty{display:none}
+.ge-btns{display:flex;gap:10px;margin-top:8px}
+.ge-btn{flex:1;min-height:48px;border:0;border-radius:999px;background:#F4551B;color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer;padding:0 16px}
+.ge-btn.sec{background:#fff;color:#1b1b1b;border:1.5px solid #cfc9c1}
+.ge-btn:disabled{opacity:.6;cursor:default}
+.ge-done{text-align:center;padding:20px 16px}
+.ge-done h3{font-size:20px}
+.ge-done pre{text-align:left;white-space:pre-wrap;font:inherit;font-size:14px;background:#f6f3ee;border-radius:12px;padding:12px;margin:10px 0 14px}
+.ge-tick{width:64px;height:64px;margin:0 auto 6px;border-radius:50%;background:#fff1ea;color:#F4551B;font-size:34px;line-height:64px;font-weight:700}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxEditor) return;
+  W.__ggsxEditor = 1;
+  var E = W.GGSX_EDIT;
+  if (!E) return;
+  var T = E.editorCopy = {
+    title: 'Edit order', titleMine: 'Edit my order', itemsTitle: 'Items', add: 'Add items', ph: 'Search 3,000+ products…', loading: 'Searching…',
+    none: "Nothing matched that — add it as a custom item below.", custom: "Can't find it? Add it as a custom item", customPh: 'Item name', pricePh: 'Price $ (optional)',
+    addBtn: 'Add', remove: 'Remove', undo: 'Undo', less: 'One less', more: 'One more', newTag: 'new', each: ' each', priced: 'priced from the receipt',
+    note: 'Note', notePhShop: 'Note to the client (optional)', notePhClient: 'Note for your shopper (optional)', email: 'Email the client about this change',
+    basket: 'Basket', item: ' item', items: ' items', total: 'Estimated total incl. fees', save: 'Save changes', send: 'Send changes', saving: 'Saving…',
+    cancel: 'Cancel', done: 'Done', close: 'Close', empty: 'Keep at least one item on the order.', fail: "That didn't save. Check your connection and try again.",
+    savedShop: 'Order updated', savedClient: "Changes sent — we'll confirm by message.", noteLbl: 'Note: ', msgWa: 'WhatsApp the client', msgSms: 'Text the client'
+  };
+  function el(tag, attrs, kids) {
+    var e = D.createElement(tag), k;
+    for (k in attrs || {}) { if (attrs[k] == null) continue; if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  }
+  function rank(rows, q) {                                  /* v1.0.1: the ranking lives in Shop 13 (H.rank) */
+    if (E.h && E.h.rank) return E.h.rank(rows, q, 10);
+    var ql = q.toLowerCase();
+    return rows.filter(function (r) { return r.q.indexOf(ql) >= 0; }).slice(0, 10);
+  }
+
+  E.editor = function (ctx) {
+    var money = ctx.money, nm = ctx.nm, shop = ctx.kind === 'run',
+        L = ctx.lines.map(function (l) { return l.slice(); }), removed = {}, q = '', timer = 0, busy = false,
+        wrap = el('div', { class: 'ge-wrap', role: 'dialog', 'aria-modal': 'true', 'aria-label': shop ? T.title : T.titleMine }),
+        body = el('div', { class: 'ge-body' }), list = el('div'), res = el('div'), tot = el('div', { class: 'ge-tot' }), err = el('div', { class: 'ge-err', role: 'alert' }),
+        inp = el('input', { type: 'search', class: 'ge-q', placeholder: T.ph, autocomplete: 'off', 'aria-label': T.add }),
+        noteEl = el('textarea', { class: 'ge-note', rows: '2', placeholder: shop ? T.notePhShop : T.notePhClient }),
+        chk = shop && ctx.email ? el('input', { type: 'checkbox', checked: 'checked' }) : null,
+        btn = el('button', { type: 'button', class: 'ge-btn', text: shop ? T.save : T.send, onclick: submit }),
+        foot = el('div', { class: 'ge-foot' }, [el('div', { class: 'ge-fi' }, [tot, chk ? el('label', { class: 'ge-chk' }, [chk, T.email]) : null, err,
+          el('div', { class: 'ge-btns' }, [el('button', { type: 'button', class: 'ge-btn sec', text: T.cancel, onclick: close }), btn])])]);
+
+    function active() { return L.filter(function (l) { return !removed[l[5]] && l[2] > 0; }); }
+    function close() { if (busy) return; wrap.remove(); D.documentElement.classList.remove('ge-lock'); D.removeEventListener('keydown', esc); ctx.close(); }
+    function esc(e) { if (e.key === 'Escape') close(); }
+    function paintTotals() {
+      var e = ctx.estimate(active(), ctx.side);
+      tot.innerHTML = '';
+      tot.appendChild(el('div', {}, [el('span', { text: T.basket + ' · ' + e.n + (e.n === 1 ? T.item : T.items) }), el('b', { text: money(e.sub) })]));
+      tot.appendChild(el('div', { class: 'big' }, [el('span', { text: T.total }), el('b', { text: money(e.total) })]));
+    }
+    function paintList() {
+      list.innerHTML = '';
+      L.forEach(function (l) {
+        var rm = !!removed[l[5]], isNew = l[5].charAt(0) === 'a', qty = el('span', { text: String(l[2]) }),
+            step = el('div', { class: 'ge-step' }, [
+              el('button', { type: 'button', 'aria-label': T.less, text: '−', onclick: function () { if (l[2] <= 1) { if (isNew) L = L.filter(function (x) { return x !== l; }); else removed[l[5]] = 1; } else l[2]--; paintList(); } }),
+              qty,
+              el('button', { type: 'button', 'aria-label': T.more, text: '+', onclick: function () { if (l[2] < 99) l[2]++; paintList(); } })]);
+        list.appendChild(el('div', { class: 'ge-it' + (rm ? ' rm' : '') }, [
+          el('div', { class: 'ge-in' }, [el('b', {}, [nm(l), isNew ? el('i', { class: 'ge-new', text: T.newTag }) : null]), el('small', { text: l[3] ? money(l[3]) + T.each : T.priced })]),
+          rm ? el('button', { type: 'button', class: 'ge-undo', text: T.undo, onclick: function () { delete removed[l[5]]; paintList(); } }) : step,
+          rm ? null : el('button', { type: 'button', class: 'ge-x', 'aria-label': T.remove, text: '×', onclick: function () { if (isNew) L = L.filter(function (x) { return x !== l; }); else removed[l[5]] = 1; paintList(); } })]));
+      });
+      paintTotals();
+    }
+    function add(name, size, price) {
+      var ex = L.filter(function (x) { return !removed[x[5]] && x[0] === name && x[1] === size; })[0];
+      if (ex) ex[2] = Math.min(99, ex[2] + 1);
+      else L.push([name, size, 1, +price || 0, '', 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)]);
+      paintList();
+    }
+    function search() {
+      res.innerHTML = '';
+      if (!q) return;
+      res.appendChild(el('div', { class: 'ge-muted', text: T.loading }));
+      ctx.products().then(function (rows) {
+        if (inp.value.trim() !== q) return;
+        res.innerHTML = '';
+        var hits = rank(rows, q);
+        hits.forEach(function (r) {
+          res.appendChild(el('div', { class: 'ge-r' }, [el('div', { class: 'ge-in' }, [el('b', { text: r.name }), el('small', { text: (r.size ? r.size + ' · ' : '') + money(r.price) })]),
+            el('button', { type: 'button', class: 'ge-add', text: T.addBtn, onclick: function () { add(r.name, r.size, r.price); } })]));
+        });
+        if (!hits.length) res.appendChild(el('div', { class: 'ge-muted', text: T.none }));
+        var cn = el('input', { type: 'text', value: q, placeholder: T.customPh, 'aria-label': T.customPh }), cp = el('input', { type: 'number', step: '0.01', inputmode: 'decimal', placeholder: T.pricePh, 'aria-label': T.pricePh });
+        res.appendChild(el('div', { class: 'ge-custom' }, [el('b', { text: T.custom }), el('div', { class: 'ge-cr' }, [cn, cp,
+          el('button', { type: 'button', class: 'ge-add', text: T.addBtn, onclick: function () { var n = cn.value.trim(); if (!n) { cn.focus(); return; } add(n, '', parseFloat(cp.value) || 0); inp.value = ''; q = ''; res.innerHTML = ''; } })])]));
+      });
+    }
+    function submit() {
+      var A = active();
+      if (!A.length) { err.textContent = T.empty; return; }
+      err.textContent = ''; busy = true; btn.disabled = true; btn.textContent = T.saving;
+      ctx.save(A, noteEl.value.trim(), { email: !!(chk && chk.checked) }).then(done, function () {
+        busy = false; btn.disabled = false; btn.textContent = shop ? T.save : T.send; err.textContent = T.fail;
+      });
+    }
+    function done(r) {
+      busy = false;
+      foot.remove();
+      body.innerHTML = '';
+      var msg = ctx.message(r), btns = shop ? [
+        el('button', { type: 'button', class: 'ge-btn', text: T.msgWa, onclick: function () { ctx.wa(msg); } }),
+        el('button', { type: 'button', class: 'ge-btn sec', text: T.msgSms, onclick: function () { ctx.sms(msg); } })] : [];
+      btns.push(el('button', { type: 'button', class: 'ge-btn' + (shop ? ' sec' : ''), text: T.done, onclick: close }));
+      body.appendChild(el('div', { class: 'ge-card ge-done' }, [el('div', { class: 'ge-tick', text: '✓' }), el('h3', { text: shop ? T.savedShop : T.savedClient }),
+        el('pre', { text: r.text + (r.note ? '\n' + T.noteLbl + r.note : '') }), el('div', { class: 'ge-btns' }, btns)]));
+      wrap.scrollTop = 0;
+    }
+
+    inp.addEventListener('input', function () { clearTimeout(timer); q = inp.value.trim(); timer = setTimeout(search, 160); });
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });
+    body.appendChild(el('div', { class: 'ge-card' }, [el('h3', { text: T.itemsTitle }), list]));
+    body.appendChild(el('div', { class: 'ge-card' }, [el('h3', { text: T.add }), inp, res]));
+    body.appendChild(el('div', { class: 'ge-card' }, [el('h3', { text: T.note }), noteEl]));
+    wrap.appendChild(el('div', { class: 'ge-top' }, [el('b', { text: shop ? T.title : T.titleMine }), el('button', { type: 'button', 'aria-label': T.close, text: '×', onclick: close })]));
+    wrap.appendChild(body);
+    wrap.appendChild(foot);
+    paintList();
+    D.body.appendChild(wrap);
+    D.documentElement.classList.add('ge-lock');
+    D.addEventListener('keydown', esc);
+    ctx.products();
+  };
+})();
+</script>

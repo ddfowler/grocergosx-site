@@ -1,0 +1,186 @@
+<!-- GrocerGoSx Shop 27 Restaurant Hours v1.0 (24 Oct 2026): restaurants with opening hours (Vendors tab, column hours, e.g. 14:00-19:00, island time, every day; blank = no limit) take orders from opening until restaurant_last_order_min (Settings tab, default 60) before closing. Restaurant cards and the menu header say Open or Closed; while closed the menu's Add buttons switch off; at Shop Now checkout a basket holding a closed restaurant's food can't be placed, and delivery windows that don't overlap the restaurant's hours switch off. Needs Shop 3, 5, 6 and 12 above it. Body – end · All pages · Load code on each new page · Essential. -->
+<style>
+.gm-sheet .gs-add[disabled],.gm-sheet .gm-qty button[disabled],.gm-sheet .gm-btn[disabled]{opacity:.45;cursor:not-allowed}
+.gm-sheet .gh-bar{margin:12px 0 2px;padding:10px 12px;border-radius:12px;background:#fdecea;color:#b3261e;font-size:14px;line-height:1.4}
+.gc-wrap .gh-block{display:none;margin:0 0 12px;background:#fdecea;color:#b3261e;border:1px solid #f3c4bf;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.45}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxHours) return;
+  W.__ggsxHours = 1;
+  var TZ = 'America/Lower_Princes', BYID = {}, BYNAME = {}, CUT = 60;
+  var TXT = W.GGSX_HOURS = {
+    open: 'Open · orders until {last}',
+    closed: 'Closed · orders {a}–{last}',
+    bar: '{n} isn’t taking orders right now. Orders open {a}–{last} (island time).',
+    add: 'Closed',
+    block: '{n} takes orders {a}–{last} (island time). Remove its items, or place your order during those hours.',
+    win: ' — restaurant closed'
+  };
+
+  function nowMin() {
+    try {
+      var h = 0, m = 0;
+      new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).forEach(function (x) {
+        if (x.type === 'hour') h = +x.value;
+        if (x.type === 'minute') m = +x.value;
+      });
+      return (h % 24) * 60 + m;
+    } catch (e) { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+  }
+  function parse(s) {
+    var m = /^\s*(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*$/.exec(String(s == null ? '' : s));
+    if (!m) return null;
+    var a = +m[1] * 60 + (+m[2] || 0), b = +m[3] * 60 + (+m[4] || 0);
+    if (b <= a) b += 1440;
+    return { a: a, b: b };
+  }
+  function fmt(x) {
+    x = ((x % 1440) + 1440) % 1440;
+    var h = Math.floor(x / 60), m = x % 60;
+    return (h % 12 || 12) + (m ? ':' + ('0' + m).slice(-2) : '') + (h < 12 ? ' AM' : ' PM');
+  }
+  function state(r) {
+    var t = nowMin(), last = r.b - CUT;
+    if (last <= r.a) last = r.b;
+    if (t < r.a && r.b > 1440 && t + 1440 < last) t += 1440;
+    return { open: t >= r.a && t < last, a: r.a, last: last };
+  }
+  function fill(s, v, st) { return s.replace('{n}', v.name).replace('{a}', fmt(st.a)).replace('{last}', fmt(st.last)); }
+
+  function load() {
+    var M = W.GGSX_MORE;
+    if (!M || !M.load) return;
+    M.load().then(function (d) {
+      var c = parseFloat(d && d.set && d.set.restaurant_last_order_min);
+      if (c >= 0) CUT = c;
+      ((d && d.vendors) || []).forEach(function (v) {
+        var r = parse(v.hours);
+        if (!r) return;
+        var o = { id: v.vendor_id, name: v.name, r: r };
+        if (v.vendor_id) BYID[v.vendor_id] = o;
+        if (v.name) BYNAME[String(v.name).trim().toLowerCase()] = o;
+      });
+      paintAll();
+    }).catch(function () {});
+  }
+
+  /* the small line under a restaurant's name: keep what Shop 5/6/11 wrote and add the status */
+  function status(sm, v) {
+    if (!sm) return;
+    var base = sm.getAttribute('data-gh-base');
+    if (base == null) { base = sm.textContent; sm.setAttribute('data-gh-base', base); }
+    var st = state(v.r), want = (base ? base + ' · ' : '') + fill(st.open ? TXT.open : TXT.closed, v, st);
+    if (sm.textContent !== want) sm.textContent = want;
+  }
+  function cards() {
+    Array.prototype.forEach.call(D.querySelectorAll('.gm-vendor'), function (b) {
+      var nm = b.querySelector('.gm-vn'), v = nm && BYNAME[nm.textContent.trim().toLowerCase()];
+      if (v) status(b.querySelector('.gm-vt small'), v);
+    });
+  }
+  function sheet() {
+    var s = D.querySelector('.gm-sheet[data-v]'), v = s && BYID[s.getAttribute('data-v')];
+    if (!v) return;
+    var st = state(v.r), body = s.querySelector('.gm-body'), bar = s.querySelector('.gh-bar');
+    status(s.querySelector('.gm-ht small'), v);
+    if (!st.open && body && !bar) { bar = D.createElement('p'); bar.className = 'gh-bar'; body.insertBefore(bar, body.firstChild); }
+    if (bar) { if (st.open) bar.parentNode.removeChild(bar); else if (bar.textContent !== fill(TXT.bar, v, st)) bar.textContent = fill(TXT.bar, v, st); }
+    Array.prototype.forEach.call(s.querySelectorAll('.gs-add, .gm-qty button[aria-label=More], .gm-opts .gm-btn'), function (b) {
+      if (!st.open) {
+        if (!b.getAttribute('data-gh-off')) {
+          b.setAttribute('data-gh-off', '1');
+          b.disabled = true;
+          if (b.classList.contains('gs-add')) { b.setAttribute('data-gh-t', b.textContent); b.textContent = TXT.add; }
+        }
+      } else if (b.getAttribute('data-gh-off')) {
+        b.removeAttribute('data-gh-off');
+        b.disabled = false;
+        var t = b.getAttribute('data-gh-t');
+        if (t != null) { b.textContent = t; b.removeAttribute('data-gh-t'); }
+      }
+    });
+  }
+
+  /* Shop Now checkout */
+  function basket() {
+    try {
+      var b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null');
+      return b && b.items ? Object.keys(b.items).map(function (k) { return b.items[k]; }).filter(function (e) { return e && (+e.n || 0) > 0; }) : [];
+    } catch (e) { return []; }
+  }
+  function inBasket() {
+    var seen = {}, out = [];
+    basket().forEach(function (l) {
+      var m = /^rest:([^:]+):/.exec(String(l.id || ''));
+      if (m && BYID[m[1]] && !seen[m[1]]) { seen[m[1]] = 1; out.push(BYID[m[1]]); }
+    });
+    return out;
+  }
+  function closedIn() { return inBasket().filter(function (v) { return !state(v.r).open; }); }
+  function checkout() {
+    var form = D.querySelector('.gc-wrap .gc-form');
+    if (!form) return;
+    var rs = inBasket(), closed = closedIn(), btn = form.querySelector('button[type=submit]'), box = form.querySelector('.gh-block');
+    if (!box) {
+      box = D.createElement('div'); box.className = 'gh-block'; box.setAttribute('role', 'status');
+      if (btn && btn.parentNode) btn.parentNode.insertBefore(box, btn); else form.appendChild(box);
+    }
+    if (closed.length) {
+      var t = fill(TXT.block, closed[0], state(closed[0].r));
+      if (box.textContent !== t) box.textContent = t;
+      if (box.style.display !== 'block') box.style.display = 'block';
+      if (btn) {
+        btn.setAttribute('data-gh-off', '1');
+        if (!btn.disabled) btn.disabled = true;
+        if (!btn.__gh) {
+          btn.__gh = 1;
+          new MutationObserver(function () { if (btn.getAttribute('data-gh-off') && !btn.disabled) btn.disabled = true; }).observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+        }
+      }
+    } else {
+      if (box.style.display !== 'none') { box.style.display = 'none'; box.textContent = ''; }
+      if (btn && btn.getAttribute('data-gh-off')) { btn.removeAttribute('data-gh-off'); btn.disabled = !!(W.GGSX_MIN && W.GGSX_MIN.below && W.GGSX_MIN.below()); }
+    }
+    var sel = form.querySelector('select[name=win]'), restored = false;
+    if (sel) Array.prototype.forEach.call(sel.options, function (o) {
+      var m = /(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/.exec(o.value || '');
+      if (!m) return;
+      var a = +m[1] * 60 + +m[2], b = +m[3] * 60 + +m[4];
+      var bad = rs.some(function (v) { return !(a < v.r.b && b > v.r.a); });
+      if (bad && !o.getAttribute('data-gh-off')) {
+        o.setAttribute('data-gh-off', '1'); o.setAttribute('data-gh-t', o.text);
+        o.disabled = true; o.text = o.text + TXT.win;
+        if (sel.value === o.value) { sel.value = ''; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+      } else if (!bad && o.getAttribute('data-gh-off')) {
+        o.text = o.getAttribute('data-gh-t'); o.removeAttribute('data-gh-t'); o.removeAttribute('data-gh-off');
+        o.disabled = false; restored = true;
+      }
+    });
+    if (restored) { var dt = form.querySelector('input[name=date]'); if (dt) dt.dispatchEvent(new Event('change', { bubbles: true })); }
+  }
+  D.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (!f || !f.classList || !f.classList.contains('gc-form') || !closedIn().length) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    checkout();
+    var box = f.querySelector('.gh-block');
+    if (box && box.scrollIntoView) box.scrollIntoView({ block: 'center' });
+  }, true);
+
+  function paintAll() { cards(); sheet(); checkout(); }
+  var busy = false;
+  new MutationObserver(function () {
+    if (busy) return;
+    busy = true;
+    (W.requestAnimationFrame || setTimeout)(function () { busy = false; paintAll(); });
+  }).observe(D.documentElement, { childList: true, subtree: true });
+  D.addEventListener('ggsx-checkout-open', function () { setTimeout(checkout, 60); setTimeout(checkout, 400); });
+  D.addEventListener('change', function (e) { if (e.target && e.target.closest && e.target.closest('.gc-wrap')) setTimeout(checkout, 80); }, true);
+  W.addEventListener('ggsx-basket', function () { setTimeout(paintAll, 0); });
+  setInterval(paintAll, 30000);
+  load();
+})();
+</script>

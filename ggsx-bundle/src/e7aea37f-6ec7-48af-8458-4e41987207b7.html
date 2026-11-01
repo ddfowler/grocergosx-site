@@ -1,0 +1,104 @@
+<!-- GrocerGoSx Home 3 Auto-slide v1.3.1 (20 Oct 2026; back to one card at a time after trying the continuous glide of v1.3): makes the home
+     page's hero cards (Groceries, Villa, Drinks…) slide on their own, one card every 2 seconds: the cards travel to the right and each new card comes
+     in from the left, without end (the last card is moved round to the front out of sight, so the row never rewinds). Pauses while a visitor hovers
+     over the cards (picks up 1.5 s after the mouse leaves), touches or swipes them, uses the arrows or tabs through them (picks up 8 seconds later),
+     while the cards are off screen or the browser tab is hidden, and never runs for visitors whose device asks for reduced motion. It moves the same
+     row as Home 2, so the dots, arrows and the colour behind the cards follow along. Settings in GGSX_HOME_SLIDE below (glide: true switches to a
+     continuous glide instead). Needs Home 2 above it. Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxHomeSlide) return;
+  W.__ggsxHomeSlide = 1;
+  var S = W.GGSX_HOME_SLIDE = W.GGSX_HOME_SLIDE || {
+    glide: false,  /* false = one card at a time; true = one smooth, continuous loop */
+    card: 3,       /* glide: seconds to move along by one card */
+    every: 2,      /* one card at a time: seconds between slides */
+    dir: -1,       /* -1 = cards travel right, each new one coming in from the left; 1 = cards travel left */
+    resume: 8      /* seconds of quiet after a visitor touches, swipes or clicks the cards */
+  };
+  if (W.matchMedia && W.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  function attach(row) {
+    if (row.__slide) return;
+    row.__slide = 1;
+    var wrap = row.parentNode || row, held = 0, seen = true, timer, pos = 0, last = 0, free = false;
+    row.style.overflowAnchor = 'none';
+    function step() {
+      var c = row.children;
+      return c.length > 1 ? (c[1].offsetLeft - c[0].offsetLeft) || row.clientWidth : row.clientWidth;
+    }
+    function move(left, to) {
+      if (to ? row.scrollTo : row.scrollBy) (to ? row.scrollTo : row.scrollBy).call(row, { left: left, behavior: 'smooth' });
+      else row.scrollLeft = to ? left : row.scrollLeft + left;
+    }
+    function jump(left) {
+      try { row.scrollTo({ left: left, behavior: 'instant' }); } catch (e) { row.scrollLeft = left; }
+    }
+    /* move the end card round to the other end, out of sight; returns how far the scroll position must move to keep the view still */
+    function wrapRound(toFront) {
+      var s0 = row.scrollLeft, ref = toFront ? row.firstElementChild : row.lastElementChild, x0 = ref.getBoundingClientRect().left;
+      if (toFront) row.insertBefore(row.lastElementChild, ref); else row.appendChild(row.firstElementChild);
+      return (row.scrollLeft - s0) + (ref.getBoundingClientRect().left - x0);
+    }
+    function paused() { return held > Date.now() || !seen || D.hidden || row.children.length < 2; }
+
+    /* one smooth, continuous loop */
+    function glide(t) {
+      if (!D.body.contains(row)) return;
+      W.requestAnimationFrame(glide);
+      var dt = last ? Math.min(t - last, 100) : 0, max;
+      last = t;
+      if (paused()) return;
+      if (!free) { free = true; row.style.scrollSnapType = 'none'; pos = row.scrollLeft; }
+      if (Math.abs(row.scrollLeft - pos) > 2) pos = row.scrollLeft;
+      max = row.scrollWidth - row.clientWidth;
+      if (max <= 0) return;
+      pos += (S.dir < 0 ? -1 : 1) * step() / S.card * dt / 1000;
+      if (S.dir < 0 && pos <= 0) pos += wrapRound(true);
+      else if (S.dir > 0 && pos >= max) pos += wrapRound(false);
+      row.scrollLeft = pos;
+    }
+
+    /* one card at a time */
+    function next() {
+      if (!D.body.contains(row)) { clearInterval(timer); return; }
+      if (paused()) return;
+      var max = row.scrollWidth - row.clientWidth, s, s0;
+      if (S.dir < 0) {
+        s = step();
+        if (row.scrollLeft < s - 4) { s0 = row.scrollLeft; jump(s0 + wrapRound(true)); }
+        move(-s, false);
+      } else if (row.scrollLeft >= max - 4) move(0, true);
+      else move(step(), false);
+    }
+
+    function hold() {
+      held = Date.now() + S.resume * 1000;
+      if (free) { free = false; row.style.scrollSnapType = ''; }
+    }
+    ['pointerdown', 'touchstart', 'wheel', 'keydown', 'click'].forEach(function (ev) { wrap.addEventListener(ev, hold, { passive: true }); });
+    wrap.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') held = Infinity; });
+    wrap.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') held = Date.now() + 1500; });
+    wrap.addEventListener('focusin', function () { held = Infinity; });
+    wrap.addEventListener('focusout', hold);
+    if ('IntersectionObserver' in W) new IntersectionObserver(function (es) { seen = es[es.length - 1].isIntersecting; }, { threshold: 0.4 }).observe(row);
+    if (S.glide && W.requestAnimationFrame) W.requestAnimationFrame(glide);
+    else timer = setInterval(next, S.every * 1000);
+  }
+  function scan() {
+    var rows = D.querySelectorAll('#ggsx-home .gh-heros');
+    for (var i = 0; i < rows.length; i++) attach(rows[i]);
+  }
+  function start() {
+    var busy = false;
+    new MutationObserver(function () {
+      if (busy) return;
+      busy = true;
+      (W.requestAnimationFrame || setTimeout)(function () { busy = false; scan(); });
+    }).observe(D.documentElement, { childList: true, subtree: true });
+    scan();
+  }
+  if (D.body) start(); else D.addEventListener('DOMContentLoaded', start);
+})();
+</script>

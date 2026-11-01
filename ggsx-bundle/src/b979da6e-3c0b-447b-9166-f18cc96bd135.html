@@ -1,0 +1,140 @@
+<!-- GrocerGoSx SEO Footnotes v1.0 (19 Oct 2026): on the code-drawn pages (Home, Shop Now, Restaurants, Pharmacy and the
+     Pages-engine pages such as Pricing), restyles the plain-text intro typed into the Wix Editor for Google and Bing as a
+     small footnote: smaller grey text in a narrow column, cut to 3 lines with "Read more". Every word stays on the page and
+     readable; nothing is hidden. On Home it also re-shows the H1 intro the Home engine collapses.
+     Body - end · All pages · Load code on each new page · Essential. To undo: disable or delete this snippet. -->
+<style id="ggsx-note-css">
+main section.ggsx-note-sec{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:26px 0 30px!important;margin:0!important;border-top:1px solid #e7e2da}
+.ggsx-note-sec .ggsx-note-box{max-width:760px!important;margin-left:auto!important;margin-right:auto!important;padding-left:20px!important;padding-right:20px!important;box-sizing:border-box!important;width:auto!important}
+.ggsx-note-sec *{font-size:14px!important;line-height:1.6!important;letter-spacing:normal!important;text-transform:none!important;text-align:left!important}
+.ggsx-note-sec .ggsx-note-box>*,.ggsx-note-sec [data-testid="richTextElement"],.ggsx-note-sec .wixui-rich-text{max-width:100%!important;margin-left:0!important;margin-right:0!important}
+.ggsx-note-sec p,.ggsx-note-sec li,.ggsx-note-sec p *,.ggsx-note-sec li *{color:#6b6b6b!important;font-weight:400!important}
+.ggsx-note-sec h1,.ggsx-note-sec h2,.ggsx-note-sec h3,.ggsx-note-sec h1 *,.ggsx-note-sec h2 *,.ggsx-note-sec h3 *{font-size:16px!important;line-height:1.35!important;font-weight:700!important;color:#3d3d3d!important}
+.ggsx-note-sec h1,.ggsx-note-sec h2,.ggsx-note-sec h3{margin:0 0 6px!important}
+.ggsx-note-sec .ggsx-note-clamp{position:relative!important;overflow:hidden!important}
+.ggsx-note-sec .ggsx-note-clamp:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2.4em;pointer-events:none;background:linear-gradient(rgba(255,255,255,0),var(--ggsx-note-bg,#fff))}
+.ggsx-note-sec .ggsx-note-box.ggsx-note-open{max-height:none!important}
+.ggsx-note-sec .ggsx-note-box.ggsx-note-open:after{display:none}
+.ggsx-note-more{max-width:760px;margin:6px auto 0;padding:0 20px;box-sizing:border-box}
+.ggsx-note-more[hidden]{display:none}
+.ggsx-note-more button{background:none!important;border:0!important;padding:4px 0!important;margin:0!important;color:#F4551B!important;font-weight:700!important;font-size:14px!important;line-height:1.4!important;cursor:pointer;font-family:inherit}
+.ggsx-note-more button:focus-visible{outline:2px solid #F4551B;outline-offset:2px;border-radius:4px}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxNote) { W.__ggsxNote.run(); return; }
+  var ROOTS = '#ggsx-page,#ggsx-home,#ggsx-shop,#ggsx-more-page';
+  var MEDIA = 'img,video,iframe,form,input,select,textarea,button,picture,wow-image,[data-testid="imageX"],[data-testid="image"]';
+  var LINES = 3, done = [];
+
+  function mainEl() { return D.querySelector('main[id^="PAGE_SECTIONS"]') || D.querySelector('main'); }
+  function textOf(el) { return (el.textContent || '').replace(/\s+/g, ' ').trim(); }
+  function sections(main) {
+    var out = [];
+    for (var i = 0; i < main.children.length; i++) if (main.children[i].tagName === 'SECTION') out.push(main.children[i]);
+    return out;
+  }
+  function blocks(sec) {
+    return [].filter.call(sec.querySelectorAll('h1,h2,h3,h4,p,li'), function (b) {
+      return textOf(b).length && !(b.parentNode && b.parentNode.closest && b.parentNode.closest('h1,h2,h3,h4,p,li'));
+    });
+  }
+  function lca(list, stop) {
+    if (!list.length) return null;
+    var a = list[0];
+    while (a && a !== stop) {
+      var ok = true;
+      for (var i = 1; i < list.length; i++) if (!a.contains(list[i])) { ok = false; break; }
+      if (ok) return a;
+      a = a.parentNode;
+    }
+    return stop;
+  }
+  function bgOf(sec) {
+    var els = [sec.querySelector('[data-testid="colorUnderlay"]'), sec], el = sec;
+    while (el && el !== D.documentElement) { els.push(el); el = el.parentNode; }
+    for (var i = 0; i < els.length; i++) {
+      if (!els[i]) continue;
+      var c = W.getComputedStyle(els[i]).backgroundColor;
+      if (c && c !== 'transparent' && !/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(c)) return c;
+    }
+    return '#fff';
+  }
+  function measure(st) {
+    if (st.open) return;
+    var box = st.box, p = st.p;
+    box.style.maxHeight = 'none';
+    box.classList.remove('ggsx-note-clamp');
+    var cs = W.getComputedStyle(p), fs = parseFloat(cs.fontSize) || 14, lh = parseFloat(cs.lineHeight);
+    if (!lh || isNaN(lh)) lh = fs * 1.6; else if (lh < 4) lh = lh * fs;
+    var off = p.getBoundingClientRect().top - box.getBoundingClientRect().top;
+    var lim = Math.ceil(off + lh * LINES + 2);
+    if (box.scrollHeight <= lim + lh * 1.5) { box.style.maxHeight = ''; st.more.hidden = true; return; }
+    box.style.maxHeight = lim + 'px';
+    box.classList.add('ggsx-note-clamp');
+    st.more.hidden = false;
+  }
+  function make(sec) {
+    var bl = blocks(sec);
+    if (!bl.length) return;
+    var box = lca(bl, sec);
+    if (box === sec) {
+      for (var i = 0; i < sec.children.length; i++) if (sec.children[i].contains(bl[0])) { box = sec.children[i]; break; }
+    }
+    var p = null;
+    for (var j = 0; j < bl.length; j++) if (!/^H[1-4]$/.test(bl[j].tagName)) { p = bl[j]; break; }
+    sec.classList.add('ggsx-note-sec');
+    sec.setAttribute('data-ggsx-note', '1');
+    box.classList.add('ggsx-note-box');
+    box.style.setProperty('--ggsx-note-bg', bgOf(sec));
+    if (!p) return;
+    var btn = D.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Read more';
+    btn.setAttribute('aria-expanded', 'false');
+    var more = D.createElement('div');
+    more.className = 'ggsx-note-more';
+    more.hidden = true;
+    more.appendChild(btn);
+    sec.appendChild(more);
+    var st = { sec: sec, box: box, p: p, more: more, open: false };
+    btn.addEventListener('click', function () {
+      st.open = !st.open;
+      box.classList.toggle('ggsx-note-open', st.open);
+      btn.textContent = st.open ? 'Show less' : 'Read more';
+      btn.setAttribute('aria-expanded', st.open ? 'true' : 'false');
+      if (st.open) { box.style.maxHeight = ''; box.classList.remove('ggsx-note-clamp'); } else measure(st);
+    });
+    done.push(st);
+    (W.requestAnimationFrame || setTimeout)(function () { measure(st); });
+  }
+  function run() {
+    done = done.filter(function (st) { return D.body.contains(st.sec); });
+    var root = D.querySelector(ROOTS), main = mainEl();
+    if (!root || !main) return;
+    var home = root.id === 'ggsx-home';
+    sections(main).forEach(function (sec) {
+      if (sec.getAttribute('data-ggsx-note') || sec.contains(root)) return;
+      var head = sec.querySelector(home ? 'h1' : 'h1,h2,h3');
+      if (!head || textOf(sec).length < 80 || sec.querySelector(MEDIA)) return;
+      make(sec);
+    });
+  }
+  var queued = false;
+  function later() {
+    if (queued) return;
+    queued = true;
+    (W.requestAnimationFrame || setTimeout)(function () { queued = false; run(); });
+  }
+  var rt;
+  W.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () { done.forEach(measure); }, 200);
+  });
+  W.addEventListener('load', function () { done.forEach(measure); });
+  new MutationObserver(later).observe(D.documentElement, { childList: true, subtree: true });
+  W.__ggsxNote = { run: run };
+  run();
+})();
+</script>

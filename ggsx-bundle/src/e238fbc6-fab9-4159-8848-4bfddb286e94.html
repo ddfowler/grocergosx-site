@@ -1,0 +1,106 @@
+<!-- GrocerGoSx Shop 29 Restaurant Pages v1.0 (24 Oct 2026): on grocergosx.com/restaurants a restaurant opens as its own page instead of a pop-up. Tapping a card (link: /restaurants#restaurants/<vendor_id>) swaps the list for that restaurant's page: "All restaurants" back button, the basket bar, a large header (logo, name, side · area · open/closed), the menu search bar kept at the top while scrolling, the menu in the page, and "Done · View basket" kept at the bottom. The browser's back button and the back button return to the list; the tab title shows the restaurant. Old Shop Now links (/shop-now#restaurants/<id>) open the restaurant's page. Works with Shop 5, 6, 11, 27 and 28 unchanged: it moves Shop 6's menu into the page and restyles it. Switch this snippet off to get the pop-up back. Body – end · All pages · Load code on each new page · Essential. -->
+<style>
+.gm-sheet.gr-page{position:static;inset:auto;z-index:auto;display:block;padding:0;background:none;--gr-top:0px;--gr-bot:0px}
+.gm-sheet.gr-page .gm-box{display:block;max-width:none;max-height:none;min-height:0!important;border-radius:0;box-shadow:none;overflow:visible;background:none}
+.gm-sheet.gr-page .gm-head{padding:6px 0 18px;gap:16px;border-bottom:1px solid #efeae3}
+.gm-sheet.gr-page .gm-head .gm-logo{width:72px;height:72px;border-radius:16px}
+.gm-sheet.gr-page .gm-head h3{font-size:34px;line-height:1.1}
+.gm-sheet.gr-page .gm-head small{font-size:14px;margin-top:6px}
+.gm-sheet.gr-page .gm-head .gm-x{display:none}
+.gm-sheet.gr-page .gq-wrap{position:sticky;top:var(--gr-top);z-index:6;padding:12px 0;background:#fff}
+.gm-sheet.gr-page .gm-body{overflow:visible;padding:4px 0 16px}
+.gm-sheet.gr-page .gm-body h4{font-size:18px;margin:22px 0 4px}
+.gm-sheet.gr-page .gm-foot{position:sticky;bottom:var(--gr-bot);z-index:6;justify-content:center;padding:12px 0;border-top:0;background:linear-gradient(rgba(255,255,255,0),#fff 40%);pointer-events:none}
+.gm-sheet.gr-page .gm-foot .gm-btn{flex:0 1 400px;pointer-events:auto;box-shadow:0 8px 24px rgba(244,85,27,.28)}
+#ggsx-more-page .gr-back{display:inline-flex;align-items:center;gap:8px;margin:0 0 16px;padding:9px 16px;border:1.5px solid #e9e4dd;border-radius:999px;background:#fff;color:#1b1b1b;font:inherit;font-weight:700;cursor:pointer}
+#ggsx-more-page .gr-back:hover{border-color:#F4551B;color:#F4551B}
+html.gr-on #ggsx-more-page>h1,html.gr-on #ggsx-more-page>.gp-lead,html.gr-on #ggsx-more-page>.gm-vendors,html.gr-on #ggsx-more-page>.gp-cross{display:none!important}
+@media (max-width:860px){
+html.gg-m .gm-sheet.gr-page{--gr-top:calc(56px + env(safe-area-inset-top,0px));--gr-bot:calc(64px + env(safe-area-inset-bottom,0px))}
+.gm-sheet.gr-page .gm-head .gm-logo{width:56px;height:56px;border-radius:14px}
+.gm-sheet.gr-page .gm-head h3{font-size:24px}
+.gm-sheet.gr-page .gm-foot{background:#fff;border-top:1px solid #efeae3}
+.gm-sheet.gr-page .gm-foot .gm-btn{flex:1;box-shadow:none}
+}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxRestPages) return;
+  W.__ggsxRestPages = 1;
+  var TXT = W.GGSX_REST_PAGES = { back: '← All restaurants', title: '{n} · Order for delivery · GrocerGoSx' };
+  var BACK = null, ON = false, baseTitle = null, busy = false;
+
+  function path() { return location.pathname.replace(/\/+$/, '') || '/'; }
+
+  /* old Shop Now links to a restaurant open its page on /restaurants */
+  function forward() {
+    var m = /^#restaurants\/([^\/?#&]+)/.exec(location.hash);
+    if (m && path() === '/shop-now') location.replace('/restaurants#restaurants/' + m[1]);
+  }
+
+  function root() {
+    var r = D.getElementById('ggsx-more-page');
+    return r && r.querySelector('.gm-vendors') ? r : null;
+  }
+  function topBar() {   /* the phone's fixed orange bar (App Shell); the desktop header scrolls away */
+    var bar = D.querySelector('html.gg-m .gg-top');
+    return bar && getComputedStyle(bar).display !== 'none' ? bar.getBoundingClientRect().height : 0;
+  }
+  function toTop() { try { W.scrollTo(0, 0); } catch (e) {} }   /* like a new page: start at the top */
+
+  function enter(s, r) {
+    s.classList.add('gr-page');
+    var strip = r.querySelector('.gp-bask'), list = r.querySelector('.gm-vendors');
+    if (!BACK) {
+      BACK = D.createElement('button');
+      BACK.type = 'button';
+      BACK.className = 'gr-back';
+      BACK.textContent = TXT.back;
+      BACK.addEventListener('click', function () { location.hash = '#restaurants'; });
+    }
+    r.insertBefore(BACK, strip || r.firstChild);
+    r.insertBefore(s, list);
+    D.documentElement.classList.remove('gm-lock');
+    D.documentElement.classList.add('gr-on');
+    var nm = s.querySelector('.gm-head h3');
+    if (baseTitle == null) baseTitle = D.title;
+    if (nm) D.title = TXT.title.replace('{n}', nm.textContent);
+    if (!ON) { ON = true; toTop(); }
+  }
+
+  function leave() {
+    if (!ON) return;
+    ON = false;
+    D.documentElement.classList.remove('gr-on');
+    if (BACK && BACK.parentNode) BACK.parentNode.removeChild(BACK);
+    if (baseTitle != null) { D.title = baseTitle; baseTitle = null; }
+    if (root()) toTop();
+  }
+
+  function check() {
+    busy = false;
+    var s = D.querySelector('.gm-sheet[data-v]'), r = root();
+    if (s && r) {
+      if (s.parentNode !== r || !s.classList.contains('gr-page') || !BACK || BACK.parentNode !== r) enter(s, r);
+      else if (D.documentElement.classList.contains('gm-lock')) D.documentElement.classList.remove('gm-lock');
+    } else leave();
+  }
+  function soon() { if (!busy) { busy = true; Promise.resolve().then(check); } }
+
+  /* typing in the search while scrolled down: bring the results into view */
+  D.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t || !t.classList || !t.classList.contains('gq-in')) return;
+    var s = t.closest('.gm-sheet.gr-page'), body = s && s.querySelector('.gm-body'), wrap = s && s.querySelector('.gq-wrap');
+    if (!body || !wrap) return;
+    var want = body.getBoundingClientRect().top + (W.pageYOffset || 0) - wrap.getBoundingClientRect().height - topBar();
+    if ((W.pageYOffset || 0) > want) W.scrollTo(0, Math.max(0, want));
+  }, true);
+
+  forward();
+  W.addEventListener('hashchange', function () { forward(); setTimeout(check, 0); });
+  new MutationObserver(soon).observe(D.body, { childList: true, subtree: true });
+  check();
+})();
+</script>

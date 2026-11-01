@@ -1,0 +1,179 @@
+<!-- 23 Oct 2026 (v2): 15% service fee, min $80 ($70 planned/partner), max $120; delivery free; $100 minimum on shop orders (Shop 22); pass-through handling folded into the service fee. -->
+<!-- GrocerGoSx Shop 11 Restaurant & Pharmacy Pages v1.0.2 (19 Oct 2026; v1.0.2 keeps its settings in window.GGSX_MORE_PAGES, as GGSX_PAGES belongs to the Pages engine (Pages 2-8); v1.0.1 fair-pricing fee notes, needs Shop 5 v1.2): gives Restaurants and Pharmacy their own pages at /restaurants
+     and /pharmacy (blank Wix pages; this snippet fills them), with the same restaurant cards, menu sheet (Shop 6), pharmacy request,
+     basket and checkout as Shop Now. Dishes and pharmacy requests go into the shared basket; "View basket & checkout" opens it on
+     Shop Now. Once both pages are published, Shop Now's Restaurants / Pharmacy tabs hide themselves and old #restaurants / #pharmacy
+     links forward to the new pages. Needs Shop 2, 5 and 6 above it.
+     Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<style>
+#ggsx-more-page{--o:#F4551B;--ink:#1b1b1b;--mute:#6b6b6b;--line:#e9e4dd;box-sizing:border-box;width:100%;max-width:1040px;margin:0 auto;padding:28px 24px 72px;color:var(--ink);font-family:"Avenir Light",avenir-lt-w01_35-light1475496,Avenir,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.45;text-align:left}
+#ggsx-more-page *{box-sizing:border-box}
+#ggsx-more-page h1{font-family:Benzin,sans-serif;font-weight:700;font-size:40px;line-height:1.1;margin:0 0 8px;color:var(--ink)}
+#ggsx-more-page .gp-lead{font-size:17px;color:#444;margin:0 0 18px;max-width:640px}
+#ggsx-more-page .gp-bask{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:#fff1ea;border:1.5px solid #f6c9b3;border-radius:16px;padding:12px 16px;margin:0 0 18px}
+#ggsx-more-page .gp-bask[hidden]{display:none}
+#ggsx-more-page .gp-bask span{font-weight:700}
+#ggsx-more-page .gp-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border:0;border-radius:999px;background:var(--o);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+#ggsx-more-page .gm-vendor{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:12px 16px 12px 12px;font:inherit;color:inherit;cursor:pointer}
+#ggsx-more-page .gm-vendor:hover{border-color:var(--o)}
+#ggsx-more-page .gm-card{max-width:620px}
+#ggsx-more-page .gm-card textarea{width:100%;font:inherit;font-size:16px;border:1.5px solid #cfc9c1;border-radius:12px;padding:11px 12px;resize:vertical;margin:0 0 10px;-webkit-appearance:none}
+#ggsx-more-page .gp-muted{color:var(--mute)}
+#ggsx-more-page .gp-cross{margin-top:28px;font-size:14px;color:var(--mute)}
+#ggsx-more-page .gp-cross button{border:0;background:none;padding:0 0 0 8px;font:inherit;font-weight:700;color:var(--o);cursor:pointer}
+@media (max-width:860px){#ggsx-more-page{padding:20px 16px 110px}#ggsx-more-page h1{font-size:30px}#ggsx-more-page .gp-btn{width:100%}}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxPages) return;
+  W.__ggsxPages = 1;
+  var P = W.GGSX_MORE_PAGES = {
+    restaurants: '/restaurants', pharmacy: '/pharmacy', shop: '/shop-now',
+    copy: { restTitle: 'Restaurants', pharmTitle: 'Pharmacy', item: ' item', items: ' items', inBasket: ' in your basket', go: 'View basket & checkout',
+            oneRun: 'Everything goes in one basket and one delivery:', shop: 'Shop groceries', rest: 'Restaurants', pharm: 'Pharmacy', loading: 'Loading…' },
+    go: function (url, replace) { if (replace) location.replace(url); else location.assign(url); }
+  };
+  var BASKET = 'ggsx_basket', M = null, ROOT = null, KIND = '', STRIP = null, LIVE = false, tries = 0;
+
+  function clean(p) { return String(p || '').replace(/\/+$/, '') || '/'; }
+  function here() { var p = clean(location.pathname); return p === P.restaurants ? 'rest' : p === P.pharmacy ? 'pharm' : p === clean(P.shop) ? 'shop' : ''; }
+
+  /* ---------- the shared basket (same storage as Shop Now) ---------- */
+  function readBasket() { try { var b = JSON.parse(localStorage.getItem(BASKET) || 'null'); if (b && b.items) return b; } catch (e) {} return { v: 1, items: {} }; }
+  function add(item, qty) {
+    var b = readBasket(), ord = 0, k, cur = b.items[item.id];
+    for (k in b.items) ord = Math.max(ord, b.items[k].o || 0);
+    if (cur) cur.n = Math.min(99, (cur.n || 0) + qty);
+    else b.items[item.id] = { id: item.id, n: Math.min(99, qty), name: item.name, size: item.size || '', price: +item.price || 0, img: item.img || '', o: ord + 1 };
+    b.t = Date.now();
+    try { localStorage.setItem(BASKET, JSON.stringify(b)); } catch (e) { return false; }
+    try { W.dispatchEvent(new CustomEvent('ggsx-basket')); } catch (e) {}
+    paintBasket();
+    return true;
+  }
+  function paintBasket() {
+    if (!STRIP) return;
+    var b = readBasket(), n = 0, s = 0, k;
+    for (k in b.items) { n += b.items[k].n || 0; s += (b.items[k].n || 0) * (+b.items[k].price || 0); }
+    STRIP.hidden = !n;
+    STRIP.firstChild.textContent = n + (n === 1 ? P.copy.item : P.copy.items) + ' · ' + M.money(s) + P.copy.inBasket;
+  }
+
+  /* ---------- page content ---------- */
+  function cross(k) {
+    var h = M.h, links = [[P.copy.shop, P.shop]];
+    links.push(k === 'rest' ? [P.copy.pharm, P.pharmacy] : [P.copy.rest, P.restaurants]);
+    return h('p', { class: 'gp-cross' }, [P.copy.oneRun].concat(links.map(function (l) {
+      return h('button', { type: 'button', text: l[0], onclick: function () { P.go(l[1]); } });
+    })));
+  }
+  function vendors(h, c) {
+    var grid = h('div', { class: 'gm-vendors' }, [h('div', { class: 'gm-loading', text: P.copy.loading })]);
+    M.load().then(function (d) {
+      grid.innerHTML = '';
+      if (!d.vendors.length) grid.appendChild(h('p', { class: 'gp-muted', text: c.noRest }));
+      d.vendors.forEach(function (v) {
+        var n = d.items.filter(function (i) { return i.vendor_id === v.vendor_id; }).length;
+        grid.appendChild(h('button', { type: 'button', class: 'gm-vendor', onclick: function () { location.hash = '#restaurants/' + encodeURIComponent(v.vendor_id); } }, [
+          M.logo(v, 160),
+          h('span', { class: 'gm-vt' }, [h('span', { class: 'gm-vn', text: v.name }),
+            h('small', { text: [v.side ? v.side + ' side' : '', v.area, n + ' items'].filter(Boolean).join(' · ') })])]));
+      });
+    }).catch(function () { grid.innerHTML = ''; grid.appendChild(h('p', { class: 'gp-muted', text: c.fail })); });
+    return grid;
+  }
+  function pharmacy(h, t) {
+    var ta = h('textarea', { rows: '4', placeholder: t.pharmPh }), cb = h('input', { type: 'checkbox' }),
+        msg = h('div', { class: 'gm-msg' }), fee = h('small', { class: 'gm-fee', text: t.pharmNote });
+    M.load().then(function (d) {
+      fee.textContent = (d.set.pharmacy_note || t.pharmNote) + ' ' + M.money(M.setting('errand_stop_fee', 20)) + ' ' + t.stopFee.toLowerCase() + t.stopNote + (t.stopNote2 || '');
+    }).catch(function () {});
+    return h('div', { class: 'gm-card' }, [ta, h('label', { class: 'gm-check' }, [cb, t.rx]), msg,
+      h('button', { type: 'button', class: 'gp-btn', text: t.pharmAdd, onclick: function () {
+        var v = ta.value.trim();
+        if (!v) { msg.textContent = t.pharmEmpty; ta.focus(); return; }
+        if (add({ id: 'pharm:' + Date.now().toString(36), name: t.pharmLine + v, size: t.pharmSize + (cb.checked ? t.rxTag : ''), price: 0, img: '' }, 1)) {
+          ta.value = ''; cb.checked = false; msg.textContent = t.added + ' · ' + v;
+        } else msg.textContent = t.fail;
+      } }), fee]);
+  }
+  function build(k) {
+    var h = M.h, c = M.copy, root = h('section', { id: 'ggsx-more-page' });
+    STRIP = h('div', { class: 'gp-bask', hidden: 'hidden' }, [h('span'), h('button', { type: 'button', class: 'gp-btn', text: P.copy.go, onclick: function () { P.go(P.shop + '#basket'); } })]);
+    root.appendChild(h('h1', { text: k === 'rest' ? P.copy.restTitle : P.copy.pharmTitle }));
+    root.appendChild(h('p', { class: 'gp-lead', text: k === 'rest' ? c.restLead : c.pharmLead }));
+    root.appendChild(STRIP);
+    root.appendChild(k === 'rest' ? vendors(h, c) : pharmacy(h, c));
+    root.appendChild(cross(k));
+    paintBasket();
+    return root;
+  }
+  function host() {
+    return D.querySelector('main[id^="PAGE_SECTIONS"] > section') || D.querySelector('main > section') || D.querySelector('#SITE_PAGES > div') || D.querySelector('main');
+  }
+  function mount() {
+    var k = here();
+    if (k !== 'rest' && k !== 'pharm') {
+      if (ROOT) { ROOT.remove(); ROOT = null; KIND = ''; STRIP = null; }
+      if (M.__add) { M.add = M.__add; M.__add = null; }
+      return;
+    }
+    if (!M.__add) { M.__add = M.add; M.add = add; }        /* Shop 6's menu sheet adds through this on these pages */
+    if (ROOT && KIND === k && D.body.contains(ROOT)) return;
+    var hst = host();
+    if (!hst) return;
+    if (!ROOT || KIND !== k) { ROOT = build(k); KIND = k; }
+    hst.appendChild(ROOT);
+    Array.prototype.forEach.call(hst.children, function (ch) { if (ch !== ROOT) { ch.style.minHeight = '0'; ch.style.height = '0'; ch.style.overflow = 'hidden'; } });
+  }
+
+  /* ---------- Shop Now: hide the old tabs and forward old links once both pages are live ---------- */
+  function detect() {
+    var routes = (((W.viewerModel || {}).siteFeaturesConfigs || {}).router || {}).routes;
+    if (routes) return Promise.resolve(!!(routes['./restaurants'] && routes['./pharmacy']));
+    try { if (sessionStorage.getItem('ggsx_pages_live') === '1') return Promise.resolve(true); } catch (e) {}
+    return Promise.all([P.restaurants, P.pharmacy].map(function (p) {
+      return fetch(p, { method: 'HEAD', cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.ok; }, function () { return false; });
+    })).then(function (r) {
+      var ok = r[0] && r[1];
+      if (ok) try { sessionStorage.setItem('ggsx_pages_live', '1'); } catch (e) {}
+      return ok;
+    });
+  }
+  function hideTabs() {
+    if (!LIVE || here() !== 'shop') return;
+    var c = M.copy;
+    Array.prototype.forEach.call(D.querySelectorAll('#ggsx-shop .gm-tab'), function (b) {
+      var t = b.textContent.trim();
+      if ((t === c.restaurants || t === c.pharmacy) && b.style.display !== 'none') b.style.display = 'none';
+    });
+  }
+  function onHash() {
+    var k = here();
+    if ((k === 'rest' || k === 'pharm') && /^#basket/.test(location.hash)) { P.go(P.shop + '#basket'); return; }
+    if (k === 'shop' && LIVE) {
+      var m = /^#(restaurants|pharmacy)(?:\/([^\/]+))?/.exec(location.hash);
+      if (m) P.go(m[1] === 'pharmacy' ? P.pharmacy : P.restaurants + (m[2] ? '#restaurants/' + m[2] : ''), true);
+    }
+  }
+
+  function boot() {
+    M = W.GGSX_MORE;
+    if (!M || !M.h || !M.load) { if (++tries < 60) setTimeout(boot, 200); return; }
+    var busy = false;
+    new MutationObserver(function () {
+      if (busy) return;
+      busy = true;
+      (W.requestAnimationFrame || setTimeout)(function () { busy = false; mount(); hideTabs(); });
+    }).observe(D.documentElement, { childList: true, subtree: true });
+    W.addEventListener('hashchange', onHash);
+    W.addEventListener('ggsx-basket', paintBasket);
+    W.addEventListener('storage', function (e) { if (e.key === BASKET) paintBasket(); });
+    mount();
+    detect().then(function (ok) { LIVE = ok; hideTabs(); if (here() === 'shop') onHash(); }, function () {});
+    onHash();
+  }
+  if (D.body) boot(); else D.addEventListener('DOMContentLoaded', boot);
+})();
+</script>

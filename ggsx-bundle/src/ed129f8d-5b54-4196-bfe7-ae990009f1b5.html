@@ -1,0 +1,264 @@
+<!-- GrocerGoSx Shop 38 Run Sheet Aisles v1.0 (31 Oct 2026): groups the shopper run sheet (/shop-now#run/…, Shop 4) by supermarket
+     section in walking order, chilled and frozen last, with a done count per section. Sections come from each item's category on
+     the Products tab; items the tab doesn't know are placed by keywords. Only the on-screen order changes (ticks, photos, live link
+     and summary keep the order's own lines). "Show list order" switches it off on that phone. Client live page untouched.
+     Body – end · All pages · Load on each new page · Essential. Settings: GGSX_AISLES below. -->
+<style>
+.gr-list.gra-on{display:flex;flex-direction:column}
+.gra-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:16px 4px 8px;font-family:Benzin,"Helvetica Neue",Arial,sans-serif;font-size:14px;line-height:1.25;color:#F4551B;text-transform:uppercase;letter-spacing:.02em}
+.gra-h small{flex:none;font-family:"Avenir Light",avenir-lt-w01_35-light1475496,Avenir,"Helvetica Neue",Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0;text-transform:none;color:#6b6b6b}
+.gra-h.done,.gra-h.done small{color:#1e7a3a}
+.gra-t{display:block;margin-top:8px;border:0;background:none;padding:0;font:inherit;font-size:13px;font-weight:700;color:#F4551B;cursor:pointer}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxRunAisles) return;
+  W.__ggsxRunAisles = 1;
+
+  var A = W.GGSX_AISLES = W.GGSX_AISLES || {
+    /* Walking order, top to bottom. */
+    sections: [
+      ['other', 'Not sorted'],
+      ['produce', 'Produce'],
+      ['bakery', 'Bakery & bread'],
+      ['breakfast', 'Breakfast, coffee & spreads'],
+      ['pantry', 'Pantry: pasta, cans & sauces'],
+      ['snacks', 'Snacks & sweets'],
+      ['drinks', 'Water, soda & juice'],
+      ['household', 'Household, baby & pets'],
+      ['alcohol', 'Beer, wine & spirits'],
+      ['dairy', 'Dairy, eggs & chilled'],
+      ['meat', 'Meat, deli & fish'],
+      ['frozen', 'Frozen'],
+      ['stops', 'Other stops']
+    ],
+    /* Products tab category, or "category|subcategory", in lower case → section. */
+    map: {
+      'fruit & vegetables': 'produce',
+      'bakery': 'bakery',
+      'bakery|milk & dairy': 'dairy',
+      'bakery|pancakes & syrups': 'breakfast',
+      'pantry': 'pantry',
+      'pantry|cereals & breakfast': 'breakfast',
+      'pantry|jams, jellies honey & nut butters': 'breakfast',
+      'pantry|powdered milk': 'breakfast',
+      'pantry|chips & savory snacks': 'snacks',
+      'pantry|snacks, nuts, chips & crisps': 'snacks',
+      'pantry|crackers': 'snacks',
+      'pantry|cookies & granola bars': 'snacks',
+      'pantry|candy & chocolate': 'snacks',
+      'beverages': 'drinks',
+      'beverages|coffee & tea': 'breakfast',
+      'baby & household': 'household',
+      'beer & seltzers': 'alcohol',
+      'wine': 'alcohol',
+      'spirits / liquor': 'alcohol',
+      'chilled foods': 'dairy',
+      'fresh foods': 'meat',
+      'frozen foods': 'frozen',
+      'villa kits & bundles': 'other'
+    },
+    /* Juices kept in the fridge, not the drinks aisle. */
+    chilled: /\b(simply (juice|orange|apple|lemonade|limeade|cranberry|cocktail|grapefruit|mixed berry|tropical|pineapple|watermelon|peach|mango|light)|florida'?s natural|bolthouse|naked juice)\b/i,
+    /* Items the Products tab doesn't know (renamed or typed in): the first rule that matches the name wins. */
+    words: [
+      ['drinks', /\b(ginger ale|root beer|non[- ]?alcoholic)\b/i],
+      ['dairy', /\b(cracker barrel|cream cheese|coffee[- ]?mate|creamer|half (and|&) half)\b/i],
+      ['alcohol', /\b(beer|lager|ale|ipa|seltzer|wine|prosecco|champagne|rum|vodka|tequila|whiske?y|gin|bourbon|cognac|brandy|liqueur)s?\b/i],
+      ['household', /\b(paper (towels?|plates|cups|napkins)|plastic (plates|cups|cutlery)|toilet|tissues?|napkins?|foil|trash|garbage|bin liners?|detergent|bleach|soap|shampoo|conditioner|toothpaste|diapers?|wipes|batter(y|ies)|charcoal|lighter|cleaner|sponges?|dish ?washing|cutlery|cat food|dog food)\b/i],
+      ['frozen', /\b(frozen|ice cream|popsicles?|ice)\b/i],
+      ['drinks', /\b(water|juice|soda|cola|coke|sprite|lemonade|limeade|iced tea|gatorade|powerade|energy drinks?|tonic)\b/i],
+      ['snacks', /\b(chips|crisps|crackers?|cookies?|pretzels?|popcorn|nuts|candy|chocolate|gum|jerky|salsa|dip)\b/i],
+      ['breakfast', /\b(coffee|tea|cereal|oatmeal|oats|granola|pancakes?|waffles?|syrup|jam|jelly|honey|peanut butter|nutella)\b/i],
+      ['pantry', /\b(pasta|penne|spaghetti|macaroni|noodles|rice|sauce|soup|beans|flour|sugar|oil|vinegar|salt|spices?|seasoning|ketchup|mustard|mayo(nnaise)?|dressing|broth|stock|canned|tuna|coconut milk|evaporated|condensed)\b/i],
+      ['bakery', /\b(bagels?|bread|buns?|rolls|croissants?|muffins?|tortillas?|wraps|pita|baguettes?|loaf|cakes?|donuts?)\b/i],
+      ['dairy', /\b(milk|cheese|butter|yogh?urt|eggs?|cream|creamer|margarine|hummus)\b/i],
+      ['meat', /\b(bacon|chicken|beef|pork|steaks?|ham|turkey|sausages?|salami|hot ?dogs?|fish|salmon|shrimp|lobster|mahi|ribs|burgers?|ground)\b/i],
+      ['produce', /\b(apples?|bananas?|oranges?|limes?|lemons?|strawberr(y|ies)|blueberr(y|ies)|raspberr(y|ies)|grapes?|melons?|watermelons?|mango(es)?|pineapples?|avocados?|tomato(es)?|onions?|potato(es)?|lettuce|salad|spinach|peppers?|cucumbers?|carrots?|garlic|cilantro|parsley|basil|kale|broccoli|celery|mushrooms?|plantains?|fruit|vegetables?)\b/i]
+    ],
+    copy: { off: 'Show list order', on: 'Group by aisle' }
+  };
+
+  var SHOP = W.GGSX_SHOP || {},
+      SHEET = SHOP.sheetId || '1-h6W54Wbscz_5zMAVU0myRr0PCYoVW_sJZo4XWe2MXE',
+      TAB = (SHOP.tabs && SHOP.tabs.products) || 'Products',
+      CACHE = 'ggsx_shop_cache',   /* Shop 2's copy of the Products tab */
+      PREF = 'ggsx_aisles_off',    /* "1" = this phone shows the plain list order */
+      KEYS = {}, PMAP = null, WAIT = [], started = 0;
+  A.sections.forEach(function (s, i) { KEYS[s[0]] = i; });
+
+  function el(tag, attrs, kids) {
+    var e = D.createElement(tag), k;
+    for (k in attrs || {}) {
+      if (attrs[k] == null) continue;
+      if (k === 'class') e.className = attrs[k];
+      else if (k === 'text') e.textContent = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  }
+  function norm(s) { return String(s == null ? '' : s).toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function isOff() { try { return localStorage.getItem(PREF) === '1'; } catch (e) { return false; } }
+  function setOff(v) { try { if (v) localStorage.setItem(PREF, '1'); else localStorage.removeItem(PREF); } catch (e) {} }
+
+  /* ---- Products tab: category and subcategory per product ---- */
+  function parseCsv(text) {
+    var rows = [], row = [], cell = '', q = false, i, ch;
+    for (i = 0; i < text.length; i++) {
+      ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    var head = (rows.shift() || []).map(function (c) { return c.trim().toLowerCase(); });
+    return rows.map(function (r) { var o = {}; head.forEach(function (k, j) { o[k] = (r[j] || '').trim(); }); return o; });
+  }
+  function fromCache() {
+    try {
+      var c = JSON.parse(sessionStorage.getItem(CACHE) || 'null'), p = c && c.p;
+      if (!p || !p.length) return null;
+      for (var i = 0; i < p.length && i < 50; i++) if (p[i] && (p[i].category || p[i].cat)) return p;
+    } catch (e) {}
+    return null;
+  }
+  function build(rows) {
+    var m = {};
+    (rows || []).forEach(function (r) {
+      var n = r.product || r.name;
+      if (!n) return;
+      var v = [norm(r.category || r.cat), norm(r.subcategory || r.sub)], ex = norm(n) + '|' + norm(r.size), lo = norm(n);
+      if (!m[ex]) m[ex] = v;
+      if (!m[lo]) m[lo] = v;
+    });
+    return m;
+  }
+  function ready(rows) { PMAP = build(rows); WAIT.splice(0).forEach(function (f) { f(); }); }
+  function loadProducts() {
+    if (started) return;
+    started = 1;
+    var n = 0;
+    (function poll() {
+      var rows = fromCache();
+      if (rows) return ready(rows);
+      if (++n < 25) return setTimeout(poll, 400);
+      var url = 'https://docs.google.com/spreadsheets/d/' + SHEET + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent(TAB);
+      fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+        .then(function (t) { ready(parseCsv(t)); }, function () { ready([]); });
+    })();
+  }
+
+  /* ---- which section an item belongs to ---- */
+  function vendorOf(name) { var m = /\(([^()]+)\)\s*$/.exec(name); return m ? m[1].trim() : ''; }
+  function chill(k, name) { return k === 'drinks' && A.chilled && A.chilled.test(name) ? 'dairy' : k; }
+  function sectionOf(name, size) {
+    name = String(name || '');
+    var n = norm(name), v = PMAP && (PMAP[n + '|' + norm(size)] || PMAP[n]), k, i;
+    if (v) {
+      k = A.map[v[0] + '|' + v[1]] || A.map[v[0]];
+      if (k && KEYS[k] != null) return chill(k, name);
+    }
+    if (/^(pharmacy|laundry)\b/i.test(name) || vendorOf(name)) return 'stops';
+    if (A.chilled && A.chilled.test(name)) return 'dairy';
+    for (i = 0; i < A.words.length; i++) {
+      if (A.words[i][1].test(name) && KEYS[A.words[i][0]] != null) return chill(A.words[i][0], name);
+    }
+    return 'other';
+  }
+
+  /* The run sheet's order lines, read from the link the same way Shop 4 reads them: [name, size, qty, price, rule]. */
+  function orderLines() {
+    var m = /^#run\/([A-Za-z0-9_-]+)/.exec(location.hash);
+    if (!m) return null;
+    try {
+      var d = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))));
+      return d && d.i || null;
+    } catch (e) { return null; }
+  }
+  function itemName(it) {
+    var n = it.querySelector('.gr-it-n');
+    return n ? n.textContent.replace(/^\s*\d+\s*×\s*/, '') : '';
+  }
+
+  /* ---- grouping: CSS order only, so the items keep their place in the page for every other snippet ---- */
+  function counts(st) {
+    st.heads.forEach(function (h) {
+      var g = h.__graItems, done = 0;
+      g.forEach(function (it) { if (/(^|\s)(got|sub|out)(\s|$)/.test(it.className)) done++; });
+      var all = done === g.length, sm = h.querySelector('small'), txt = done + '/' + g.length + (all ? ' ✓' : '');
+      if (sm.textContent !== txt) sm.textContent = txt;
+      if (h.classList.contains('done') !== all) h.classList.toggle('done', all);
+    });
+  }
+  function apply(st) {
+    if (!D.body.contains(st.wrap)) return;
+    var list = st.list, items = Array.prototype.slice.call(list.querySelectorAll('.gr-item')), off = isOff();
+    st.heads.forEach(function (h) { if (h.parentNode) h.parentNode.removeChild(h); });
+    st.heads = [];
+    if (st.btn) st.btn.textContent = off ? A.copy.on : A.copy.off;
+    if (off || !items.length) {
+      list.classList.remove('gra-on');
+      items.forEach(function (it) { it.style.order = ''; });
+      return;
+    }
+    var L = orderLines(), useL = !!(L && L.length === items.length), groups = {};
+    items.forEach(function (it, i) {
+      var ln = useL ? L[i] : null,
+          k = ln ? sectionOf(ln[0], ln[1]) : sectionOf(itemName(it), '');
+      it.style.order = String(KEYS[k] * 1000 + 1 + i);
+      (groups[k] = groups[k] || []).push(it);
+    });
+    A.sections.forEach(function (sec, s) {
+      var g = groups[sec[0]];
+      if (!g) return;
+      var h = el('div', { class: 'gra-h', role: 'heading', 'aria-level': '3' }, [el('span', { text: sec[1] }), el('small')]);
+      h.style.order = String(s * 1000);
+      h.__graItems = g;
+      list.appendChild(h);
+      st.heads.push(h);
+    });
+    list.classList.add('gra-on');
+    counts(st);
+  }
+  function later(st) { clearTimeout(st.t); st.t = setTimeout(function () { apply(st); }, 60); }
+
+  function setup(wrap) {
+    if (wrap.__gra || wrap.classList.contains('gl-view') || !/^#run\//.test(location.hash)) return;
+    var list = wrap.querySelector('.gr-list');
+    if (!list || !list.querySelector('.gr-item')) return;
+    var st = wrap.__gra = { wrap: wrap, list: list, heads: [] }, pw = wrap.querySelector('.gr-pw');
+    if (pw) {
+      st.btn = el('button', { type: 'button', class: 'gra-t' });
+      st.btn.addEventListener('click', function () { setOff(!isOff()); apply(st); });
+      pw.appendChild(st.btn);
+    }
+    new MutationObserver(function (recs) {
+      var regroup = false, recount = false;
+      recs.forEach(function (r) {
+        if (r.type === 'childList') {
+          Array.prototype.forEach.call(r.addedNodes, function (x) { if (x.nodeType === 1 && x.classList.contains('gr-item')) regroup = true; });
+          Array.prototype.forEach.call(r.removedNodes, function (x) { if (x.nodeType === 1 && x.classList.contains('gr-item')) regroup = true; });
+        } else if (r.target.classList && r.target.classList.contains('gr-item')) recount = true;
+      });
+      if (regroup) later(st);
+      else if (recount) counts(st);
+    }).observe(list, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    if (PMAP) return apply(st);
+    var t = setTimeout(function () { apply(st); }, 2500);   /* keywords only, if the Products tab is slow */
+    WAIT.push(function () { clearTimeout(t); apply(st); });
+    loadProducts();
+  }
+
+  function scan() { Array.prototype.forEach.call(D.querySelectorAll('.gr-wrap'), setup); }
+  function start() {
+    scan();
+    new MutationObserver(scan).observe(D.body, { childList: true });
+    W.addEventListener('hashchange', function () { setTimeout(scan, 0); });
+  }
+  if (D.body) start(); else D.addEventListener('DOMContentLoaded', start);
+})();
+</script>

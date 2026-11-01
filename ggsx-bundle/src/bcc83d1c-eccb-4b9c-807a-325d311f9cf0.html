@@ -1,0 +1,168 @@
+<!-- v1.3 (27 Oct 2026): the checkout's run sheet field (run_sheet_e5b1) now carries the short grocergosx.com/shop-now#r/<code> link from Shop 19 v1.2 instead of the long #run/… link; opening it brings up the full run sheet. -->
+<!-- GrocerGoSx Shop 8 Live Core v1.1 (18 Oct 2026): settings and shared code for the client's live page. Holds GGSX_TRACK (the CMS
+     collection, the "Live order update" form, the live link field) plus the helpers Shop 9 (run sheet side) and Shop 10 (client page)
+     use: visitor access, reading and saving an order's ticks in the CMS collection GrocerGoSxLiveRuns (ticks and substitutions only:
+     no names, phones or addresses), and signing them with a key taken from the order link so outsiders can't fake an update.
+     At Shop Now checkout it adds the client's live link to the order (checkout form field live_link_4b8e) for the confirmation email.
+     Needs Shop 4 above it. v1.0.1: renamed from GGSX_LIVE / __ggsxLive to GGSX_TRACK / __ggsxLiveCore, because the Live Pricing
+     head snippet already owns those two names and that stopped this snippet from loading (Shop 9 and 10 read GGSX_TRACK).
+     v1.1: the record key comes from the order's own stamp (time, email, phone) rather than the whole link, store() patches only the
+     given fields (so the shopper's ticks and an edited list never overwrite each other) and encode() re-encodes an order link — for
+     the order changes of Shop 13–15.
+     Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<script>
+
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxLiveCore) return;
+  W.__ggsxLiveCore = 1;
+  var C = W.GGSX_TRACK = {
+    collection: 'GrocerGoSxLiveRuns',            /* Wix CMS collection holding each order's ticks */
+    formId: '42b57165-286e-4773-9c49-f12b23eb5252',                                  /* Wix Form "Live order update" (its automation emails the client) */
+    linkField: 'live_link_4b8e',                 /* Shop Now checkout form field that carries the client's live link */
+    linkFieldOn: true,                          /* true once that field exists on the checkout form */
+    clientId: 'b0274d30-48b0-4e8d-b352-2f70ff783547',
+    trackUrl: 'https://www.grocergosx.com/shop-now#track/',
+    whatsapp: '590690779119',                    /* GrocerGoSx number on the client's page */
+    emailAfter: 45                               /* seconds without edits before an update email goes out */
+  };
+
+  /* ---------- shared helpers (Shop 9 uses these too) ---------- */
+  function el(tag, attrs, kids) {
+    var e = D.createElement(tag), k, v;
+    for (k in attrs || {}) {
+      v = attrs[k];
+      if (v == null) continue;
+      if (k === 'class') e.className = v;
+      else if (k === 'text') e.textContent = v;
+      else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v);
+    }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  }
+  C.el = el;
+  C.hhmm = function (t) { var d = new Date(t), h = d.getHours(); return (h % 12 || 12) + ':' + ('0' + d.getMinutes()).slice(-2) + (h < 12 ? ' am' : ' pm'); };
+  C.when = function (c) {
+    var d = c.d ? new Date(c.d + 'T12:00:00Z') : null,
+        ds = d && !isNaN(d) ? d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) : (c.d || '');
+    return ds + (c.w ? ' · ' + c.w : '');
+  };
+  C.money = function (v) { var n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g, '')); return isNaN(n) ? '' : '$' + n.toFixed(2); };
+  C.itemName = function (ln) { return ln[0] + (ln[1] ? ' ' + ln[1] : ''); };
+  C.wa = function (phone, text) { return 'https://wa.me/' + String(phone || '').replace(/\D/g, '') + '?text=' + encodeURIComponent(text); };
+  C.sms = function (phone, text) { var p = String(phone || '').replace(/\D/g, ''); return 'sms:' + (p ? '+' + p : '') + '?&body=' + encodeURIComponent(text); };
+  C.decode = function (P) {
+    try { var o = JSON.parse(decodeURIComponent(escape(atob(P.replace(/-/g, '+').replace(/_/g, '/'))))); return o && o.i ? o : null; }
+    catch (e) { return null; }
+  };
+  C.fromHash = function (kind) { var m = new RegExp('^#' + kind + '/([A-Za-z0-9_-]+)').exec(location.hash); return m ? m[1] : ''; };
+
+  /* One status per item: '' waiting, 'got', 'out', or 'sub|name|price'. */
+  C.sigOf = function (S, i) {
+    var st = (S.s || {})[i] || '';
+    if (st === 'sub') return 'sub|' + String((S.n || {})[i] || '').trim() + '|' + String((S.p || {})[i] || '').trim();
+    return st === 'out' || st === 'got' ? st : '';
+  };
+  /* Items the client hasn't been told about yet: a new or changed substitution, an out-of-stock item, or one found after all. */
+  C.news = function (S, lines, seen) {
+    var out = [];
+    lines.forEach(function (ln, i) {
+      var now = C.sigOf(S, i), was = seen[i] || '';
+      if (!now || now === was) return;
+      if (now === 'got' && (was === '' || was === 'got')) return;
+      if (now.indexOf('sub||') === 0) return;      /* substitute not named yet */
+      out.push(i);
+    });
+    return out;
+  };
+  C.change = function (order, i, S) {
+    var ln = order.i[i], it = C.itemName(ln), st = (S.s || {})[i], rule = ln[4] || order.r || 'sub';
+    if (st === 'sub') {
+      var nm = String((S.n || {})[i] || '').trim(), pr = C.money((S.p || {})[i]),
+          instead = (nm || 'the closest match') + (pr ? ' (' + pr + ')' : '');
+      if (W.GGSX_ASK && W.GGSX_ASK.asked(i)) return it + " isn't available. We can get " + instead + ' instead. Tap Yes or No on your order page.';   /* Shop 20 */
+      return rule === 'ask'
+        ? it + " isn't available. We can get " + instead + " instead. Let us know if that's OK."
+        : it + " isn't available, so we're getting " + instead + ' instead.';
+    }
+    if (st === 'out') {
+      return it + " isn't available" + (rule === 'skip' ? ", so we'll leave it out as you asked."
+        : rule === 'ask' ? '. Would you like something else instead?' : " and there's no good match, so it's left out.");
+    }
+    return 'Good news: we found ' + it + ' after all.';
+  };
+
+  /* Wix visitor access (the site's Headless client) */
+  var TOK = 'ggsx_live_tok';
+  function token(fresh) {
+    var t = null;
+    if (!fresh) try { t = JSON.parse(sessionStorage.getItem(TOK) || 'null'); } catch (e) {}
+    if (t && t.exp > Date.now() + 60000) return Promise.resolve(t.v);
+    return fetch('https://www.wixapis.com/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: C.clientId, grantType: 'anonymous' }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.access_token) throw new Error('token');
+        try { sessionStorage.setItem(TOK, JSON.stringify({ v: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 })); } catch (e) {}
+        return j.access_token;
+      });
+  }
+  function api(method, url, body, again) {
+    return token(again).then(function (t) {
+      return fetch(url, { method: method, headers: { 'Content-Type': 'application/json', Authorization: t }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+    }).then(function (r) {
+      if (r.status === 401 && !again) return api(method, url, body, true);
+      if (r.status === 404) return null;
+      return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error('wix ' + r.status); return j; });
+    });
+  }
+  C.api = api;
+  var DATA = 'https://www.wixapis.com/wix-data/v2/items';
+  C.load = function (id) {
+    return api('GET', DATA + '/' + id + '?dataCollectionId=' + encodeURIComponent(C.collection)).then(function (j) { return j && j.dataItem ? j.dataItem.data : null; });
+  };
+  C.store = function (id, data) {
+    var mods = Object.keys(data).map(function (k) { return { fieldPath: k, action: 'SET_FIELD', setFieldOptions: { value: data[k] } }; });
+    return api('PATCH', DATA + '/' + id, { dataCollectionId: C.collection, patch: { dataItemId: id, fieldModifications: mods } }).then(function (j) {
+      if (j === null) throw new Error('new');
+      return j;
+    }).catch(function () {
+      return api('GET', DATA + '/' + id + '?dataCollectionId=' + encodeURIComponent(C.collection)).then(function (j) {
+        var cur = (j && j.dataItem && j.dataItem.data) || {}, out = {}, k;
+        for (k in cur) if (k.charAt(0) !== '_') out[k] = cur[k];
+        for (k in data) out[k] = data[k];
+        return api('POST', DATA + '/save', { dataCollectionId: C.collection, dataItem: { id: id, data: out } });
+      });
+    });
+  };
+
+  /* Signing: the order id and key come from the order link itself, which only the client and GrocerGoSx have. */
+  function bytes(s) { return new TextEncoder().encode(s); }
+  function hex(b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join(''); }
+  C.seed = function (P) {
+    var o = C.decode(P), c = (o && o.c) || {};
+    return o && o.t ? 'ggsx-order|' + o.t + '|' + String(c.e || '').trim().toLowerCase() + '|' + String(c.p || '').replace(/\D/g, '') : P;
+  };
+  C.encode = function (o) { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  C.keys = function (P) {
+    var s = crypto.subtle, S = C.seed(P);
+    return Promise.all([s.digest('SHA-256', bytes('ggsx-live-id|' + S)), s.digest('SHA-256', bytes('ggsx-live-key|' + S))]).then(function (r) {
+      return s.importKey('raw', r[1], { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']).then(function (key) { return { id: hex(r[0]).slice(0, 32), key: key }; });
+    });
+  };
+  C.sign = function (K, text) { return crypto.subtle.sign('HMAC', K.key, bytes(K.id + '|' + text)).then(hex); };
+
+  /* ---------- checkout: put the client's live link on the order ---------- */
+  D.addEventListener('ggsx-checkout-submit', function (e) {
+    if (!C.linkFieldOn) return;
+    var f = (e.detail || {}).fields, key = (W.GGSX_SUBS && W.GGSX_SUBS.t && W.GGSX_SUBS.t.sheet) || 'run_sheet_e5b1',
+        m = f && /#run\/([A-Za-z0-9_-]+)/.exec(f[key] || '');
+    if (m) {   /* v1.2: the short tracker link from Shop 19 (same link everywhere); the long one if Shop 19 isn't there */
+      var S = W.GGSX_SHORT;
+      f[C.linkField] = S && S.forToken ? S.forToken(m[1]) : C.trackUrl + m[1];
+      if (S && S.forRun) f[key] = S.forRun(m[1]);   /* v1.3: the run sheet field gets the short #r/ link (Shop 19 v1.2) instead of the long #run/… one */
+      if (S && S.make) S.make(C.trackUrl + m[1]).catch(function () {});
+    }
+  });
+})();
+</script>

@@ -1,0 +1,31 @@
+<!-- GrocerGoSx Shop 18 Phone Fix v1.0 (20 Oct 2026): the Shop Now checkout now sends every phone number in international format, so
+     the order form accepts it. A US visitor's order failed on 20 Oct because "(xxx) xxx-xxxx" went out as +xxxxxxxxxx. Numbers typed
+     without a country code: 10 digits (US, Canada, Dutch side 721…) get +1, local 7-digit Dutch-side numbers get +1 721, French
+     0690… / 0590… / 690… numbers get +590, 00… becomes +. Numbers typed with + are kept. Runs as Shop 3 sends the order
+     (ggsx-checkout-submit). Wix: Settings → Custom Code → Body – end · All pages · Load code on each new page · Essential. -->
+<script>
+(function () {
+  if (window.__ggsxPhoneFix) return;
+  window.__ggsxPhoneFix = 1;
+  function intl(raw) {
+    var s = String(raw || '').trim(), d = s.replace(/\D/g, '');
+    if (!d) return s;
+    if (/^\+/.test(s)) return '+' + d;
+    if (/^00/.test(d)) return '+' + d.slice(2);
+    if (d.length === 10 && /^0[56]90/.test(d)) return '+590' + d.slice(1);
+    if (d.length === 9 && /^[56]90/.test(d)) return '+590' + d;
+    if (d.length === 12 && /^590[56]90/.test(d)) return '+' + d;
+    if (d.length === 7) return '+1721' + d;
+    if (d.length === 10) return '+1' + d;
+    if (d.length === 11 && d.charAt(0) === '1') return '+' + d;
+    return '+' + d;
+  }
+  document.addEventListener('ggsx-checkout-submit', function (e) {
+    try {
+      var x = e.detail || {}, f = x.fields, k = (x.keys && x.keys.phone) || 'phone_8e4a', i = x.inputs && x.inputs.phone;
+      if (f && i) f[k] = intl(i.value);
+    } catch (err) {}
+  });
+  window.GGSX_PHONE = intl;
+})();
+</script>

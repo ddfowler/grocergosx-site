@@ -1,0 +1,62 @@
+WRAP Run Builder 1 Config & Style: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP App Shell: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 1 Config & Style: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 2 Engine: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Header Basket & Store Links: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 3 Checkout: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 4 Substitutions & Run Sheet: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 5 Restaurants & Pharmacy: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 6 Restaurant Menu: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Home 1 Config & Style: stmts=2 var=[] lexical=[] funcs=[] strict=false
+WRAP Home 2 Engine: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Partner Links: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Pages 2 Engine: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Pages 3 Texts: Villa Stocking & Packages: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Pages 5 Texts: Pricing & Service Area: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Pages 4 Texts: Yacht & Partners: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Pages 6 Kits & Partner Form: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Pages 7 Marinas, Estimator & Area Finder: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 7 Run Sheet Photos: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 8 Live Core: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 9 Live Run Sheet: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 10 Client Live Page: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 11 Restaurant & Pharmacy Pages: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 12 Checkout Polish: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 13 Order Changes Core: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 14 Order Changes: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 15 Order Editor: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Add to Home Screen: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Home 3 Auto-slide: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Footer Site Map: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP SEO Footnotes: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Pages 8 All Services: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Pages 9 Concierge Services: stmts=1 var=[] lexical=[] funcs=[] strict=false
+TEMPLATE Privacy Policy: non-JS script block type="text/html" id="gg-privacy-text" recreated as an element
+WRAP Privacy Policy: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 18 Phone Fix: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 20 Substitute Approval: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 21 Order Chat: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 22 Minimum Order: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 23 Dynamic Checkout: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 23 Dynamic Checkout: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 24 Laundry 2 Engine: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 25 Grand Total: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 24 Laundry 3 Checkout: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 26 Restaurant-only Fee & Client Codes: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 27 Restaurant Hours: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 28 Menu Search: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Site Menu Order: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 29 Restaurant Pages: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 30 Restaurant Addresses: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 31 Basket Fix: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 32 Restaurant Menu Bar: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 33 Fee Split & Checkout Totals: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 35 Sub-category Bar: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 36 Errands 1 Config & Style: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 36 Errands 1 Config & Style: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 36 Errands 2 Engine: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 36 Errands 3 Checkout: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 37 Live Driver Map: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 38 Run Sheet Aisles: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP SEO Content: stmts=1 var=[] lexical=[] funcs=[] strict=false
+BUNDLE PARSES OK

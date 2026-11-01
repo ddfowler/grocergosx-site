@@ -1,0 +1,86 @@
+<!-- GrocerGoSx Pages 7 v9 (25 Oct 2026): marinas, /pricing estimator (fees from GGSX_FEESET, Shop 34), area finder. Body end, all pages. -->
+<style>.gp-mar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.gp-mc{background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:22px 24px}
+.gp-mc ul{list-style:none;margin:0;padding:0}
+.gp-mc li{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid #f1ece6}
+.gp-mc li:first-child{border-top:0}
+.gp-mc li svg{flex:none;width:22px;height:22px;fill:none;stroke:var(--o);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gp-mc li b{display:block;font-size:15.5px}
+.gp-mc li small{display:block;color:var(--mute);font-size:13px}
+.gp-calc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+.gp-cin,.gp-cres{background:#fff;border:1.5px solid var(--line);border-radius:24px;padding:26px}
+.gp-cin{display:grid;gap:20px}
+.gp-cf{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.gp-cl{font-weight:700;font-size:15px}
+.gp-cur{display:flex;align-items:center;border:1.5px solid #cfc9c1;border-radius:12px;background:#fff;padding-left:14px;min-width:170px}
+.gp-cur:focus-within{outline:2px solid var(--o);outline-offset:1px;border-color:var(--o)}
+.gp-cur span{color:var(--mute);font-weight:700}
+#ggsx-page .gp-cur input{border:0;outline:0;background:none;width:130px;height:46px;padding:0 12px 0 6px;font-size:18px;font-weight:700}
+.gp-cf .gp-stp{display:inline-flex;align-items:center;border:2px solid var(--o);border-radius:999px;height:46px;background:#fff}
+#ggsx-page .gp-cf .gp-stp button{width:44px;height:100%;border:0;background:none;color:var(--o);font-size:22px;line-height:1;cursor:pointer;padding:0}
+.gp-cf .gp-stp span{min-width:26px;text-align:center;font-weight:700}
+.gp-seg{display:inline-flex;background:#f1ece6;border-radius:999px;padding:4px}
+#ggsx-page .gp-seg button{border:0;background:none;border-radius:999px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer;color:var(--mute)}
+#ggsx-page .gp-seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.gp-cout{margin:0}
+.gp-cout div{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.gp-cout div:first-child{border-top:0}
+.gp-cout dt small{display:block;color:var(--mute);font-size:13px;font-weight:400}
+.gp-cout dd{margin:0;font-weight:700;font-size:17px;white-space:nowrap}
+.gp-cout div.t{border-top:2px solid var(--ink);margin-top:4px;padding-top:16px}
+.gp-cout div.t dt{font-weight:700;font-size:17px}
+.gp-cout div.t dd{font-family:Benzin,sans-serif;font-size:24px;color:var(--o)}
+.gp-find{max-width:760px;margin-bottom:22px}
+.gp-fin{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #cfc9c1;border-radius:16px;padding:0 16px;box-shadow:0 4px 16px rgba(27,27,27,.06)}
+.gp-fin:focus-within{border-color:var(--o);outline:2px solid var(--o);outline-offset:1px}
+.gp-fin svg{flex:none;width:22px;height:22px;fill:none;stroke:var(--o);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#ggsx-page .gp-fin input{flex:1;min-width:0;border:0;outline:0;background:none;height:56px;font-size:17px}
+.gp-ares{display:grid;gap:8px;margin-top:10px}
+.gp-ahit{display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:12px 16px}
+.gp-ahit div{flex:1;min-width:0}
+.gp-ahit b{display:block}
+.gp-ahit small{display:block;color:var(--mute);font-size:13px}
+.gp-adot{flex:none;width:12px;height:12px;border-radius:50%;background:#1d4ed8}
+.gp-adot.french{background:#0f766e}
+.gp-afee{flex:none;font-weight:700;color:var(--o);white-space:nowrap}
+.gp-anone{background:#fff;border:1.5px dashed #d8d1c8;border-radius:14px;padding:14px 16px;color:#444}
+#ggsx-page .gp-anone a{color:var(--o);font-weight:700}
+.gp-map{position:relative;border-radius:24px;overflow:hidden;background:#e6efe9;border:1.5px solid var(--line);margin-bottom:22px}
+.gp-mapi{display:flex;align-items:center;gap:16px;padding:22px 24px;flex-wrap:wrap}
+.gp-mapi svg{flex:none;width:30px;height:30px;fill:none;stroke:#0f766e;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.gp-mapi p{flex:1;min-width:220px;color:#2f3b35}
+.gp-map iframe{display:block;width:100%;height:440px;border:0}
+.gp-acols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.gp-acol{background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:22px 24px}
+.gp-achips{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:8px 0 0;padding:0}
+.gp-achips li{font-size:14px;padding:6px 12px;border-radius:999px;background:#f6f3ee;border:1px solid var(--line)}
+.gp-apt{display:block;margin:20px 0 6px;font-size:15px}
+.gp-aplaces ul{list-style:none;margin:0;padding:0}
+.gp-aplaces li{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid #f1ece6;font-size:15px}
+.gp-aplaces li small{color:var(--mute);font-size:13px;text-align:right}
+@media (max-width:860px){.gp-mar{grid-template-columns:1fr}
+.gp-mc{padding:18px}
+.gp-calc{grid-template-columns:1fr}
+.gp-cin,.gp-cres{padding:20px 18px}
+.gp-acols{grid-template-columns:1fr}
+.gp-acol{padding:18px}
+.gp-aplaces li{flex-direction:column;gap:1px}
+.gp-aplaces li small{text-align:left}
+.gp-map iframe{height:340px}
+.gp-mapi{padding:18px}
+}</style><script>!function(){var e=window,a=(document,e.GGSX_PAGES=e.GGSX_PAGES||{});a.pages=a.pages||{},a.blocks=a.blocks||{};var t={
+Dutch:["Philipsburg|Great Bay|Front Street","Simpson Bay|Palapa","Maho|Maho Beach|Royal Islander","Cupecoy|Porto Cupecoy|Shore Pointe","Cole Bay","Pelican Key|Pelican|Billy Folly","Beacon Hill|Airport|SXM Airport","Pointe Blanche|Point Blanche","Dawn Beach|Westin","Oyster Pond (Dutch side)|Oyster Bay|Oyster Pond Dutch","Guana Bay","Cay Hill","Little Bay","Belair|Bel Air","Madame Estate","Mullet Bay","Indigo Bay","Dutch Lowlands","Almond Grove","Mary's Fancy","South Reward","St. Peters|Saint Peters","Sucker Garden","Middle Region","Dutch Quarter","Cay Bay","Dock Maarten|Bobby's"],
+French:["Marigot|Bellevue","Grand Case|Esplanade","Orient Bay|Baie Orientale|La Playa|Alamanda|Palm Court|Mont Vernon","Terres Basses|French Lowlands|Baie Longue|Baie Rouge|Plum Bay|Baie aux Prunes","Cul-de-Sac|Cul de Sac","Anse Marcel|Marquis","Oyster Pond (French side)|Captain Oliver's|Oyster Pond French","Sandy Ground","Nettle Bay|Baie Nettl\xe9|Nettl\xe9 Bay|Hommage","Concordia","Colombier","Friar's Bay|Friars Bay","Happy Bay","Pic Paradis","Quartier d'Orl\xe9ans|French Quarter|Orleans","Hope Estate","Le Galion|Galion","Rambaud","St. James|Saint James","Agr\xe9ment|Agrement"]
+},n=/resort|hotel|marina/i;a.blocks.calc=function(e,a){var t=a.h,n={goods:150,food:0,rest:0,stops:0,side:"Dutch",when:"Now"},i=t("dl",{class:"gp-cout"});function r(e,a,i){var r=t("span",{text:"0"});function s(a){n[e]=Math.max(0,Math.min(i,a)),r.textContent=String(n[e]),c()}return t("div",{class:"gp-cf"},[t("span",{class:"gp-cl",text:a}),t("div",{class:"gp-stp"},[t("button",{type:"button","aria-label":"Fewer",text:"−",onclick:function(){s(n[e]-1)}}),r,t("button",{type:"button","aria-label":"More",text:"+",
+onclick:function(){s(n[e]+1)}})])])}function u(e,i,r){var s=t("input",{type:"number",min:"0",step:"1",inputmode:"decimal",value:String(n[e]),"aria-label":r,oninput:function(){n[e]=Math.max(0,a.num(s.value)),c()}});return t("label",{class:"gp-cf"},[t("span",{class:"gp-cl",text:i}),t("div",{class:"gp-cur"},[t("span",{text:"$"}),s])])}function g(e,i,r){var s=t("div",{class:"gp-seg",role:"group","aria-label":r});return i.forEach((function(a){s.appendChild(t("button",{type:"button","data-v":a[0],class:a[0]===n[e]?"on":null,text:a[1],onclick:function(){n[e]=a[0],[].forEach.call(s.children,(function(t){t.classList.toggle("on",t.getAttribute("data-v")===n[e])})),c()}}))})),s}var o=g("side",[["Dutch","Dutch side"],["French","French side"]],"Island side"),w=g("when",[["Now","Same or next day"],["Planned","48 h ahead"]],"Booked");function l(e,a,n,i){return t("div",{class:i?"t":null},[t("dt",{},[e,n?t("small",{text:n}):null]),t("dd",{text:a})])}function c(){
+var F=window.GGSX_FEESET||{rate:.15,min:80,planned:70,max:120,minOrder:100,del:25,delFr:25,pickup:20,stop:20,rmin:10,rminFr:20,rdel:25,rdelFr:25},e=n.goods,f=n.food,p="Planned"===n.when,fr="French"===n.side,R=F.r?F.r(p,e>0||n.stops):F.rate,dl=F.d?F.d(p,fr):fr?F.delFr:F.del,mf=e>0||n.stops?p?F.planned:F.min:fr?F.rminFr:F.rmin,t=e+f>0?Math.min(Math.max(Math.round(R*100*(e+f))/100,mf),F.max):0,q=e>0&&e<F.minOrder,h=e>0||n.stops?F.onTop?dl:Math.min(dl,t):f?fr?F.rdelFr:F.rdel:0,t=t-(!F.onTop&&(e>0||n.stops)?h:0),s=0,r=e>0||f>0?n.rest:0,o=F.pickup*(e>0?r:Math.max(r-1,0)),c=F.stop*n.stops,d=e+f+t+h+o+c+s;i.innerHTML="",i.appendChild(l("Groceries",a.money(e),"GrocerGoSx prices")),f>0&&i.appendChild(l("Restaurant food",a.money(f),"menu price")),o>0&&i.appendChild(l("Restaurant delivery/waiting time",a.money(o),o/F.pickup+" \xd7 $"+F.pickup+(e>0?"":", first restaurant included"))),n.stops&&i.appendChild(l("Extra stops",a.money(c),n.stops+" \xd7 $"+F.stop)),
+i.appendChild(l("Taxes / Service Fee",q?"—":a.money(t),q?null:Math.round(R*100)+"%"+(!F.onTop&&(e>0||n.stops)?" with delivery":"")+(mf?", min $"+mf:"")+", max $"+F.max)),i.appendChild(l("Delivery Fee",h?a.money(h):"Free",n.side+" side")),q?i.appendChild(a.h("p",{class:"gp-note",text:"The shop basket minimum is $"+F.minOrder+" (taxes included). Add "+a.money(F.minOrder-e)+" more groceries to see your total."})):(i.appendChild(l("Total (service excl.)",a.money(d-t))),i.appendChild(l("Total (service incl.)",a.money(d),null,1)))}var d=t("div",{class:"gp-cin"},[u("goods","Groceries ($, at GrocerGoSx prices)","Groceries total in US dollars"),u("food","Restaurant food ($, menu price)","Restaurant food total in US dollars"),r("rest","Restaurant pickups",4),r("stops","Extra errand stops",3),t("div",{class:"gp-cf"},[t("span",{class:"gp-cl",text:"Booked"}),w]),t("div",{class:"gp-cf"},[t("span",{class:"gp-cl",text:"Delivering to"}),o])]);return c(),a.sec(e,[t("div",{class:"gp-calc"},[d,t("div",{class:"gp-cres"},[i,t("p",{class:"gp-note",text:"Estimate only. All prices include applicable taxes, and no fee is added after your quote. Delivery has its own line and the shop basket minimum is {{min_order}}; pickups and errands have no minimum. Bills, restaurant food and named items are passed on at cost, plus the same {{run_rate}} service fee."})])])])},a.blocks.areas=function(e,a){var i=a.h,r=[];function s(e){
+return String(e||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim()}function o(e){return"Free"}Object.keys(t).forEach((function(e){t[e].forEach((function(a){var t=a.split("|");r.push({name:t[0],kind:"Area",side:e,words:s(a.replace(/\|/g," "))})}))}));var l=i("input",{type:"search",placeholder:"e.g. Orient Bay, Simpson Bay Resort, Fort Louis",autocomplete:"off","aria-label":"Find your area"}),c=i("div",{
+class:"gp-ares","aria-live":"polite"});function d(){var e=s(l.value),t=e.split(" ").filter(Boolean);if(c.innerHTML="",!(e.length<2)){var n=r.filter((function(e){return t.every((function(a){return e.words.indexOf(a)>=0}))})).slice(0,6);n.length?n.forEach((function(e){c.appendChild(i("div",{class:"gp-ahit"},[i("span",{class:"gp-adot "+e.side.toLowerCase()}),i("div",{},[i("b",{text:e.name}),i("small",{text:e.kind+(e.area?" \xb7 "+e.area:"")+" \xb7 "+e.side+" side"})]),i("span",{class:"gp-afee",
+text:o(e.side)+" delivery"})]))})):c.appendChild(i("p",{class:"gp-anone"},["We couldn't find that one. ",a.link(a.wa("Hi GrocerGoSx, can you deliver to: "+l.value),"Message us the address")," and we'll confirm we deliver there."]))}}l.addEventListener("input",d);var p=i("div",{class:"gp-find"},[i("div",{class:"gp-fin"},[a.icon("pin"),l]),c]),u=i("div",{class:"gp-acols"});[["Dutch","Dutch side \xb7 Sint Maarten"],["French","French side \xb7 Saint-Martin"]].forEach((function(e){u.appendChild(i("div",{
+class:"gp-acol"},[i("div",{class:"gp-mh"},[i("b",{text:e[1]}),i("span",{text:o(e[0])+" delivery"})]),i("ul",{class:"gp-achips"},t[e[0]].map((function(e){return i("li",{text:e.split("|")[0]})}))),i("div",{class:"gp-aplaces","data-side":e[0]})]))}));var h=i("div",{class:"gp-map"},[i("div",{class:"gp-mapi"},[a.icon("map"),i("p",{text:"Dutch Sint Maarten is the southern side of the island; French Saint-Martin is the northern side."}),i("button",{type:"button",class:"gp-btn s",text:"Show the map",
+onclick:function(){h.innerHTML="",h.appendChild(i("iframe",{src:"https://maps.google.com/maps?q=Saint%20Martin%20island&z=12&output=embed",title:"Map of St. Maarten / St. Martin",loading:"lazy",referrerpolicy:"no-referrer-when-downgrade",allowfullscreen:""}))}})])]);return a.gviz("Places").then((function(e){var t=e.filter((function(e){return e.name&&n.test(e.type)&&a.on(e.active)}));t.forEach((function(e){var a=/fr/i.test(e.side)?"French":"Dutch";r.push({name:e.name,kind:e.type,area:e.area,
+side:a,words:s([e.name,e.type,e.area,e.keywords].join(" "))})})),[].forEach.call(u.querySelectorAll(".gp-aplaces"),(function(e){var a=t.filter((function(a){return(/fr/i.test(a.side)?"French":"Dutch")===e.getAttribute("data-side")}));a.length&&(e.appendChild(i("b",{class:"gp-apt",text:"Resorts, hotels & marinas"})),e.appendChild(i("ul",{},a.map((function(e){return i("li",{},[i("span",{text:e.name}),i("small",{text:e.type+(e.area?" \xb7 "+e.area:"")})])})))))})),l.value&&d()
+})).catch((function(){})),a.sec(e,[p,h,u])};var i=[["Simpson Bay Marina","Dutch","Simpson Bay"],["Isle de Sol Marina","Dutch","Simpson Bay"],["Yacht Club Port de Plaisance","Dutch","Cole Bay"],["Lagoon Marina","Dutch","Cole Bay"],["Bobby's Marina","Dutch","Philipsburg"],["Marina Fort Louis","French","Marigot"],["Marina Port la Royale","French","Marigot"],["Anse Marcel Marina (Port Lonvilliers)","French","Anse Marcel"]];a.blocks.marinas=function(e,a){var t=a.h,n=t("div",{class:"gp-mar"})
+;function r(e){n.innerHTML="",[["Dutch","Dutch side \xb7 Sint Maarten","Free"],["French","French side \xb7 Saint-Martin","Free"]].forEach((function(i){var r=e.filter((function(e){return e[1]===i[0]}));r.length&&n.appendChild(t("div",{class:"gp-mc"},[t("div",{class:"gp-mh"},[t("b",{text:i[1]}),t("span",{text:i[2]+" delivery"})]),t("ul",{},r.map((function(e){return t("li",{},[a.icon("boat"),t("span",{},[t("b",{text:e[0]}),e[2]?t("small",{text:e[2]}):null])])})))]))}))}return r(i),
+a.gviz("Places").then((function(e){var t=e.filter((function(e){return/marina/i.test(e.type)&&e.name&&a.on(e.active)})).map((function(e){return[e.name,/fr/i.test(e.side)?"French":"Dutch",e.area]}));t.length&&r(t)})).catch((function(){})),a.sec(e,[n,t("p",{class:"gp-note"},["Another marina, dock or anchorage? ",a.link(a.wa("Hi GrocerGoSx, can you deliver provisions to: "),"Message us")," and we'll confirm."])])},a.run&&a.run()}();</script>

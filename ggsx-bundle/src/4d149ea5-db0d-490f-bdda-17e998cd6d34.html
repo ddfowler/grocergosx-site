@@ -1,0 +1,210 @@
+<!-- GrocerGoSx Shop 35 Sub-category Bar v1.0.1 (26 Oct 2026): on Shop Now, a department's sub-categories (All · Baking Ingredients · Broths &
+     Bouillons …) sit in one tidy row instead of wrapping over several lines, and the row stays frozen at the top of the screen while the
+     client scrolls the products. Computers: arrows at either end slide the row, and the frozen row lines up with the department list and
+     the basket, which already stay put. Phones: swipe the row; it stays frozen under the shop's search bar. Tapping a sub-category in the
+     frozen row keeps the row where it is and shows that sub-category's products from the top. Needs Shop 1 and Shop 2 above it; switch it
+     off to go back to the wrapped chips. Body – end · All pages · Load code on each new page · Essential. -->
+<style>
+#ggsx-shop .gs-main .gs-subs{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+#ggsx-shop .gs-main .gs-subs::-webkit-scrollbar{display:none}
+#ggsx-shop .gs-main .gs-subs .gs-chip{flex:none}
+#ggsx-shop .gs-sb{position:sticky;top:var(--gs-sbt,84px);z-index:40;margin:-12px 0 6px;padding:8px 0 6px;background:var(--gs-sbg,#fff)}
+#ggsx-shop .gs-sb .gs-subs{--fl:0px;--fr:0px;margin:0 -4px;padding:4px;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%)}
+#ggsx-shop .gs-sb.gs-l .gs-subs{--fl:64px}
+#ggsx-shop .gs-sb.gs-r .gs-subs{--fr:64px}
+#ggsx-shop .gs-sb .gs-chip:hover{border-color:var(--o)}
+#ggsx-shop .gs-sb .gs-chip:focus-visible{outline:2px solid var(--o);outline-offset:2px}
+#ggsx-shop .gs-sba{position:absolute;top:50%;z-index:2;display:none;align-items:center;justify-content:center;width:34px;height:34px;margin-top:-16px;padding:0;border:1.5px solid #cfc9c1;border-radius:999px;background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(27,27,27,.14)}
+#ggsx-shop .gs-sba svg{display:block;width:16px;height:16px}
+#ggsx-shop .gs-sba:hover{border-color:var(--o);color:var(--o)}
+#ggsx-shop .gs-sba.p{left:0}
+#ggsx-shop .gs-sba.n{right:0}
+@media (min-width:861px) and (hover:hover){
+#ggsx-shop .gs-sb.gs-l .gs-sba.p,#ggsx-shop .gs-sb.gs-r .gs-sba.n{display:flex}
+}
+@media (min-width:861px){
+#ggsx-shop .gs-sb::before{content:"";position:absolute;left:-12px;right:-12px;bottom:100%;height:calc(var(--gs-sbt,84px) + 2px);background:inherit;opacity:0;transition:opacity .15s;pointer-events:none}
+#ggsx-shop .gs-sb.gs-stuck::before{opacity:1}
+#ggsx-shop .gs-sb.gs-stuck{box-shadow:0 12px 12px -14px rgba(27,27,27,.28)}
+}
+@media (max-width:860px){
+#ggsx-shop .gs-sb{margin:-8px -16px 10px;padding:2px 0 4px;background:var(--bg)}
+#ggsx-shop .gs-sb .gs-subs{margin:0;padding:4px 16px}
+#ggsx-shop .gs-sb.gs-l .gs-subs{--fl:28px}
+#ggsx-shop .gs-sb.gs-r .gs-subs{--fr:36px}
+#ggsx-shop .gs-sb.gs-stuck{box-shadow:0 10px 10px -10px rgba(27,27,27,.3)}
+}
+@media (prefers-reduced-motion:reduce){#ggsx-shop .gs-sb::before{transition:none}}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxSubBar) return;
+  W.__ggsxSubBar = 1;
+  var TXT = W.GGSX_SUB_BAR = {
+    label: 'Sub-categories',
+    prev: 'Earlier sub-categories',
+    next: 'More sub-categories',
+    step: 0.75,   /* how far an arrow slides the row, as a share of the row's width */
+    keep: true    /* a tap in the frozen row keeps the row frozen and shows the products from the top */
+  };
+  var BAR = null, HOST = null, gone = false, busy = false, ticking = false, keepUntil = 0, keepY = null;
+  var RO = W.ResizeObserver ? new ResizeObserver(function () { if (BAR) edges(BAR); }) : null;
+
+  function shop() { return D.getElementById('ggsx-shop'); }
+  function narrow() { return W.matchMedia ? W.matchMedia('(max-width:860px)').matches : W.innerWidth <= 860; }
+  function calm() { return !!(W.matchMedia && W.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  function sticky(cs) { return cs.position === 'sticky' || cs.position === '-webkit-sticky'; }
+  function arrow(d) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' +
+      (d < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7') + '"/></svg>';
+  }
+
+  /* where the row freezes: under the shop's search bar on phones; level with the department list and basket on computers */
+  function topLine(s) {
+    var t = 0, cs;
+    if (narrow()) {
+      var h = s.querySelector('.gs-head');
+      if (h && sticky(cs = getComputedStyle(h))) t = (parseFloat(cs.top) || 0) + h.getBoundingClientRect().height;
+      else {
+        var tb = D.querySelector('html.gg-m .gg-top');
+        t = tb && getComputedStyle(tb).display !== 'none' ? tb.getBoundingClientRect().height : 0;
+      }
+      return Math.max(0, Math.floor(t));
+    }
+    var n = s.querySelector('.gs-nav');
+    if (n && sticky(cs = getComputedStyle(n))) t = (parseFloat(cs.top) || 0) - 12;
+    return Math.max(0, Math.round(t));
+  }
+  function setTop(s) {
+    var v = topLine(s) + 'px';
+    if (s.style.getPropertyValue('--gs-sbt') !== v) s.style.setProperty('--gs-sbt', v);
+    return parseFloat(v);
+  }
+
+  /* arrows and faded edges only where the row has more to show */
+  function edges(sb) {
+    var r = sb.querySelector('.gs-subs');
+    if (!r || !r.clientWidth) return;
+    r.__sl = r.scrollLeft;
+    var max = r.scrollWidth - r.clientWidth;
+    sb.classList.toggle('gs-l', r.scrollLeft > 2);
+    sb.classList.toggle('gs-r', r.scrollLeft < max - 2);
+  }
+  /* the chosen sub-category is brought into view in the middle of the row */
+  function center(r) {
+    var on = r.querySelector('.gs-chip.on');
+    if (!on) return;
+    [].forEach.call(r.querySelectorAll('.gs-chip'), function (c) {
+      if (c === on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current');
+    });
+    var a = r.getBoundingClientRect(), b = on.getBoundingClientRect();
+    var x = r.scrollLeft + (b.left - a.left) - (r.clientWidth - b.width) / 2;
+    r.scrollLeft = Math.max(0, Math.min(x, r.scrollWidth - r.clientWidth));
+  }
+  function wrap(subs) {
+    var sb = D.createElement('div');
+    sb.className = 'gs-sb';
+    subs.parentNode.insertBefore(sb, subs);
+    sb.appendChild(subs);
+    subs.setAttribute('role', 'group');
+    subs.setAttribute('aria-label', TXT.label);
+    [-1, 1].forEach(function (d) {
+      var b = D.createElement('button');
+      b.type = 'button';
+      b.className = 'gs-sba ' + (d < 0 ? 'p' : 'n');
+      b.tabIndex = -1;
+      b.title = d < 0 ? TXT.prev : TXT.next;
+      b.setAttribute('aria-hidden', 'true');
+      b.innerHTML = arrow(d);
+      b.addEventListener('click', function () {
+        var dx = d * Math.max(140, subs.clientWidth * TXT.step);
+        try { subs.scrollBy({ left: dx, behavior: calm() ? 'auto' : 'smooth' }); } catch (e) { subs.scrollLeft += dx; }
+      });
+      sb.appendChild(b);
+    });
+    subs.addEventListener('scroll', function () { edges(sb); }, { passive: true });
+    if (RO) { RO.disconnect(); RO.observe(subs); }
+    return sb;
+  }
+
+  /* after a tap in the frozen row: keep the row frozen, the new products start right under it */
+  function target(s) {
+    var g = s.querySelector('.gs-main > .gs-grid');
+    if (!g || !BAR) return null;
+    var y = g.getBoundingClientRect().top + (W.pageYOffset || 0) - setTop(s) - BAR.offsetHeight -
+      (parseFloat(getComputedStyle(BAR).marginBottom) || 0);
+    var max = Math.max(D.documentElement.scrollHeight, D.body.scrollHeight) - W.innerHeight;
+    return Math.max(0, Math.round(Math.min(y, max)));
+  }
+  function keep(s) {
+    var y = target(s);
+    if (y == null) return;
+    W.scrollTo(0, y);
+    keepY = { until: Date.now() + 3500 };
+    [300, 800, 1500, 2500, 3400].forEach(function (ms) { setTimeout(settle, ms); });
+  }
+  /* the site redraws the page once after the first sub-category tap, which can shift things: line the products up again,
+     unless the client has started scrolling or typing in the meantime */
+  function settle() {
+    if (!keepY) return;
+    if (keepY.until < Date.now()) { keepY = null; return; }
+    var s = shop();
+    if (!s || !BAR || !s.contains(BAR)) return;
+    var y = target(s);
+    if (y != null && Math.abs(y - (W.pageYOffset || 0)) > 2) W.scrollTo(0, y);
+  }
+  function hands() { keepY = null; }
+
+  /* when the site redraws the page and the shop is put back, the row goes back to where it was */
+  function back() {
+    var r = BAR.querySelector('.gs-subs');
+    if (r && r.__sl != null && Math.abs(r.scrollLeft - r.__sl) > 1) r.scrollLeft = r.__sl;
+    edges(BAR);
+    stuckSoon();
+  }
+
+  function stuck() {
+    ticking = false;
+    var s = shop();
+    if (!BAR || !s || !s.contains(BAR)) return;
+    var t = setTop(s);
+    BAR.classList.toggle('gs-stuck', (W.pageYOffset || 0) > 0 && BAR.getBoundingClientRect().top <= t + 1);
+  }
+  function stuckSoon() { if (!ticking) { ticking = true; (W.requestAnimationFrame || setTimeout)(stuck); } }
+
+  function check() {
+    busy = false;
+    var s = shop();
+    if (!s) { gone = true; return; }
+    var moved = gone || s.parentNode !== HOST;
+    gone = false;
+    HOST = s.parentNode;
+    var subs = s.querySelector('.gs-main > .gs-subs');
+    if (subs) {
+      BAR = wrap(subs);
+      setTop(s);
+      center(subs);
+      edges(BAR);
+      if (keepUntil > Date.now()) { keepUntil = 0; keep(s); }
+      stuck();
+      return;
+    }
+    BAR = s.querySelector('.gs-main > .gs-sb');
+    if (BAR && moved) back();
+    if (BAR && keepY) settle();
+  }
+  function soon() { if (!busy) { busy = true; Promise.resolve().then(check); } }
+
+  D.addEventListener('click', function (e) {
+    var c = e.target && e.target.closest ? e.target.closest('#ggsx-shop .gs-sb .gs-chip') : null;
+    if (c && TXT.keep && BAR && BAR.classList.contains('gs-stuck')) keepUntil = Date.now() + 2000;
+  }, true);
+  ['wheel', 'touchstart', 'mousedown', 'keydown'].forEach(function (t) { W.addEventListener(t, hands, { capture: true, passive: true }); });
+  W.addEventListener('scroll', stuckSoon, { passive: true });
+  W.addEventListener('resize', function () { if (BAR) edges(BAR); stuckSoon(); });
+  new MutationObserver(soon).observe(D.body, { childList: true, subtree: true });
+  new MutationObserver(stuckSoon).observe(D.documentElement, { attributes: true, attributeFilter: ['class'] });
+  check();
+})();
+</script>

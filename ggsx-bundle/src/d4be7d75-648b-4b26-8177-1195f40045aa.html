@@ -1,0 +1,54 @@
+<!-- GrocerGoSx Site Menu Order v1.0 (24 Oct 2026): shows the site menu in this order, on the desktop menu panel and in the phone "More" sheet: Home · Shop Now · Restaurants · Pharmacy · Laundry · Services Hub · Pre-Arrival Villa Stocking · Stocking Packages · Yacht & Charter Provisioning · Concierge Services · How It Works · Pricing & Fees · Service Area · For Hosts & Managers · Contact. Pages not in the list go at the end in the Editor's order. The Wix menu is ordered with CSS only (its own HTML is left as it is); the More sheet's own list is sorted after the App Shell draws it. To change the order, edit GGSX_MENU_ORDER (page paths). Body – end · All pages · Load code on each new page · Essential. -->
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxMenuOrder) return;
+  W.__ggsxMenuOrder = 1;
+  var ORDER = W.GGSX_MENU_ORDER = [
+    '/', '/shop-now', '/restaurants', '/pharmacy', '/laundry',
+    '/services-hub', '/villa-stocking', '/stocking-packages', '/yacht-provisioning', '/concierge-services',
+    '/how-it-works', '/pricing', '/service-area', '/partners', '/contact'
+  ];
+
+  /* 1. Wix site menu: flex "order" per link, so the menu's own HTML is never moved */
+  var css = 'nav.navbar>ul>li{order:99}';
+  ORDER.forEach(function (p, i) {
+    var sel = p === '/'
+      ? 'a[href$="grocergosx.com"],a[href$="grocergosx.com/"]'
+      : 'a[href$="' + p + '"],a[href$="' + p + '/"]';
+    css += 'nav.navbar>ul>li:has(' + sel + '){order:' + (i + 1) + '}';
+  });
+  var st = D.createElement('style');
+  st.setAttribute('data-ggsx', 'menu-order');
+  st.textContent = css;
+  (D.head || D.documentElement).appendChild(st);
+
+  /* 2. Phone "More" sheet (App Shell): it copies the menu links in page order each time it opens, so sort that list */
+  function pathOf(a) {
+    try { return new URL(a.getAttribute('href'), location.href).pathname.replace(/\/+$/, '') || '/'; } catch (e) { return ''; }
+  }
+  function rank(a) { var i = ORDER.indexOf(pathOf(a)); return i < 0 ? 999 : i; }
+  function sortSheet(sheet) {
+    var list = sheet.lastElementChild;
+    if (!list || list.classList.contains('gg-sheet-h')) return;
+    var nav = [], kids = list.children;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].tagName === 'HR') break;
+      if (kids[i].tagName === 'A') nav.push(kids[i]);
+    }
+    if (nav.length < 2) return;
+    var sorted = nav.map(function (a, i) { return { a: a, r: rank(a), i: i }; })
+      .sort(function (x, y) { return x.r - y.r || x.i - y.i; });
+    if (sorted.every(function (s, i) { return s.a === nav[i]; })) return;
+    var after = nav[nav.length - 1].nextSibling;
+    sorted.forEach(function (s) { list.insertBefore(s.a, after); });
+  }
+  var tries = 0;
+  (function watch() {
+    var sheet = D.querySelector('.gg-sheet');
+    if (!sheet) { if (tries++ < 60) setTimeout(watch, 500); return; }
+    new MutationObserver(function () { sortSheet(sheet); }).observe(sheet, { childList: true, subtree: true });
+    sortSheet(sheet);
+  })();
+})();
+</script>

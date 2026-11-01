@@ -1,0 +1,212 @@
+<!-- GrocerGoSx Shop 21 Order Chat v1.0 (20 Oct 2026): a live chat between the shopper's run sheet (/shop-now#run/…) and the client's
+     live order page (/shop-now#track/…). A chat button sits at the bottom right of both pages (with a count of unread messages);
+     messages show up on the other side within a few seconds. They are stored on the order's CMS record (GrocerGoSxLiveRuns, fields
+     chs = shopper, chc = client), encrypted with a key that only the order link can produce, because that collection is readable by
+     visitors. A client's message also goes to the Wix Form "💬 Order chat" (push to your phone, with a link to the run sheet; at most
+     one push a minute per client). Needs Shop 8 (GGSX_TRACK). Wix: Settings → Custom Code → Body – end · All pages · Load code on each
+     new page · Essential. -->
+<style>
+#gch-btn{position:fixed;right:16px;bottom:calc(100px + env(safe-area-inset-bottom,0px));z-index:2147482000;width:58px;height:58px;border-radius:50%;border:0;background:#F4551B;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer;display:none;align-items:center;justify-content:center;padding:0}
+#gch-btn.on{display:flex}
+#gch-btn svg{width:28px;height:28px}
+#gch-btn b{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 6px;box-sizing:border-box;border-radius:11px;background:#1b1b1b;color:#fff;font:700 12px/22px Helvetica,Arial,sans-serif;text-align:center;display:none}
+#gch-btn b.on{display:block}
+#gch-pan{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:2147482001;width:min(380px,calc(100vw - 24px));height:min(560px,calc(100vh - 110px));background:#fff;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:none;flex-direction:column;overflow:hidden;color:#1b1b1b;font-family:inherit}
+#gch-pan.on{display:flex}
+.gch-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:#F4551B;color:#fff;font-weight:700;font-size:16px}
+.gch-h button{border:0;background:rgba(255,255,255,.22);color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;line-height:32px;cursor:pointer;padding:0}
+.gch-l{flex:1;overflow-y:auto;padding:12px;background:#f7f3ef;display:flex;flex-direction:column;gap:8px}
+.gch-m{max-width:80%;padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;border:1px solid #ece6df;align-self:flex-start}
+.gch-m.me{align-self:flex-end;background:#F4551B;color:#fff;border-color:#F4551B}
+.gch-m small{display:block;font-size:11px;opacity:.75;margin-top:3px}
+.gch-m.wait{opacity:.6}
+.gch-e{margin:auto;color:#7a7a7a;font-size:14px;text-align:center;padding:20px;line-height:1.45}
+.gch-x{color:#c62828;font-size:13px;padding:0 12px 8px;display:none}
+.gch-x.on{display:block}
+.gch-f{display:flex;gap:8px;padding:10px;border-top:1px solid #eee;background:#fff}
+.gch-f textarea{flex:1;resize:none;height:44px;max-height:110px;box-sizing:border-box;padding:11px 12px;border:1.5px solid #e5ddd5;border-radius:14px;font:inherit;font-size:16px;color:#1b1b1b;background:#fff}
+.gch-f button{border:0;background:#F4551B;color:#fff;border-radius:14px;padding:0 16px;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+@media (max-width:600px){#gch-pan{right:0;left:0;bottom:0;width:100%;height:80vh;border-radius:18px 18px 0 0}}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.GGSX_CHAT) return;
+  var CFG = {
+    formId: 'b529601f-0518-4d5a-ba3d-be0c362b70be',          /* Wix Form "💬 Order chat" (push to your phone) */
+    f: { message: 'message_c8t3', client: 'client_c8t3', order: 'order_c8t3', run: 'run_c8t3' },
+    runUrl: 'https://www.grocergosx.com/shop-now#run/',
+    fast: 4000, slow: 15000,                                   /* ms between checks: chat open / chat closed */
+    keep: 80, max: 600, pushGap: 60000,                        /* messages kept per side, characters per message, ms between pushes */
+    t: {
+      client: 'Chat with your shopper', shop: 'Chat with ', ph: 'Write a message…', send: 'Send', close: 'Close chat',
+      empty: 'Send a message here and it shows up on the other side within a few seconds.', fail: 'Not sent yet. Tap Send to try again.',
+      shopper: 'GrocerGoSx', open: 'Chat'
+    }
+  };
+  var cur = null, ui = null, lastPush = 0;
+  var enc = new TextEncoder(), dec = new TextDecoder();
+  function C() { return W.GGSX_TRACK; }
+  function b64(u8) { var s = ''; for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function unb64(s) { s = String(s || '').replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function chatKey(P) {   /* AES key from the order itself; the record id alone can't produce it */
+    return crypto.subtle.digest('SHA-256', enc.encode('ggsx-chat-key|' + C().seed(P)))
+      .then(function (h) { return crypto.subtle.importKey('raw', h, 'AES-GCM', false, ['encrypt', 'decrypt']); });
+  }
+  function seal(key, obj) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, enc.encode(JSON.stringify(obj)))
+      .then(function (ct) { return b64(iv) + '.' + b64(new Uint8Array(ct)); });
+  }
+  function unseal(key, s) {
+    if (!s) return Promise.resolve(null);
+    var p = String(s).split('.');
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(p[0]) }, key, unb64(p[1]))
+      .then(function (pt) { return JSON.parse(dec.decode(pt)); }, function () { return null; });
+  }
+  function mineField(me) { return me.side === 'shop' ? 'chs' : 'chc'; }
+  function readAll(me) {
+    return C().load(me.K.id).then(function (rec) {
+      rec = rec || {};
+      return Promise.all([unseal(me.key, rec.chs), unseal(me.key, rec.chc)]).then(function (r) {
+        var out = [];
+        ((r[0] && r[0].m) || []).forEach(function (m) { out.push({ s: 'shop', t: m.t, at: m.at }); });
+        ((r[1] && r[1].m) || []).forEach(function (m) { out.push({ s: 'client', t: m.t, at: m.at }); });
+        out.sort(function (a, b) { return a.at - b.at; });
+        return { all: out, mine: me.side === 'shop' ? ((r[0] && r[0].m) || []) : ((r[1] && r[1].m) || []) };
+      });
+    });
+  }
+
+  /* ---------- screen ---------- */
+  function el(tag, attrs, kids) { return C().el(tag, attrs, kids); }
+  function build() {
+    if (ui) return ui;
+    var icon = D.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('fill', 'none'); icon.setAttribute('stroke', '#fff'); icon.setAttribute('stroke-width', '2');
+    icon.innerHTML = '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" stroke-linejoin="round"/>';
+    var badge = el('b'), btn = el('button', { id: 'gch-btn', type: 'button', 'aria-label': CFG.t.open, onclick: function () { show(true); } }, [icon, badge]),
+        title = el('span'), list = el('div', { class: 'gch-l' }), err = el('div', { class: 'gch-x', text: CFG.t.fail }),
+        ta = el('textarea', { rows: '1', placeholder: CFG.t.ph, maxlength: String(CFG.max) }),
+        send = el('button', { type: 'button', text: CFG.t.send, onclick: function () { submit(); } }),
+        pan = el('div', { id: 'gch-pan', role: 'dialog' }, [
+          el('div', { class: 'gch-h' }, [title, el('button', { type: 'button', 'aria-label': CFG.t.close, text: '×', onclick: function () { show(false); } })]),
+          list, err, el('div', { class: 'gch-f' }, [ta, send])
+        ]);
+    ta.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } });
+    D.body.appendChild(btn); D.body.appendChild(pan);
+    ui = { btn: btn, badge: badge, pan: pan, title: title, list: list, err: err, ta: ta, send: send };
+    return ui;
+  }
+  function seenKey(me) { return 'ggsx_chat_seen:' + me.K.id + ':' + me.side; }
+  function seen(me, v) { try { if (v) localStorage.setItem(seenKey(me), String(v)); return +localStorage.getItem(seenKey(me)) || 0; } catch (e) { return 0; } }
+  function paint() {
+    var me = cur, u = ui;
+    if (!me || !u) return;
+    var msgs = me.msgs.concat(me.pending), other = me.side === 'shop' ? 'client' : 'shop', last = seen(me);
+    if (u.pan.classList.contains('on') && D.visibilityState === 'visible') {
+      var newest = 0;
+      me.msgs.forEach(function (m) { if (m.s === other && m.at > newest) newest = m.at; });
+      if (newest > last) last = seen(me, newest);
+    }
+    var unread = me.msgs.filter(function (m) { return m.s === other && m.at > last; }).length;
+    u.badge.textContent = unread > 9 ? '9+' : String(unread);
+    u.badge.classList.toggle('on', unread > 0);
+    if (unread > me.unread && me.side === 'shop' && navigator.vibrate) try { navigator.vibrate(200); } catch (e) {}
+    me.unread = unread;
+    var sig = JSON.stringify(msgs.map(function (m) { return [m.s, m.at, m.wait ? 1 : 0]; }));
+    if (u.list.__sig === sig) return;
+    var atEnd = u.list.scrollHeight - u.list.scrollTop - u.list.clientHeight < 60;
+    u.list.__sig = sig;
+    u.list.innerHTML = '';
+    if (!msgs.length) u.list.appendChild(el('div', { class: 'gch-e', text: CFG.t.empty }));
+    msgs.forEach(function (m) {
+      var mine = m.s === me.side, who = m.s === 'shop' ? CFG.t.shopper : ((me.order && me.order.c && me.order.c.f) || 'Client');
+      u.list.appendChild(el('div', { class: 'gch-m' + (mine ? ' me' : '') + (m.wait ? ' wait' : '') }, [m.t, el('small', { text: (mine ? '' : who + ' · ') + C().hhmm(m.at) })]));
+    });
+    if (atEnd || !u.list.__painted) u.list.scrollTop = u.list.scrollHeight;
+    u.list.__painted = 1;
+  }
+  function show(on) {
+    var u = build();
+    u.pan.classList.toggle('on', !!on);
+    u.btn.classList.toggle('on', !on && !!cur);
+    if (on) { u.list.__painted = 0; paint(); setTimeout(function () { u.ta.focus(); }, 60); refresh(); }
+    else schedule();
+  }
+
+  /* ---------- sending and checking ---------- */
+  function submit() {
+    var me = cur, u = ui, text = u.ta.value.trim().slice(0, CFG.max);
+    if (!me || !me.key || !text) return;
+    var msg = { s: me.side, t: text, at: Date.now(), wait: true };
+    me.pending.push(msg); u.ta.value = ''; u.err.classList.remove('on'); paint();
+    var field = mineField(me);
+    C().load(me.K.id).then(function (rec) { return unseal(me.key, (rec || {})[field]); }).then(function (o) {
+      var mine = ((o && o.m) || []).concat([{ t: msg.t, at: msg.at }]).slice(-CFG.keep);
+      return seal(me.key, { v: 1, m: mine }).then(function (s) { var d = {}; d[field] = s; return C().store(me.K.id, d); });
+    }).then(function () {
+      me.pending = me.pending.filter(function (m) { return m !== msg; });
+      me.msgs.push({ s: msg.s, t: msg.t, at: msg.at });
+      paint();
+      if (me.side === 'client') push(me, text);
+    }, function () {
+      me.pending = me.pending.filter(function (m) { return m !== msg; });
+      u.ta.value = text; u.err.classList.add('on'); paint();
+    });
+  }
+  function push(me, text) {   /* a client's message reaches your phone (at most one push a minute) */
+    if (Date.now() - lastPush < CFG.pushGap) return;
+    lastPush = Date.now();
+    var c = (me.order && me.order.c) || {}, f = CFG.f, d = {};
+    d[f.message] = text;
+    d[f.client] = ((c.f || '') + ' ' + (c.l || '')).trim() || 'Client';
+    d[f.order] = C().when(c);
+    d[f.run] = CFG.runUrl + me.P;
+    C().api('POST', 'https://www.wixapis.com/form-submission-service/v4/submissions', { submission: { formId: CFG.formId, submissions: d } }).catch(function () {});
+  }
+  function refresh() {
+    var me = cur;
+    if (!me || !me.key) return;
+    clearTimeout(me.timer);
+    readAll(me).then(function (r) {
+      if (me !== cur) return;
+      me.msgs = r.all;
+      paint();
+      schedule();
+    }, function () { if (me === cur) schedule(); });
+  }
+  function schedule() {
+    var me = cur;
+    if (!me) return;
+    clearTimeout(me.timer);
+    var open = ui && ui.pan.classList.contains('on');
+    me.timer = setTimeout(function () { if (me === cur && D.visibilityState === 'visible') refresh(); else schedule(); }, open ? CFG.fast : CFG.slow);
+  }
+  function route() {
+    var m = /^#(run|track)\/([A-Za-z0-9_-]+)/.exec(location.hash), side = m && (m[1] === 'run' ? 'shop' : 'client');
+    if (cur && (!m || cur.side !== side || C().seed(cur.P) !== C().seed(m[2]))) { clearTimeout(cur.timer); cur = null; }
+    if (cur && m) { cur.P = m[2]; cur.order = C().decode(m[2]) || cur.order; }   /* same order, list edited: keep the chat */
+    if (!m) { if (ui) { ui.btn.classList.remove('on'); ui.pan.classList.remove('on'); } return; }
+    if (cur) return;
+    var me = cur = { side: side, P: m[2], order: C().decode(m[2]), msgs: [], pending: [], unread: 0 };
+    Promise.all([C().keys(m[2]), chatKey(m[2])]).then(function (r) {
+      if (me !== cur) return;
+      me.K = r[0]; me.key = r[1];
+      var u = build(), c = (me.order && me.order.c) || {};
+      u.title.textContent = side === 'shop' ? CFG.t.shop + (c.f || 'the client') : CFG.t.client;
+      u.list.__sig = ''; u.list.__painted = 0;
+      if (!u.pan.classList.contains('on')) u.btn.classList.add('on');
+      refresh();
+    }, function () {});
+  }
+  function boot(n) {
+    if (!C() || !C().keys || !C().seed || !C().store || !W.crypto || !crypto.subtle) { if (n < 60) setTimeout(function () { boot(n + 1); }, 250); return; }
+    W.addEventListener('hashchange', route);
+    D.addEventListener('visibilitychange', function () { if (D.visibilityState === 'visible' && cur) refresh(); });
+    route();
+  }
+  W.GGSX_CHAT = { open: function () { show(true); } };
+  if (D.body) boot(0); else D.addEventListener('DOMContentLoaded', function () { boot(0); });
+})();
+</script>

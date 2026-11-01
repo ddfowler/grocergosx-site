@@ -1,0 +1,257 @@
+<!-- GrocerGoSx Shop 23 Dynamic Checkout v1.0 (23 Oct 2026): the checkout opens with contact details and one question ("Are you on the island yet?"); the rest of the form appears once it is answered. Arriving guests, and hosts ordering for a guest, then choose "Stock the unit before arrival" or "Wait until check-in", how we get in, and can add an optional flight number and landing time. The answers are written at the top of the order notes, so they show in the order emails, the run sheet, the client's live page and the Admin app. Needs Shop 3. Wording and options: window.GGSX_DYN below. -->
+<script>
+window.GGSX_DYN = {
+  anchor: "Are you on the island yet?",
+  anchorOpts: [
+    { id: "arrive", t: "Not yet, I'm arriving", d: "Ready for when you land" },
+    { id: "here", t: "Yes, I'm here", d: "Delivered to your door" },
+    { id: "guest", t: "I'm ordering for a guest", d: "Hosts and property managers" }
+  ],
+  guest: "Guest name(s) *",
+  guestHint: "Who we're stocking for",
+  handle: "How would you like it handled?",
+  handleOpts: [
+    { id: "stock", t: "Stock the unit before arrival", d: "Fridge and cupboards full on walk-in" },
+    { id: "wait", t: "Wait until check-in", d: "Message us once you're in and we head over" }
+  ],
+  access: "How do we get in?",
+  accessOpts: [
+    { id: "desk", t: "Front desk or reception", p: "Name the reservation is under" },
+    { id: "host", t: "Host or property manager", p: "Their name and number" },
+    { id: "code", t: "Lockbox or door code", p: "The code, and where the box is" },
+    { id: "tbd", t: "Not sure yet", p: "" }
+  ],
+  accessDetails: "Access details",
+  flight: "Flight number",
+  flightHint: "e.g. JB 1234",
+  landing: "Landing time",
+  optional: "optional",
+  dateArrive: "Arrival date *",
+  dateHere: "Delivery date *",
+  windowHelp: {
+    stock: "Pick the window you'd like it done in. If the unit isn't ready yet, we deliver as soon as it is.",
+    wait: "A rough window is fine. We deliver once you message us that you're in."
+  },
+  errors: {
+    anchor: "Let us know whether you're on the island yet.",
+    guest: "Add your guest's name.",
+    handle: "Choose stocking before arrival or waiting until check-in.",
+    access: "Tell us how we get in, or pick \u201cNot sure yet\u201d."
+  },
+  notes: {
+    here: "Already on the island.",
+    stock: "Stock the unit before arrival.",
+    wait: "Wait until check-in, then deliver (they'll message when they're in).",
+    access: "Access: "
+  }
+};
+</script>
+<style>
+.gc-dyn{display:flex;flex-direction:column;gap:12px}
+.gc-grp{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:#3a3a3a}
+.gc-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.gc-chips.c2{grid-template-columns:1fr 1fr}
+.gc-chip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:48px;margin:0;padding:11px 12px;text-align:left;font:inherit;font-size:15px;font-weight:400;color:#1b1b1b;background:#fff;border:1.5px solid #cfc9c1;border-radius:12px;cursor:pointer;-webkit-appearance:none;appearance:none}
+.gc-chip b{font-weight:700;font-size:15px;line-height:1.25}
+.gc-chip small{font-size:12px;line-height:1.35;color:#6b6b6b}
+.gc-chip[aria-checked="true"]{background:#F4551B;border-color:#F4551B;color:#fff}
+.gc-chip[aria-checked="true"] small{color:rgba(255,255,255,.88)}
+.gc-chip:focus-visible{outline:2px solid #F4551B;outline-offset:2px}
+.gc-grp.bad .gc-chip{border-color:#d93025}
+.gc-dyn .gc-f.bad input{border-color:#d93025;background:#fff6f5}
+.gc-dyn .gc-sub{display:none}
+.gc-dyn .gc-sub.on{display:flex;animation:gcDynIn .22s ease}
+@keyframes gcDynIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.gc-dyn .gc-sub.on{animation:none}}
+.gc-form.gc-dyn-wait>.gc-dyn~*{display:none!important}
+.gc-opt{font-style:normal;font-weight:400;color:#8a8a8a;margin-left:5px}
+.gc-dyn-help{font-weight:400;font-size:12px;line-height:1.4;color:#6b6b6b}
+.gc-dyn-help:empty{display:none}
+.gc-dyn-err{color:#d93025;font-size:14px;font-weight:400;line-height:1.4}
+.gc-dyn-err:empty{display:none}
+@media (max-width:860px){.gc-chips,.gc-chips.c2{grid-template-columns:1fr}}
+</style>
+<script>
+(function () {
+  if (window.__GGSX_DYN) return;
+  window.__GGSX_DYN = true;
+  var D = document, cfg = window.GGSX_DYN, S = {}, G = {}, st = {};
+
+  function el(tag, attrs, kids) {
+    var n = D.createElement(tag), k;
+    if (attrs) for (k in attrs) {
+      if (attrs[k] == null) continue;
+      if (k === "class") n.className = attrs[k];
+      else if (k === "text") n.textContent = attrs[k];
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? D.createTextNode(c) : c); });
+    return n;
+  }
+  function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+  function show(node, on) { if (node) node.classList.toggle("on", !!on); }
+  function clearErr() { if (S.dynErr) S.dynErr.textContent = ""; }
+  function label(text, input, optional) {
+    var span = el("span", { text: text });
+    if (optional) span.appendChild(el("i", { class: "gc-opt", text: cfg.optional }));
+    return el("label", { class: "gc-f" }, [span, input]);
+  }
+  function paint(grp, id) {
+    if (!grp) return;
+    var b = grp.querySelectorAll(".gc-chip");
+    for (var i = 0; i < b.length; i++) b[i].setAttribute("aria-checked", b[i].getAttribute("data-id") === id ? "true" : "false");
+  }
+  function chips(title, opts, key, cls) {
+    var grp = el("div", { class: "gc-grp" + (cls || ""), role: "radiogroup", "aria-label": title }, [el("span", { text: title })]);
+    var grid = el("div", { class: "gc-chips" + (opts.length === 4 ? " c2" : "") });
+    opts.forEach(function (o) {
+      var kids = [el("b", { text: o.t })];
+      if (o.d) kids.push(el("small", { text: o.d }));
+      grid.appendChild(el("button", {
+        type: "button", class: "gc-chip", role: "radio", "aria-checked": "false", "data-id": o.id,
+        onclick: function () {
+          st[key] = o.id;
+          if (key === "anchor") { st.handle = ""; st.access = ""; paint(G.handle, ""); paint(G.access, ""); }
+          if (key === "handle") { st.access = ""; paint(G.access, ""); }
+          paint(grp, o.id);
+          grp.classList.remove("bad");
+          clearErr();
+          apply();
+        }
+      }, kids));
+    });
+    grp.appendChild(grid);
+    return grp;
+  }
+  function input(name, type, hint, key) {
+    return el("input", {
+      type: type, name: name, placeholder: hint || null, autocomplete: "off",
+      oninput: function (e) { st[key] = e.target.value; e.target.closest(".gc-f").classList.remove("bad"); clearErr(); },
+      onchange: function (e) { st[key] = e.target.value; }
+    });
+  }
+
+  function apply() {
+    if (!S.form) return;
+    var a = st.anchor, arr = a === "arrive" || a === "guest", stock = arr && st.handle === "stock";
+    S.form.classList.toggle("gc-dyn-wait", !a);
+    show(G.guest, a === "guest");
+    show(G.handle, arr);
+    show(G.access, stock);
+    show(G.det, stock && st.access && st.access !== "tbd");
+    show(G.flight, arr);
+    if (S.dateLbl) S.dateLbl.textContent = arr ? cfg.dateArrive : cfg.dateHere;
+    if (S.help) S.help.textContent = (arr && cfg.windowHelp[st.handle]) || "";
+    var o = find(cfg.accessOpts, st.access || "");
+    if (S.detInp) S.detInp.placeholder = (o && o.p) || "";
+  }
+
+  function validate() {
+    var E = cfg.errors, a = st.anchor;
+    if (!a) return [E.anchor, G.anchor];
+    if (a === "here") return null;
+    if (a === "guest" && !(st.guest || "").trim()) return [E.guest, G.guest];
+    if (!st.handle) return [E.handle, G.handle];
+    if (st.handle === "stock" && !st.access) return [E.access, G.access];
+    return null;
+  }
+
+  function fmtDate(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || "");
+    return m ? new Date(+m[1], m[2] - 1, +m[3]).toDateString().replace(/ \d{4}$/, "") : "";
+  }
+  function fmtTime(v) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(v || "");
+    if (!m) return "";
+    var h = +m[1], ap = h >= 12 ? "PM" : "AM";
+    return (h % 12 || 12) + ":" + m[2] + " " + ap;
+  }
+  function prefix() {
+    var a = st.anchor, N = cfg.notes, L = [], line, ds, t, o;
+    if (!a) return "";
+    if (a === "here") return N.here || "";
+    line = (a === "guest" ? "For guest " + (st.guest || "").trim() + ". " : "") + "Arriving";
+    ds = fmtDate(S.in.date.value);
+    if (ds) line += " " + ds;
+    if ((st.flight || "").trim()) line += ", flight " + st.flight.trim();
+    t = fmtTime(st.land);
+    if (t) line += ", lands " + t;
+    L.push(line + ".");
+    if (N[st.handle]) L.push(N[st.handle]);
+    if (st.handle === "stock" && st.access) {
+      o = find(cfg.accessOpts, st.access);
+      L.push(N.access + (o ? o.t.toLowerCase() : st.access) + ((st.accessDet || "").trim() ? " (" + st.accessDet.trim() + ")" : "") + ".");
+    }
+    return L.join("\n");
+  }
+
+  function build(form, I) {
+    if (S.form || !form || !I || !I.address || !I.date || !I.win) return;
+    S.form = form; S.in = I;
+    var dyn;
+    try {
+      G.anchor = chips(cfg.anchor, cfg.anchorOpts, "anchor");
+      G.guest = label(cfg.guest, S.guestInp = input("ggsx_guest", "text", cfg.guestHint, "guest"));
+      G.guest.classList.add("gc-sub");
+      G.handle = chips(cfg.handle, cfg.handleOpts, "handle", " gc-sub");
+      G.access = chips(cfg.access, cfg.accessOpts, "access", " gc-sub");
+      G.det = label(cfg.accessDetails, S.detInp = input("ggsx_access", "text", "", "accessDet"), true);
+      G.det.classList.add("gc-sub");
+      G.flight = el("div", { class: "gc-row gc-sub" }, [
+        label(cfg.flight, S.flightInp = input("ggsx_flight", "text", cfg.flightHint, "flight"), true),
+        label(cfg.landing, S.landInp = input("ggsx_land", "time", null, "land"), true)
+      ]);
+      S.dynErr = el("div", { class: "gc-dyn-err", role: "alert" });
+      dyn = el("div", { class: "gc-dyn" }, [G.anchor, G.guest, G.handle, G.access, G.det, G.flight, S.dynErr]);
+      form.insertBefore(dyn, I.address.closest(".gc-f"));
+      S.help = el("small", { class: "gc-dyn-help" });
+      I.win.closest(".gc-f").appendChild(S.help);
+      S.dateLbl = I.date.closest(".gc-f").querySelector("span");
+      apply();
+    } catch (e) {
+      form.classList.remove("gc-dyn-wait");
+      if (dyn && dyn.parentNode) dyn.parentNode.removeChild(dyn);
+      S.form = null;
+      try { console.warn("[GGSX dyn]", e); } catch (x) {}
+    }
+  }
+  function reset() {
+    st = {};
+    [G.anchor, G.handle, G.access].forEach(function (g) { paint(g, ""); });
+    [S.guestInp, S.detInp, S.flightInp, S.landInp].forEach(function (i) { if (i) i.value = ""; });
+    clearErr();
+    apply();
+  }
+
+  D.addEventListener("ggsx-checkout-build", function (ev) { var d = ev.detail || {}; build(d.form, d.inputs); });
+  D.addEventListener("ggsx-checkout-sent", reset);
+  D.addEventListener("submit", function (ev) {
+    if (!S.form || ev.target !== S.form) return;
+    var bad = validate();
+    if (!bad) return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    if (S.dynErr) S.dynErr.textContent = bad[0];
+    var g = bad[1];
+    if (g) {
+      g.classList.add("bad");
+      try { g.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) { try { g.scrollIntoView(); } catch (x) {} }
+      var i = g.querySelector("input"); if (i) i.focus();
+    }
+  }, true);
+  D.addEventListener("ggsx-checkout-submit", function (ev) {
+    var d = ev.detail;
+    if (!d || !d.fields || !d.keys || !d.keys.notes) return;
+    var p = prefix(), k = d.keys.notes, own = d.fields[k] || "";
+    if (p) d.fields[k] = p + (own ? "\n" + own : "");
+  });
+  (function () {
+    var f = D.querySelector(".gc-form");
+    if (!f || S.form) return;
+    var I = {};
+    ["address", "date", "win"].forEach(function (n) { I[n] = f.querySelector('[name="' + n + '"]'); });
+    build(f, I);
+  })();
+})();
+</script>

@@ -1,0 +1,205 @@
+<!-- GrocerGoSx Shop 9 Live Run Sheet v1.2 (20 Oct 2026: "Send live link" and "Follow it live" use the short link from Shop 19; v1.1.1 17 Oct 2026; v1.1 adds the "Copy tracker link" button; v1.1.1 reads GGSX_TRACK from Shop 8 v1.0.1): the shopper side of the client's live page. On the run sheet
+     (/shop-now#run/…) every tap and every substitute name or price is saved to the client's page (Shop 10) within a second.
+     Substitutions, out-of-stock items and items found after all are emailed to the client through the "Live order update" form
+     45 seconds after you stop editing, and a bar offers the same message by WhatsApp or text. "Send live link" (WhatsApp, Text,
+     Copy) shares the client's page, and the run sheet's own "WhatsApp customer" message gets the link added. Ticks made on another
+     phone are picked up when the run sheet opens. Needs Shop 4 and Shop 8 above it.
+     Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<style>
+.gl-live{margin-top:12px;padding-top:12px;border-top:1px solid #efeae3}
+.gl-st{font-size:13px;color:#6b6b6b;margin-bottom:8px}
+.gl-st i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2f9e55;margin-right:6px;vertical-align:1px}
+.gl-st.wait i{background:#f0a24a}
+.gl-st.err i{background:#d93025}
+.gl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.gl-lbl{font-size:13px;font-weight:700;margin-right:2px}
+.gl-pill{min-height:36px;border:1.5px solid #cfc9c1;border-radius:999px;background:#fff;color:#1b1b1b;font:inherit;font-size:13px;font-weight:700;padding:0 14px;cursor:pointer}
+.gl-pill.main{background:#F4551B;border-color:#F4551B;color:#fff}
+.gl-bar{display:none;position:fixed;left:12px;right:12px;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:3;max-width:616px;margin:0 auto;background:#1b1b1b;color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+.gl-bar.on{display:block}
+.gl-bar p{margin:0 0 10px;font-size:14px;font-weight:700}
+.gl-bar .gl-pill{background:transparent;border-color:rgba(255,255,255,.4);color:#fff}
+.gl-bar .gl-pill.main{background:#F4551B;border-color:#F4551B}
+.gr-wrap.gl-with-bar .gr-body{padding-bottom:230px}
+.gl-toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:21;max-width:90vw;background:#1b1b1b;color:#fff;border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxLiveRun) return;
+  W.__ggsxLiveRun = 1;
+  var tries = 0;
+  (function boot() {
+    var C = W.GGSX_TRACK;
+    if (!C || !C.keys) { if (++tries < 40) setTimeout(boot, 250); return; }
+    main(C);
+  })();
+  function main(C) {
+    var el = C.el, api = C.api;
+    /* ---------- run sheet ---------- */
+    var CUR = null, TIMER = 0;
+    function waTitle() { return (W.GGSX_SUBS && W.GGSX_SUBS.copy && W.GGSX_SUBS.copy.wa) || 'WhatsApp customer'; }
+    function readState(ctx) { try { return JSON.parse(localStorage.getItem(ctx.skey) || 'null') || { s: {}, n: {}, p: {} }; } catch (e) { return { s: {}, n: {}, p: {} }; } }
+    function sent(ctx) { try { return JSON.parse(localStorage.getItem('ggsx_live_' + ctx.K.id) || 'null') || { em: {}, ms: {} }; } catch (e) { return { em: {}, ms: {} }; } }
+    function keep(ctx, N) { try { localStorage.setItem('ggsx_live_' + ctx.K.id, JSON.stringify(N)); } catch (e) {} }
+    function plain(S, N) { return JSON.stringify({ s: S.s || {}, n: S.n || {}, p: S.p || {}, em: N.em || {}, ms: N.ms || {} }); }
+    /* what the client was already told, as recorded by another phone or browser */
+    function mergeSent(ctx, R, S) {
+      var N = sent(ctx), changed = 0;
+      ['em', 'ms'].forEach(function (k) {
+        var src = R[k] || {}, i;
+        for (i in src) if (N[k][i] !== src[i] && (!(i in N[k]) || src[i] === C.sigOf(S, i))) { N[k][i] = src[i]; changed = 1; }
+      });
+      if (changed) keep(ctx, N);
+    }
+    function link(ctx) { return ctx.short || (C.trackUrl + ctx.P); }
+    function who(ctx) { return (ctx.order.c && ctx.order.c.f) || 'the client'; }
+    function setStatus(ctx, kind, text) { var s = ctx.ui && ctx.ui.st; if (s) { s.className = 'gl-st ' + kind; s.lastChild.textContent = text + (ctx.note || ''); } }
+    function toast(ctx, text) { var t = el('div', { class: 'gl-toast', role: 'status', text: text }); ctx.wrap.appendChild(t); setTimeout(function () { t.remove(); }, 3200); }
+
+    function push(ctx) {
+      if (!ctx.K) return;
+      if (ctx.busy) { ctx.again = 1; return; }
+      var S = readState(ctx), N = sent(ctx), body = plain(S, N);
+      if (body === ctx.last) { paint(ctx); schedule(ctx); return; }
+      ctx.busy = 1;
+      setStatus(ctx, 'wait', "Saving to the client's page…");
+      var at = Date.now(), state = JSON.stringify({ v: 1, s: S.s || {}, n: S.n || {}, p: S.p || {}, em: N.em, ms: N.ms, u: at });
+      C.sign(ctx.K, state).then(function (sig) { return C.store(ctx.K.id, { state: state, sig: sig, at: at }); }).then(function () {
+        ctx.last = body;
+        setStatus(ctx, 'ok', "Client's live page updated " + C.hhmm(at));
+      }, function () {
+        setStatus(ctx, 'err', 'Offline, will retry');
+        setTimeout(function () { push(ctx); }, 15000);
+      }).then(function () {
+        ctx.busy = 0;
+        if (ctx.again) { ctx.again = 0; push(ctx); }
+        paint(ctx); schedule(ctx);
+      });
+    }
+    function later(ctx, ms) { clearTimeout(ctx.deb); ctx.deb = setTimeout(function () { push(ctx); }, ms); }
+
+    function updateText(ctx, S, idx) { return idx.map(function (i) { return '• ' + C.change(ctx.order, i, S); }).join('\n'); }
+    function schedule(ctx) {
+      clearTimeout(TIMER);
+      if (!ctx.K || !C.formId || !ctx.email) return;
+      if (!C.news(readState(ctx), ctx.lines, sent(ctx).em).length) return;
+      TIMER = setTimeout(function () { email(ctx); }, C.emailAfter * 1000);
+    }
+    function email(ctx) {
+      var S = readState(ctx), idx = C.news(S, ctx.lines, sent(ctx).em), c = ctx.order.c || {};
+      if (!idx.length) return;
+      api('POST', 'https://www.wixapis.com/form-submission-service/v4/submissions', { submission: { formId: C.formId, submissions: {
+        first_name: c.f || 'there', email: ctx.email, delivery: C.when(c), update: updateText(ctx, S, idx), live_link: link(ctx) } } })
+        .then(function () {
+          var N = sent(ctx);
+          idx.forEach(function (i) { N.em[i] = C.sigOf(S, i); });
+          keep(ctx, N);
+          toast(ctx, 'Update emailed to ' + who(ctx));
+          push(ctx);
+        }, function () { TIMER = setTimeout(function () { email(ctx); }, 30000); });
+    }
+
+    function pendingMsg(ctx) { var S = readState(ctx); return { S: S, idx: C.news(S, ctx.lines, sent(ctx).ms) }; }
+    function paint(ctx) {
+      if (!ctx.K || !ctx.ui) return;
+      var p = pendingMsg(ctx), key = p.idx.map(function (i) { return i + ':' + C.sigOf(p.S, i); }).join(','),
+          on = !!p.idx.length && key !== ctx.hidden;
+      ctx.ui.bar.classList.toggle('on', on);
+      ctx.wrap.classList.toggle('gl-with-bar', on);
+      if (on) ctx.ui.barText.textContent = 'Tell ' + who(ctx) + ' about ' + (p.idx.length === 1 ? '1 change' : p.idx.length + ' changes') + '?' + (ctx.email && C.formId ? ' (email goes automatically)' : '');
+      ctx.key = key;
+    }
+    function message(ctx, via) {
+      var p = pendingMsg(ctx), c = ctx.order.c || {};
+      if (!p.idx.length) return;
+      var text = 'Hi' + (c.f ? ' ' + c.f : '') + ', GrocerGoSx here with an update while we shop:\n' + updateText(ctx, p.S, p.idx) + '\n\nFollow it live: ' + link(ctx);
+      markMessaged(ctx, p);
+      if (via === 'sms') location.href = C.sms(ctx.phone, text); else W.open(C.wa(ctx.phone, text), '_blank');
+    }
+    function markMessaged(ctx, p) {
+      p = p || pendingMsg(ctx);
+      var N = sent(ctx);
+      p.idx.forEach(function (i) { N.ms[i] = C.sigOf(p.S, i); });
+      keep(ctx, N); paint(ctx); push(ctx);
+    }
+    function share(ctx, via) {
+      var c = ctx.order.c || {}, text = 'Hi' + (c.f ? ' ' + c.f : '') + ", it's GrocerGoSx. You can follow your shop live here, with any substitutions as they happen: " + link(ctx);
+      if (via === 'copy') {
+        var ask = function () { W.prompt('Copy this tracker link for the client', link(ctx)); };
+        try { navigator.clipboard.writeText(link(ctx)).then(function () { toast(ctx, 'Tracker link copied: paste it to the client'); }, ask); } catch (e) { ask(); }
+      } else if (via === 'sms') location.href = C.sms(ctx.phone, text);
+      else W.open(C.wa(ctx.phone, text), '_blank');
+    }
+    function addLinkToMessage(ctx) {
+      var ta = ctx.wrap.querySelector('.gr-panel.open textarea'), t = ctx.wrap.querySelector('.gr-panel.open .gr-panel-h b');
+      if (ta && t && t.textContent === waTitle() && ta.value.indexOf(link(ctx)) < 0) ta.value += '\n\nFollow it live: ' + link(ctx);
+    }
+
+    function initRun(wrap) {
+      if (wrap.__gl) return;
+      var P = C.fromHash('run'), order = P && C.decode(P);
+      if (!order) return;
+      wrap.__gl = 1;
+      var c = order.c || {}, again = CUR && CUR.P === P,
+          ctx = { wrap: wrap, P: P, order: order, lines: order.i, skey: 'ggsx_run_' + P.length + '_' + P.slice(-24),
+                  phone: String(c.p || '').replace(/\D/g, ''),
+                  email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(c.e || '').trim()) ? String(c.e).trim() : '' };
+      if (again) { ctx.K = CUR.K; ctx.last = CUR.last; }
+      wrap.__glctx = ctx; CUR = ctx;
+      if (W.GGSX_SHORT) W.GGSX_SHORT.make(C.trackUrl + P).then(function (s) { ctx.short = s; }, function () {});
+      function pill(text, fn, main) { return el('button', { type: 'button', class: 'gl-pill' + (main ? ' main' : ''), text: text, onclick: fn }); }
+      var st = el('div', { class: 'gl-st wait' }, [el('i'), el('span', { text: "Client's live page: connecting…" })]),
+          barText = el('p'),
+          bar = el('div', { class: 'gl-bar', role: 'region', 'aria-label': 'Client update' }, [barText, el('div', { class: 'gl-row' }, [
+            pill('WhatsApp', function () { message(ctx, 'wa'); }, 1), pill('Text', function () { message(ctx, 'sms'); }),
+            pill('Later', function () { ctx.hidden = ctx.key; paint(ctx); })])]),
+          card = wrap.querySelector('.gr-card');
+      if (card) card.appendChild(el('div', { class: 'gl-live' }, [st, el('div', { class: 'gl-row' }, [
+        pill('Copy tracker link', function () { share(ctx, 'copy'); }, 1), pill('Send by WhatsApp', function () { share(ctx, 'wa'); }), pill('Send by text', function () { share(ctx, 'sms'); })])]));
+      wrap.appendChild(bar);
+      ctx.ui = { st: st, bar: bar, barText: barText };
+      ctx.note = !C.formId ? ' · email updates off' : !ctx.email ? ' · no email on this order' : '';
+      if (again) { setStatus(ctx, 'ok', "Client's live page on"); paint(ctx); return; }
+      if (!W.crypto || !crypto.subtle) { setStatus(ctx, 'err', 'Live page needs a secure (https) connection'); return; }
+      C.keys(P).then(function (K) {
+        ctx.K = K;
+        return C.load(K.id).then(function (rec) {
+          if (!rec) return null;
+          return C.sign(K, String(rec.state || '')).then(function (sig) { try { return sig === rec.sig ? JSON.parse(rec.state) : null; } catch (e) { return null; } });
+        }, function () { return false; });
+      }).then(function (R) {
+        var S = readState(ctx), local = Object.keys(S.s || {}).length || Object.keys(S.n || {}).length, flag = 'ggsx_live_adopt_' + ctx.K.id;
+        if (R) mergeSent(ctx, R, local ? S : R);
+        if (local) { push(ctx); return; }
+        if (R && Object.keys(R.s || {}).length && !sessionStorage.getItem(flag)) {
+          /* ticks made on another phone or browser: load them into this run sheet */
+          try { localStorage.setItem(ctx.skey, JSON.stringify({ s: R.s || {}, n: R.n || {}, p: R.p || {} })); sessionStorage.setItem(flag, '1'); location.reload(); return 'reload'; } catch (e) {}
+        }
+        if (R) ctx.last = plain(R, sent(ctx));
+        setStatus(ctx, R === false ? 'err' : 'ok', R === false ? 'Offline, will retry on your next tap' : R ? "Client's live page on" : "Client's live page ready: it fills in as you tick");
+      }).then(function (r) { if (r !== 'reload') { paint(ctx); schedule(ctx); } });
+    }
+
+    D.addEventListener('click', function (e) {
+      var t = e.target, w = t && t.closest && t.closest('.gr-wrap'), ctx = w && w.__glctx;
+      if (!ctx) return;
+      if (t.closest('.gr-b') || t.closest('.gr-reset')) later(ctx, 600);
+      else if (t.closest('.gr-foot .gr-btn') && !t.closest('.sec')) addLinkToMessage(ctx);
+      else if (t.closest('.gr-panel-b .gr-btn') && !t.closest('.sec')) {
+        var h = w.querySelector('.gr-panel.open .gr-panel-h b');
+        if (h && h.textContent === waTitle() && ctx.K) markMessaged(ctx);
+      }
+    });
+    D.addEventListener('input', function (e) {
+      var t = e.target, w = t && t.closest && t.closest('.gr-wrap'), ctx = w && w.__glctx;
+      if (ctx && t.closest('.gr-sub')) later(ctx, 1200);
+    });
+    D.addEventListener('visibilitychange', function () { if (D.visibilityState === 'visible' && CUR && CUR.K && D.body.contains(CUR.wrap)) schedule(CUR); });
+
+    function scan() { Array.prototype.forEach.call(D.querySelectorAll('.gr-wrap'), function (w) { if (!w.__gl) initRun(w); }); }
+    function start() { scan(); new MutationObserver(scan).observe(D.body, { childList: true }); }
+    if (D.body) start(); else D.addEventListener('DOMContentLoaded', start);
+  }
+})();
+</script>

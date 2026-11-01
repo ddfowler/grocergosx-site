@@ -1,0 +1,180 @@
+<!-- 23 Oct 2026 (v2): 15% service fee, min $80 ($70 planned/partner), max $120; delivery free; $100 minimum on shop orders (Shop 22); pass-through handling folded into the service fee. -->
+<!-- GrocerGoSx Shop 13 Order Changes Core v1.0.3 (24 Oct 2026: a "Laundry, wash & fold" line (Shop 24) is left out of the service fee and adds
+     $20 each way, laundry_fee_each_way) · v1.0.2 (19 Oct 2026; v1.0.2 fair pricing: flat shopping fee, $20 stops, 15% handling on restaurant
+     food; v1.0.1 moved the catalogue ranking here, H.rank): settings, texts and helpers for order changes after checkout (the client on
+     their live page, the shopper on the run sheet): island time and the client cut-off, fees/estimate from the sheet, catalogue search
+     data (Shop 2's Products copy or the sheet), change summaries. Shop 14 (engine) and Shop 15 (editor screen) build on it.
+     Wix: Settings → Custom Code → Body – end · All pages, Load code on each new page · Essential. -->
+<style>
+.ge-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #efeae3}
+.ge-pill{display:inline-flex;align-items:center;min-height:40px;border:1.5px solid #cfc9c1;border-radius:999px;background:#fff;color:#1b1b1b;font:inherit;font-size:14px;font-weight:700;padding:0 16px;cursor:pointer;text-decoration:none}
+.ge-pill.main{background:#F4551B;border-color:#F4551B;color:#fff}
+.ge-note{flex-basis:100%;font-size:13px;color:#6b6b6b;line-height:1.4;border:0!important;padding:0!important;background:none!important;border-radius:0!important}
+.ge-row a.ge-pill{color:#1b1b1b}
+.ge-banner{background:#1b1b1b;color:#fff;border-radius:16px;padding:12px 16px;margin-bottom:12px;font-size:14px;line-height:1.45}
+.ge-banner b{display:block;color:#F4551B;margin-bottom:2px}
+.ge-banner pre{white-space:pre-wrap;font:inherit;margin:6px 0 10px}
+.ge-banner button{border:0;border-radius:999px;background:#F4551B;color:#fff;font:inherit;font-weight:700;padding:8px 14px;cursor:pointer}
+.ge-toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:9700;max-width:90vw;background:#1b1b1b;color:#fff;border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.GGSX_EDIT) return;
+  var E = W.GGSX_EDIT = {
+    changeFormId: '8f33c5f7-a996-4e8c-9ae1-13eda9b1b332',        /* Wix Form "Order change" (client edits land there: email + Inbox) */
+    f: { first: 'first_name', last: 'last_name', email: 'email', phone: 'phone', delivery: 'delivery', changes: 'changes', lines: 'order_lines', sheet: 'run_sheet', live: 'live_link' },
+    u: { first: 'first_name', email: 'email', delivery: 'delivery', update: 'update', live: 'live_link' },   /* "Live order update" form (Shop 8 formId) */
+    runUrl: 'https://www.grocergosx.com/shop-now#run/',
+    tz: 'America/Lower_Princes', leadHours: 3, pollMs: 10000,
+    fees: { stop: 20, pickup: 20, shop: 80, pass: 0, vendors: {} },   /* fallbacks: the sheet's Settings tab wins (errand_stop_fee, restaurant_pickup_fee, shopping_fee, pass_through_rate) */
+    copy: {
+      edit: 'Edit order', editMine: 'Edit my order',
+      closedStarted: "We've finished shopping, so the list is locked. Need something else? Message us:",
+      closedLate: "We're inside {h} hours of your window, so the list is locked. Need something else? Message us:",
+      wa: 'WhatsApp', sms: 'Text', gotIt: 'Got it', updated: 'List updated',
+      bannerShop: 'GrocerGoSx updated your order', bannerClient: '{f} changed the order',
+      hello: 'Hi GrocerGoSx, about my order for {w}: ',
+      emailText: "We've updated your order:\n{t}\n\nYour live page always shows the current list.",
+      clientMsg: "Hi {f}, GrocerGoSx here — we've updated your order:\n{t}\n\nFollow it live: {l}",
+      added: '+ ', removed: '− ', arrow: ' → ', basket: 'Basket now ', items: ' items', item: ' item', est: ' · estimate incl. fees ', note: 'Note: ',
+      linesTotal: 'Basket total: ', linesEst: 'Estimate incl. fees: '
+    }
+  };
+  var H = E.h = {}, PROD = null;
+
+  H.el = function (tag, attrs, kids) {
+    var e = D.createElement(tag), k;
+    for (k in attrs || {}) { if (attrs[k] == null) continue; if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  };
+  H.money = function (v) { return '$' + (Math.round(v * 100) / 100).toFixed(2); };
+  H.nm = function (l) { return l[0] + (l[1] ? ' ' + l[1] : ''); };
+  H.withIds = function (lines) { return (lines || []).map(function (ln, i) { return [String(ln[0] || ''), String(ln[1] || ''), +ln[2] || 0, +ln[3] || 0, ln[4] || '', ln[5] || ('o' + i)]; }); };
+  H.same = function (a, b) { return JSON.stringify(H.withIds(a)) === JSON.stringify(H.withIds(b)); };
+  H.toast = function (text) { var t = H.el('div', { class: 'ge-toast', role: 'status', text: text }); D.body.appendChild(t); setTimeout(function () { t.remove(); }, 3200); };
+
+  /* island time and the client's cut-off */
+  H.now = function () {
+    try {
+      var o = {}, f = new Intl.DateTimeFormat('en-GB', { timeZone: E.tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      f.formatToParts(new Date()).forEach(function (p) { o[p.type] = p.value; });
+      var h = parseInt(o.hour, 10); if (h === 24) h = 0;
+      return { ymd: o.year + '-' + o.month + '-' + o.day, mins: h * 60 + parseInt(o.minute, 10) };
+    } catch (e) { var d = new Date(); return { ymd: d.toISOString().slice(0, 10), mins: d.getHours() * 60 + d.getMinutes() }; }
+  };
+  H.dayNo = function (ymd) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd || ''); return m ? Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5) : null; };
+  H.clientOpen = function (order, state) {
+    var s = (state && state.s) || {}, k, n = 0;   /* v1.1 (20 Oct 2026): clients can change the list until every item is ticked, also while you shop */
+    for (k in s) if (s[k]) n++;
+    return n && n >= ((order && order.i) || []).length ? { ok: false, why: 'started' } : { ok: true };
+    var c = order.c || {}, dn = H.dayNo(c.d), t = H.now();
+    if (dn == null) return { ok: true };
+    var m = /(\d{1,2}):(\d{2})\s*[–—-]/.exec(c.w || ''), start = dn * 1440 + (m ? (+m[1]) * 60 + (+m[2]) : 510);
+    if (H.dayNo(t.ymd) * 1440 + t.mins + E.leadHours * 60 >= start) return { ok: false, why: 'late' };
+    return { ok: true };
+  };
+
+  /* fees from the sheet (Settings tab) and the estimate */
+  H.settings = function (then) {
+    var M = W.GGSX_MORE;
+    if (!M || !M.load) return;
+    M.load().then(function (d) {
+      var s = (d && d.set) || {}, a = parseFloat(s.errand_stop_fee), b = parseFloat(s.restaurant_pickup_fee), f = parseFloat(s.shopping_fee), p = parseFloat(s.pass_through_rate), lh = parseFloat(s.lead_hours);
+      if (a >= 0) E.fees.stop = a; var rt = parseFloat(s.service_fee_rate), mx = parseFloat(s.service_fee_max); if (rt >= 0) E.fees.rate = rt; if (mx >= 0) E.fees.max = mx;
+      var lw = parseFloat(s.laundry_fee_each_way); if (lw >= 0) E.fees.laundry = lw;
+      if (b >= 0) E.fees.pickup = b;
+      if (f > 1) E.fees.shop = f;   /* dollars: the minimum fee, at service_fee_rate */
+      else if (f >= 0) { var sm = parseFloat(s.service_fee_min); E.fees.rate = f; E.fees.shop = sm >= 0 ? sm : 0; }   /* 25 Oct 2026: a percentage (25%) is the run's rate; service_fee_min is the minimum */
+      if (p >= 0 && p < 1) E.fees.pass = p;
+      if (lh >= 0 && lh < 72) E.leadHours = lh;
+      (d.vendors || []).forEach(function (v) { if (v.name) E.fees.vendors[String(v.name).toLowerCase()] = 1; });
+      if (then) then();
+    }).catch(function () {});
+  };
+  /* flat shopping fee (standard rate: the editor can't tell a planned order), $20 per restaurant on a grocery run (the first restaurant of a
+     pickup-only run is the main stop), a pharmacy stop only beside other stops, 15% handling on restaurant food */
+  H.estimate = function (lines, side) {
+    var F = (W.GGSX_RUN && W.GGSX_RUN.fees) || {}, del = 0,
+        sub = 0, n = 0, pharm = false, groc = false, food = 0, vend = {}, lau = 0, hasL = false;
+    lines.forEach(function (l) {
+      sub += l[2] * l[3]; n += l[2];
+      var m = /\(([^()]+)\)\s*$/.exec(l[0]), v = m ? m[1].trim().toLowerCase() : '';
+      if (/^laundry, wash/i.test(l[0])) { hasL = true; lau += l[2] * l[3]; }
+      else if (/^pharmacy\b/i.test(l[0])) pharm = true;
+      else if (v && E.fees.vendors[v]) { vend[v] = 1; food += l[2] * l[3]; }
+      else groc = true;
+    });
+    var nv = Object.keys(vend).length, fee = Math.min(Math.max(Math.round((sub - lau) * (E.fees.rate >= 0 ? E.fees.rate : 0.15) * 100) / 100, E.fees.shop >= 0 ? E.fees.shop : 80), E.fees.max >= 0 ? E.fees.max : 120),
+        extra = (groc ? nv : Math.max(nv - 1, 0)) * E.fees.pickup + (pharm && (groc || nv) ? E.fees.stop : 0) + Math.round(food * E.fees.pass * 100) / 100 + (hasL ? 2 * (E.fees.laundry >= 0 ? E.fees.laundry : 20) : 0);
+    return { sub: sub, n: n, fee: fee, del: del, extra: extra, total: sub + fee + del + extra };
+  };
+
+  /* the catalogue: Shop 2's copy of the Products tab, else the sheet */
+  function csv(text) {
+    var rows = [], row = [], cell = '', q = false, i, ch;
+    for (i = 0; i < text.length; i++) {
+      ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true; else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    var head = (rows.shift() || []).map(function (c) { return c.trim().toLowerCase(); });
+    return rows.map(function (r) { var o = {}; head.forEach(function (k, j) { o[k] = (r[j] || '').trim(); }); return o; });
+  }
+  H.products = function () {
+    if (PROD) return PROD;
+    var S = W.GGSX_SHOP || {}, id = S.sheetId || '1-h6W54Wbscz_5zMAVU0myRr0PCYoVW_sJZo4XWe2MXE', rows = null;
+    try { var c = JSON.parse(sessionStorage.getItem('ggsx_shop_cache') || 'null'); if (c && c.p && c.p.length) rows = c.p; } catch (e) {}
+    PROD = (rows ? Promise.resolve(rows) : fetch('https://docs.google.com/spreadsheets/d/' + id + '/gviz/tq?tqx=out:csv&headers=1&sheet=' + encodeURIComponent((S.tabs && S.tabs.products) || 'Products'), { cache: 'no-store' })
+      .then(function (r) { return r.text(); }).then(csv)).then(function (rows) {
+        return rows.filter(function (r) { return (r.product || r.name) && !/^(false|no|n|0)$/i.test(r.active || 'true') && !/^(false|no|n|0)$/i.test(r.in_stock || 'true'); })
+          .map(function (r) { var name = r.product || r.name; return { name: name, size: r.size || '', price: parseFloat(String(r.price || '').replace(/[^0-9.]/g, '')) || 0, img: r.image || '', q: (name + ' ' + (r.brand || '') + ' ' + (r.tags || '') + ' ' + (r.subcategory || '') + ' ' + (r.category || '')).toLowerCase(), sub: String(r.subcategory || '').toLowerCase(), cat: ((r.category || '') + ' ' + (r.tags || '')).toLowerCase() }; });
+      }).catch(function () { PROD = null; return []; });
+    return PROD;
+  };
+  /* best matches first: whole words in the name beat "milk" inside "Milky Way"; the subcategory (Milk & Dairy, Coffee & Tea…), category
+     and tags count; short names that are mostly the query win */
+  H.rank = function (rows, q, max) {
+    var ql = String(q || '').toLowerCase().trim(), t = ql.split(/\s+/).filter(Boolean);
+    if (!t.length) return [];
+    return rows.map(function (r) {
+      if (!t.every(function (w) { return r.q.indexOf(w) >= 0; })) return null;
+      var n = r.name.toLowerCase(), words = n.split(/[^a-z0-9]+/).filter(Boolean), s = 0, hit = 0;
+      t.forEach(function (w) {
+        var i = words.indexOf(w);
+        if (i >= 0) { s += 3 + (i === 0 ? 1 : 0); hit++; }
+        else if (words.some(function (x) { return x.indexOf(w) === 0; })) { s += 1.5; hit++; }
+        else if (n.indexOf(w) >= 0) s += 0.5;
+        if ((r.sub || '').indexOf(w) >= 0) s += 2; else if ((r.cat || '').indexOf(w) >= 0) s += 1;
+      });
+      if (n.indexOf(ql) >= 0) s += 1;
+      if (hit) s += Math.min(2, 2 * hit / words.length);
+      return { r: r, s: s };
+    }).filter(Boolean).sort(function (a, b) { return b.s - a.s || a.r.name.length - b.r.name.length || a.r.name.localeCompare(b.r.name); }).slice(0, max || 10).map(function (x) { return x.r; });
+  };
+
+  /* change summaries */
+  H.diff = function (old, nw, side) {
+    var byId = {}, seen = {}, out = [], c = E.copy;
+    old.forEach(function (l) { byId[l[5]] = l; });
+    nw.forEach(function (l) {
+      seen[l[5]] = 1; var o = byId[l[5]];
+      if (!o) out.push(c.added + l[2] + ' × ' + H.nm(l) + (l[3] ? ' (' + H.money(l[3]) + ' each)' : ''));
+      else if (o[2] !== l[2]) out.push(H.nm(l) + ': ' + o[2] + c.arrow + l[2]);
+    });
+    old.forEach(function (l) { if (!seen[l[5]]) out.push(c.removed + l[2] + ' × ' + H.nm(l)); });
+    var est = H.estimate(nw, side);
+    out.push(c.basket + H.money(est.sub) + ' (' + est.n + (est.n === 1 ? c.item : c.items) + ')' + c.est + H.money(est.total));
+    return { text: out.join('\n'), est: est };
+  };
+  H.fullText = function (lines, side) {
+    var est = H.estimate(lines, side), c = E.copy;
+    return lines.map(function (l) { return l[2] + ' × ' + H.nm(l) + ' — ' + H.money(l[2] * l[3]) + (l[4] ? ' · if unavailable: ' + l[4] : ''); }).join('\n') +
+      '\n\n' + c.linesTotal + H.money(est.sub) + ' (' + est.n + (est.n === 1 ? c.item : c.items) + ')\n' + c.linesEst + H.money(est.total);
+  };
+})();
+</script>
