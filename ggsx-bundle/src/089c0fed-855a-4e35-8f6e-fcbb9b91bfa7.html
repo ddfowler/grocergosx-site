@@ -1,3 +1,4 @@
+<!-- v1.3.4 (1 Nov 2026, bundle v1.2): runs once per visit. The site code runs again on every page change, and each run added another phone top bar, tab bar, search box and More menu (with their listeners) on top of the last ones: 17 of each after 17 pages. The bars already follow page changes through their own observer, so later runs now stop at the first line. -->
 <!-- v1.3.3 (27 Oct 2026): five CSS rules for the Run Builder page (removed from the site on 17 Oct) dropped. -->
 <!-- v1.3.2 (27 Oct 2026): paint() only writes the tab state and basket badge when they change; before, every repaint replaced the badge text, which the Header Basket snippet saw as a page change and answered in kind, so the two repainted each other about 60 times a second on every page. -->
 <!-- GrocerGoSx App Shell (phones): on screens 860px and under every page gets a slim orange top bar (logo, search, cart, account),
@@ -48,6 +49,7 @@ html.gg-m wow-image.gg-round,html.gg-m wow-image.gg-round img{border-radius:16px
 </style>
 <script>
 !function(){
+  if(window.__ggsxAppShellOn)return;window.__ggsxAppShellOn=1;
   var TABS=[{k:"home",t:"Home",h:"/",i:"home"},{k:"run",t:"Villa",h:"/villa-stocking",i:"run"},{k:"shop",t:"Shop",h:"/shop-now",i:"shop",m:/^\/(shop-now|category|product-page|cart-page)(\/|$)/},{k:"chat",t:"Chat",i:"chat"},{k:"more",t:"More",i:"more"}];
   var EXTRA=[{t:"Shop groceries",h:"/shop-now"},{t:"Restaurants",h:"/restaurants"},{t:"Pharmacy",h:"/pharmacy"},{t:"Villa stocking",h:"/villa-stocking"},{t:"Stocking packages",h:"/stocking-packages"},{t:"Yacht provisioning",h:"/yacht-provisioning"},{t:"For hosts & managers",h:"/partners"},{t:"Pricing & fees",h:"/pricing"},{t:"Service area",h:"/service-area"},{t:"Blog",h:"/blog"}];
   var WA="590690779119", LOGO="https://static.wixstatic.com/media/85c3c2_862c7c7deba142b5a50ca891db1246aa~mv2.png", BASKET="ggsx_basket", SHOP="/shop-now";

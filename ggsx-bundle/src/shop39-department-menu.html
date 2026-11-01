@@ -1,0 +1,122 @@
+<!-- GrocerGoSx Shop 39 Department Menu v1.0 (1 Nov 2026), bundle-only: it has no Custom Code copy in Wix; this file is its only source.
+     On computers, the Shop Now department list on the left shows the open department's sub-departments right under it
+    (All · Milk & Dairy · Cheese · …), so none of them hide inside the scrolling chip row. Phones keep the chip row only.
+    Add-on in the Shop 35 style: it watches the page and inserts the list after the Shop engine draws the department menu;
+    nothing in Shop 2 Engine changes. Texts in GGSX_DEPT_MENU. -->
+<style>
+@media (min-width:861px){
+#ggsx-shop .gs-nav{max-height:calc(100vh - 112px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#cfc9c1 transparent;--nt:0px;--nb:0px;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 var(--nt),#000 calc(100% - var(--nb)),transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 var(--nt),#000 calc(100% - var(--nb)),transparent 100%)}
+#ggsx-shop .gs-nav.gs-nt{--nt:22px}
+#ggsx-shop .gs-nav.gs-nb{--nb:36px}
+#ggsx-shop .gs-nav .gs-navsubs{display:flex;flex-direction:column;gap:1px;margin:2px 0 8px 14px;padding:4px 0 4px 10px;border-left:2px solid #f6c7b3}
+#ggsx-shop .gs-nav .gs-navsubs button{display:block;width:100%;text-align:left;border:0;background:none;padding:6px 10px;border-radius:10px;font-size:14px;font-weight:400;line-height:1.3;color:#3b3b3b;white-space:normal}
+#ggsx-shop .gs-nav .gs-navsubs button:hover{background:#fff;color:var(--ink)}
+#ggsx-shop .gs-nav .gs-navsubs button.on{background:#fff;color:var(--o);font-weight:700;box-shadow:inset 0 0 0 1.5px var(--o)}
+#ggsx-shop .gs-nav .gs-navsubs button:focus-visible{outline:2px solid var(--o);outline-offset:1px}
+}
+@media (max-width:860px){
+#ggsx-shop .gs-navsubs{display:none}
+}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxDeptMenu) return;
+  W.__ggsxDeptMenu = 1;
+  var TXT = W.GGSX_DEPT_MENU = {
+    all: 'All',                       /* first entry: the whole department */
+    label: 'Sub-departments of '      /* screen-reader name of the list, followed by the department */
+  };
+  var busy = false;
+
+  /* same slug rule as the Shop engine: "Dairy & Eggs" → dairy-and-eggs */
+  function slug(t) { return String(t || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+  function narrow() { return W.matchMedia ? W.matchMedia('(max-width:860px)').matches : W.innerWidth <= 860; }
+  function go(h) {
+    if (location.hash.replace(/^#/, '') === h) return;   /* already there */
+    location.hash = h;                                    /* the Shop engine listens for hashchange and redraws */
+  }
+  function remove(el) { if (el && el.parentNode) el.parentNode.removeChild(el); }
+
+  /* faded top/bottom edges tell the client the menu scrolls when a long department (Pantry) is open */
+  function edges(nav) {
+    var more = nav.scrollHeight > nav.clientHeight + 1;
+    nav.classList.toggle('gs-nt', more && nav.scrollTop > 2);
+    nav.classList.toggle('gs-nb', more && nav.scrollTop < nav.scrollHeight - nav.clientHeight - 2);
+  }
+  /* the menu never runs past the bottom of the window: it scrolls inside instead (it sits lower on the page until it sticks) */
+  function fit(nav) {
+    if (narrow()) { if (nav.style.maxHeight) nav.style.maxHeight = ''; return; }
+    var top = nav.getBoundingClientRect().top;
+    var v = Math.max(240, Math.floor(W.innerHeight - Math.max(top, 0) - 16)) + 'px';
+    if (nav.style.maxHeight !== v) nav.style.maxHeight = v;
+  }
+  var ticking = false;
+  function later() { if (!ticking) { ticking = true; (W.requestAnimationFrame || setTimeout)(function () { ticking = false; var n = D.querySelector('#ggsx-shop .gs-nav'); if (n) { fit(n); edges(n); } }); } }
+  function watch(nav) {
+    if (nav.__ggsxNavEdges) return;
+    nav.__ggsxNavEdges = 1;
+    nav.addEventListener('scroll', function () { edges(nav); }, { passive: true });
+  }
+  /* scroll the menu only as far as needed: the open department stays in view, and so does the chosen sub-department */
+  function reveal(nav, on, box) {
+    try {
+      if (nav.scrollHeight <= nav.clientHeight + 1) return;
+      var cur = box.querySelector('button.on') || box.firstElementChild;
+      var top = on.offsetTop - 8, bottom = cur ? cur.offsetTop + cur.offsetHeight + 8 : top;
+      if (top < nav.scrollTop) nav.scrollTop = Math.max(0, top);
+      else if (bottom > nav.scrollTop + nav.clientHeight) nav.scrollTop = Math.max(top, bottom - nav.clientHeight);
+    } catch (e) {}
+  }
+
+  function check() {
+    busy = false;
+    var s = D.getElementById('ggsx-shop');
+    if (!s) return;
+    var nav = s.querySelector('.gs-nav');
+    if (!nav) return;
+    watch(nav);
+    fit(nav);
+    draw(s, nav);
+    if (narrow()) nav.classList.remove('gs-nt', 'gs-nb'); else edges(nav);
+  }
+  function draw(s, nav) {
+    var old = nav.querySelector('.gs-navsubs');
+    var m = /^#?d\/([^\/]+)(?:\/([^\/]+))?/.exec(location.hash || '');
+    var on = m && !narrow() ? nav.querySelector('.gs-navb.on') : null;
+    if (!on || on === nav.firstElementChild) { remove(old); return; }   /* home, search, or "All departments" */
+    var chips = [].slice.call(s.querySelectorAll('.gs-main .gs-subs .gs-chip'));
+    if (chips.length < 2) { remove(old); return; }                        /* a department with no sub-departments */
+    var dslug = m[1], sub = m[2] || '';
+    var names = chips.slice(1).map(function (c) { return c.textContent.trim(); });
+    var sig = dslug + '|' + sub + '|' + names.join('\u0001');
+    if (old && old.getAttribute('data-sig') === sig && old.previousElementSibling === on) return;   /* already drawn */
+    remove(old);
+    var box = D.createElement('div');
+    box.className = 'gs-navsubs';
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', TXT.label + ((on.firstChild && on.firstChild.textContent) || '').trim());
+    box.setAttribute('data-sig', sig);
+    function item(text, h, isOn) {
+      var b = D.createElement('button');
+      b.type = 'button';
+      b.className = 'gs-navs' + (isOn ? ' on' : '');
+      b.textContent = text;
+      if (isOn) b.setAttribute('aria-current', 'true');
+      b.addEventListener('click', function () { go(h); });
+      box.appendChild(b);
+    }
+    item(TXT.all, 'd/' + dslug, !sub);
+    names.forEach(function (n) { var sl = slug(n); item(n, 'd/' + dslug + '/' + sl, !!sub && sl === sub); });
+    on.parentNode.insertBefore(box, on.nextSibling);
+    reveal(nav, on, box);
+  }
+  function soon() { if (!busy) { busy = true; Promise.resolve().then(check); } }
+
+  new MutationObserver(soon).observe(D.body, { childList: true, subtree: true });
+  W.addEventListener('hashchange', soon);
+  W.addEventListener('resize', soon);
+  W.addEventListener('scroll', later, { passive: true });
+  check();
+})();
+</script>

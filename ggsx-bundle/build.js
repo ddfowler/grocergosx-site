@@ -42,8 +42,62 @@ function topLevelInfo(code) {
 }
 
 const parts = [];
-parts.push(`/*! GrocerGoSx site code bundle v${version} — built ${new Date().toISOString()} from ${order.length} Wix Custom Code snippets (Body end). Source snippets are kept, disabled, in Wix Settings → Custom Code; the restore copies live in the ggsx-bundle/src folder of the repo. */`);
+parts.push(`/*! GrocerGoSx site code bundle v${version} — built ${new Date().toISOString()} from ${order.length} modules in ggsx-bundle/src (the 60 former Body-end Custom Code snippets, kept disabled in Wix as restore copies, plus bundle-only modules). The bundle runs again on every page change; since v1.2 each module's window/document listeners and observers are tracked, and when a module registers the same one again on the next page, the copy from its previous run is removed, so nothing piles up. */`);
 parts.push(`(function(){var W=window;W.__GGSX_BUNDLE=W.__GGSX_BUNDLE||{};W.__GGSX_BUNDLE.v=${JSON.stringify(version)};W.__GGSX_BUNDLE.runs=(W.__GGSX_BUNDLE.runs||0)+1;})();`);
+// v1.2: per-module registration tracking. __ggsxB(key) / __ggsxE(key) bracket each module's synchronous run; listeners added to
+// window, document, <html> or <body> and MutationObservers created during that run are recorded with a
+// signature (target, event type, capture flag, hash of the handler's source). When the module's next run (next page) registers
+// the same signature again, the previous run's copy is removed / disconnected. Registrations a module makes only once
+// (guarded by its own window flag) are left alone, because the next run does not register them again.
+parts.push(`(function () {
+  var W = window, D = document, OP = Object.prototype.hasOwnProperty;
+  var REG = W.__ggsxReg || (W.__ggsxReg = {});
+  var cur = null, MO0 = null;
+  function hash(s) { var x = 5381, i; for (i = 0; i < s.length; i++) x = ((x << 5) + x + s.charCodeAt(i)) | 0; return (x >>> 0).toString(36) + '.' + s.length; }
+  function sig(fn) { try { return typeof fn === 'function' ? hash(Function.prototype.toString.call(fn)) : 'o'; } catch (e) { return 'x'; } }
+  function restore() {
+    var c = cur; if (!c) return;
+    c.defs.forEach(function (x) { try { if (x.had) Object.defineProperty(x.t, 'addEventListener', x.d); else delete x.t.addEventListener; } catch (e) {} });
+    if (MO0) W.MutationObserver = MO0;
+  }
+  /* Wix makes EventTarget.prototype.addEventListener read-only, so the wrapper is put on the four objects themselves (own property, removed again at the end of the module). */
+  function wrap(c, t, k) {
+    if (!t) return;
+    var had = OP.call(t, 'addEventListener'), d = had ? Object.getOwnPropertyDescriptor(t, 'addEventListener') : null, base = t.addEventListener;
+    if (typeof base !== 'function') return;
+    try {
+      Object.defineProperty(t, 'addEventListener', { configurable: true, writable: true, enumerable: false, value: function (type, fn, opt) {
+        if (c === cur && fn && (this === t || this == null || this === W && t === W)) c.ev.push({ t: t, ty: type, fn: fn, o: opt, s: k + '|' + type + '|' + ((opt === true || (opt && opt.capture)) ? 1 : 0) + '|' + sig(fn) });
+        return base.apply(this == null ? t : this, arguments);
+      } });
+      c.defs.push({ t: t, had: had, d: d });
+    } catch (e) {}
+  }
+  W.__ggsxB = function (key) {
+    if (cur) { restore(); cur = null; }
+    var c = cur = { key: key, ev: [], mo: [], defs: [] };
+    wrap(c, W, 'w'); wrap(c, D, 'd'); wrap(c, D.documentElement, 'h'); wrap(c, D.body, 'b');
+    MO0 = W.MutationObserver;
+    if (MO0) {
+      var M = function (cb) { var o = new MO0(cb); if (c === cur) c.mo.push({ o: o, s: sig(cb) }); return o; };
+      M.prototype = MO0.prototype;
+      try { W.MutationObserver = M; } catch (e) {}
+    }
+  };
+  W.__ggsxE = function (key) {
+    var c = cur;
+    if (!c || c.key !== key) return;
+    restore(); cur = null;
+    var prev = REG[key], seen = {}, keep = { ev: [], mo: [] };
+    c.ev.forEach(function (x) { seen['e' + x.s] = 1; });
+    c.mo.forEach(function (x) { seen['m' + x.s] = 1; });
+    if (prev) {
+      prev.ev.forEach(function (x) { if (seen['e' + x.s]) { try { EventTarget.prototype.removeEventListener.call(x.t, x.ty, x.fn, x.o); } catch (e) {} } else keep.ev.push(x); });
+      prev.mo.forEach(function (x) { if (seen['m' + x.s]) { try { x.o.disconnect(); } catch (e) {} } else keep.mo.push(x); });
+    }
+    REG[key] = { ev: keep.ev.concat(c.ev), mo: keep.mo.concat(c.mo) };
+  };
+})();`);
 parts.push(`function __ggsxCss(attrs, css) {
   try {
     var D = document, key = 'c' + css.length + '_' + (function (s) { var h = 5381, i; for (i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); })(css);
@@ -62,6 +116,7 @@ for (const [id, name] of order) {
   const html = fs.readFileSync(path.join(root, 'src', id + '.html'), 'utf8');
   const meta = JSON.parse(fs.readFileSync(path.join(root, 'src', id + '.json'), 'utf8'));
   parts.push(`\n/* ===== ${meta.name} (${id}, rev ${meta.revision}) ===== */`);
+  let scriptNo = 0;
   for (const b of blocks(html)) {
     if (b.type === 'html') {
       if (b.body.trim()) { report.push(`WARN ${name}: stray HTML outside script/style (${b.body.trim().length} chars) — emitted as insertAdjacentHTML`); parts.push(`try{document.body.insertAdjacentHTML('beforeend',${JSON.stringify(b.body)});}catch(e){}`); }
@@ -89,8 +144,11 @@ for (const [id, name] of order) {
     for (const n of info.lexical.concat(info.classes)) { (allLexical[n] = allLexical[n] || []).push(name); }
     const needsBare = info.lexical.length || info.funcs.length || info.classes.length;
     report.push(`${needsBare ? 'BARE' : 'WRAP'} ${name}: stmts=${info.statements} var=[${info.vars.join(',')}] lexical=[${info.lexical.join(',')}] funcs=[${info.funcs.join(',')}] strict=${info.strict}`);
-    if (needsBare) parts.push(code.trim());
-    else parts.push(`try {\n${code.trim()}\n} catch (e) { try { console.warn('[GGSX bundle] ${name.replace(/'/g, "\\'")}', e); } catch (e2) {} }`);
+    if (needsBare) parts.push(code.trim());   // bare scripts keep global semantics and are not tracked
+    else {
+      const key = JSON.stringify(id + '#' + (scriptNo++));
+      parts.push(`__ggsxB(${key});\ntry {\n${code.trim()}\n} catch (e) { try { console.warn('[GGSX bundle] ${name.replace(/'/g, "\\'")}', e); } catch (e2) {} }\n__ggsxE(${key});`);
+    }
   }
 }
 const bundle = parts.join('\n') + '\n';

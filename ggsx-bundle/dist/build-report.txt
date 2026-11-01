@@ -59,4 +59,5 @@ WRAP Shop 36 Errands 3 Checkout: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 37 Live Driver Map: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 38 Run Sheet Aisles: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP SEO Content: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 39 Department Menu: stmts=1 var=[] lexical=[] funcs=[] strict=false
 BUNDLE PARSES OK

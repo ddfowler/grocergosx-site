@@ -1,32 +1,35 @@
-<!-- GrocerGoSx Bundle Loader v1.1 (1 Nov 2026). Loads the site's Body-end code from ONE cached file (ggsx-body.js, built from the 60 Body-end
+<!-- GrocerGoSx Bundle Loader v1.2 (1 Nov 2026; bundle v1.2 — nothing piles up on page changes any more: one copy of each listener, the phone bars and the checkout window, and the site map row stays at the bottom; the loader also drops its copy of the code from the page once it has run. Previous pair (v1.1): gzip 85c3c2_06805e22cc8c4ab0886515e9abf10877.txt, plain 85c3c2_18dbe117ace64e60ba953b18652cbfd7.txt; v1.0: gzip 85c3c2_d2afda9e935446149673f46b8d91ab29.txt, plain 85c3c2_804de5b6f4324218bba9512cf2d22eda.txt). Loads the site's Body-end code from ONE cached file (ggsx-body.js, built from the 60 Body-end
      snippets, hosted in this site's own Media Manager → folder "Site code bundle") instead of 60 inline snippets, which Wix inlined twice in every
      page (about 1.3 MB of the HTML, roughly a third of it); the bundle is downloaded once and cached for 180 days.
-     Modern browsers fetch the gzip copy (180 KB) and unpack it with DecompressionStream; older ones load the plain copy (586 KB) as a normal script.
+     Modern browsers fetch the gzip copy (185 KB) and unpack it with DecompressionStream; older ones load the plain copy (603 KB) as a normal script.
      Skips itself while the inline snippets are still enabled (window.GGSX_PAGES / __ggsxNote / __ggsxSeo exist), so there is never a double run,
      and re-runs on each new page like the inline code did. Body end · all pages · load on each new page · Essential.
-     Roll back: re-enable the inline snippets in Settings → Custom Code and disable this one. New build: upload the new .txt files to the
+     Roll back: put a previous pair of URLs (listed above) back into GZ / PLAIN. Last resort: re-enable ALL 60 inline snippets in Settings →
+     Custom Code and disable this one (that brings back the v1.0 code; never re-enable just one). New build: upload the new .txt files to the
      "Site code bundle" media folder (files are immutable, so a new build is a new URL) and change GZ / PLAIN below. -->
 <script>
 (function () {
   var W = window, D = document;
-  var GZ = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_d2afda9e935446149673f46b8d91ab29.txt';     /* ggsx-body.js v1.0, gzip (180 KB) */
-  var PLAIN = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_804de5b6f4324218bba9512cf2d22eda.txt';  /* ggsx-body.js v1.0, plain (586 KB) */
+  var GZ = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_4912c66a5e724b54aab69640835faa41.txt';     /* ggsx-body.js v1.2, gzip (185 KB) */
+  var PLAIN = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_ee95a697328346e3b61f71d0151c8805.txt';  /* ggsx-body.js v1.2, plain (603 KB) */
   function warn(m, e) { try { console.warn('[GGSX loader] ' + m, e || ''); } catch (x) {} }
   function inject(code) {
     var s = D.createElement('script');
     s.text = code + '\n//# sourceURL=ggsx-body.js';
     (D.body || D.head).appendChild(s);
+    if (s.parentNode) s.parentNode.removeChild(s);   /* it has run: don't keep another 580 KB copy in the page on every page change */
   }
   function plain() {
     var s = D.createElement('script');
     s.src = PLAIN;
     s.async = false;
+    s.onload = function () { if (s.parentNode) s.parentNode.removeChild(s); };
     s.onerror = function () { warn('bundle failed to load: ' + PLAIN); };
     (D.body || D.head).appendChild(s);
   }
   function go() {
     if (!W.__GGSX_BUNDLE && (W.GGSX_PAGES || W.__ggsxNote || W.__ggsxSeo)) return;   /* inline snippets still active: let them run */
-    var B = W.__GGSX_BUNDLE = W.__GGSX_BUNDLE || { v: '1.0', loader: '1.1' };
+    var B = W.__GGSX_BUNDLE = W.__GGSX_BUNDLE || { v: '1.2', loader: '1.2' };
     if (B.code) { inject(B.code); return; }          /* new page in the same visit: re-run the kept code */
     if (B.loading) return;                           /* first fetch still in flight: it injects when done */
     if (B.from === 'plain') { plain(); return; }     /* this browser uses the plain file (cached after the first page) */
