@@ -1,0 +1,270 @@
+<!-- GrocerGoSx Shop 43 Search Help v1.0 (5 Nov 2026, bundle v1.9; bundle-only module, no Custom Code copy; core, right before Shop 2 Engine):
+     what Shop Now does when a search finds nothing. On 4 Nov 2026 a visitor searched "Fleet" and "Enima" (a Fleet enema), got "Nothing
+     matched that" three times and left with an empty basket; on 5 Nov another searched "Karuline" twice and left the same way.
+     * Typos (GGSX_SEARCH.fuzzy, called by Shop 2 only when no product matches every word as typed): looks again with accents and
+       punctuation ignored (creme = crème, mms = M&M's), two words run together found (icecream = ice cream), and a letter or two forgiven:
+       words of 4–7 letters 1 edit, 8 or more letters 2 (a swap of two neighbouring letters is one edit); the first letter must match, and
+       in words of 4–6 letters the second letter too (or be missing), so "fleet" does not turn into "feet"; words of 1–3 letters must match
+       as typed. When some products match in their name or brand, only those are shown. Up to 24 close matches, the most common spelling in
+       the catalogue first ("bred" → bread before brew). Shop 2 shows them as "3 close matches for “chese”".
+     * Nothing found (or close matches that aren't it): a card "Can’t find “…”?" with the search words in a box the visitor can edit and
+       two buttons. "Add it to my basket as a request" puts a $0 line "Request: <words>" (id req:<words>, size "priced from the store
+       receipt") in the shared basket through GGSX_SHOP_API: a grocery line like any other, so it counts toward the $100 minimum and is
+       priced from the receipt after shopping (as pharmacy lines are). "Request it from the pharmacy" opens /pharmacy with the words already
+       in the pharmacy request box (sessionStorage ggsx_pharm_ask, kept 15 minutes; filled when the box appears, never over typed text).
+     * The Live Baskets log (Shop 16, inline Custom Code) notes "no match for …" when Shop Now shows a .gs-muted line with exactly the
+       GGSX_SHOP.copy.noResults text. After close matches that line is still there, hidden, so a search that matched nothing as typed is
+       still logged.
+     Wording: GGSX_SEARCH.copy below. -->
+<style>
+#ggsx-shop .gs-muted[hidden]{display:none!important}
+#ggsx-shop .gs-req{max-width:560px;margin:4px 0 8px;padding:18px 18px 16px;background:#fff;border:1.5px solid var(--line,#e9e4dd);border-radius:18px}
+#ggsx-shop .gs-req.gs-req-after{margin-top:28px}
+#ggsx-shop .gs-req h3{font-size:18px;line-height:1.25;margin:0 0 6px}
+#ggsx-shop .gs-req p{margin:0 0 14px;color:var(--mute,#6b6b6b)}
+#ggsx-shop .gs-req label{display:block;font-size:13px;font-weight:700;color:#3a3a3a;margin:0 0 6px}
+#ggsx-shop .gs-req input{display:block;width:100%;height:46px;margin:0 0 12px;padding:0 14px;border:1.5px solid #cfc9c1;border-radius:12px;background:#fff;color:var(--ink,#1b1b1b);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none}
+#ggsx-shop .gs-req input:focus{outline:2px solid var(--o,#F4551B);outline-offset:1px;border-color:var(--o,#F4551B)}
+#ggsx-shop .gs-req-b{display:flex;flex-wrap:wrap;gap:10px}
+#ggsx-shop .gs-req .gs-btn{flex:1 1 220px;width:auto;min-width:0;margin:0;padding:12px 16px;text-align:center;line-height:1.2}
+#ggsx-shop .gs-req-msg{margin:12px 0 0;font-size:14px;font-weight:700;color:#1d6b3a}
+#ggsx-shop .gs-req-msg.gs-req-err{color:#b3261e}
+#ggsx-shop .gs-req-msg:empty{display:none}
+#ggsx-shop .gs-req small{display:block;margin-top:12px;font-size:13px;line-height:1.4;color:var(--mute,#6b6b6b)}
+#ggsx-more-page .gm-card textarea.gs-filled{border-color:#F4551B;box-shadow:0 0 0 3px rgba(244,85,27,.18);transition:box-shadow 1.2s ease,border-color 1.2s ease}
+@media (max-width:860px){#ggsx-shop .gs-req{padding:16px 14px 14px}#ggsx-shop .gs-req .gs-btn{flex-basis:100%}}
+@media (prefers-reduced-motion:reduce){#ggsx-more-page .gm-card textarea.gs-filled{transition:none}}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (!W.GGSX_SEARCH) (function () {
+    var G = W.GGSX_SEARCH = {
+      max: 24,                      /* close matches shown at most (Shop Now shows 48 before "Show more") */
+      key: 'ggsx_pharm_ask',        /* sessionStorage: the words for the pharmacy request box */
+      keep: 15 * 60000,             /* how long those words wait for the pharmacy page */
+      pharmacy: '/pharmacy',
+      copy: {
+        head1: '1 close match for “{q}”',
+        head: '{n} close matches for “{q}”',
+        close: 'Nothing matched “{q}” exactly, so these are the closest.',
+        title: 'Can’t find “{q}”?',
+        titleAfter: 'Not what you were looking for?',
+        lead: 'We can still get it for you. Add it as a request and we’ll price it from the store receipt.',
+        label: 'What you need',
+        ph: 'Brand, size, how many',
+        add: 'Add it to my basket as a request',
+        pharm: 'Request it from the pharmacy',
+        hint: 'For medicine and health items, use the pharmacy request.',
+        added: 'Added to your basket: ',
+        empty: 'Tell us what you need first.',
+        fail: 'That didn’t go into the basket. Please try again.',
+        line: 'Request: ',
+        size: 'priced from the store receipt',
+        filled: 'From your Shop Now search: add any details, then add it to your basket.'
+      }
+    };
+    var T = G.copy;
+
+    /* ---------- typo-tolerant matching ---------- */
+    function fold(s) {
+      s = String(s == null ? '' : s).toLowerCase();
+      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+      return s;
+    }
+    /* words as the shop's own search splits them (on spaces), plus commas, slashes, brackets and dashes; what is left inside a word
+       that isn't a letter or digit is dropped, so M&M's → mms */
+    function words(s) {
+      return fold(s).split(/[\s,\/()+\-.:;!?"]+/).map(function (w) { return w.replace(/[^a-z0-9]/g, ''); })
+        .filter(function (w) { return w.length > 1; });
+    }
+    /* edits from a to b (restricted Damerau–Levenshtein: a swap of two neighbouring letters is one edit); max + 1 once over max */
+    function dist(a, b, max) {
+      var la = a.length, lb = b.length, i, j, r0 = [], r1 = [], r2 = [], t, lo, lo1 = 0, v;
+      if (Math.abs(la - lb) > max) return max + 1;
+      for (j = 0; j <= lb; j++) r1[j] = j;
+      for (i = 1; i <= la; i++) {
+        r2[0] = i; lo = i;
+        for (j = 1; j <= lb; j++) {
+          v = Math.min(r1[j] + 1, r2[j - 1] + 1, r1[j - 1] + (a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1));
+          if (i > 1 && j > 1 && a.charCodeAt(i - 1) === b.charCodeAt(j - 2) && a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) v = Math.min(v, r0[j - 2] + 1);
+          r2[j] = v;
+          if (v < lo) lo = v;
+        }
+        if (lo > max && lo1 > max) return max + 1;
+        lo1 = lo; t = r0; r0 = r1; r1 = r2; r2 = t;
+      }
+      return r1[lb];
+    }
+    /* how many edits a typed word may be from a catalogue word, or -1 */
+    function edits(w, tk) {
+      var n = w.length;
+      if (n < 4 || tk.charAt(0) !== w.charAt(0)) return -1;
+      if (n < 7 && !(w.charAt(1) === tk.charAt(1) || w.charAt(1) === tk.charAt(2))) return -1;
+      return n < 8 ? 1 : 2;
+    }
+    /* the catalogue's words, built once per product list: word → { ix: products, nm: products with it in name or brand, n: how many
+       of those, bi: only ever two name words run together } */
+    var IDX = { arr: null };
+    function index(products) {
+      var toks = {}, list = [];
+      function put(w, ix, named, bi) {
+        var e = toks[w];
+        if (!e) { e = toks[w] = { ix: {}, nm: {}, n: 0, bi: !!bi }; list.push(w); }
+        else if (!bi) e.bi = false;
+        e.ix[ix] = 1;
+        if (named && !e.nm[ix]) { e.nm[ix] = 1; e.n++; }
+      }
+      products.forEach(function (p, ix) {
+        var nm = words(p.name + ' ' + (p.brand || ''));
+        words(p.q).forEach(function (w) { put(w, ix, false); });
+        nm.forEach(function (w, k) {
+          put(w, ix, true);
+          if (k && nm[k - 1].length + w.length >= 6) put(nm[k - 1] + w, ix, true, true);
+        });
+        p.__gw = nm;
+      });
+      IDX = { arr: products, toks: toks, list: list };
+    }
+    /* products for a search that matched nothing as typed: { list, close } (close = false when only accents, punctuation or spacing
+       differed, so Shop 2 shows them as ordinary results) */
+    G.fuzzy = function (products, q) {
+      if (!products || !products.length) return { list: [], close: false };
+      if (IDX.arr !== products) index(products);
+      var ws = words(q), out = [], best;
+      if (!ws.length) return { list: [], close: false };
+      var per = ws.map(function (w) {
+        var hit = {};
+        function mark(tk, d) {
+          var e = IDX.toks[tk], ix, h, nm, ld = Math.abs(tk.length - w.length);
+          for (ix in e.ix) {
+            h = hit[ix]; nm = !!e.nm[ix];
+            if (!h || d < h.d || (d === h.d && ((nm && !h.nm) || (nm === h.nm && (e.n > h.f || (e.n === h.f && ld < h.ld))))))
+              hit[ix] = { d: d, nm: nm, ld: ld, tk: tk, f: e.n };
+          }
+        }
+        IDX.list.forEach(function (tk) {
+          var e = IDX.toks[tk], m, d;
+          if (e.bi ? tk === w : tk.indexOf(w) >= 0) { mark(tk, 0); return; }
+          if ((m = edits(w, tk)) < 0) return;
+          d = dist(w, tk, m);
+          if (d > m && tk.length > 4 && /s$/.test(tk)) {   /* plurals: "enima" still finds "enemas" */
+            d = Math.min(d, dist(w, tk.slice(0, -1), m));
+            if (/es$/.test(tk) && tk.length > 5) d = Math.min(d, dist(w, tk.slice(0, -2), m));
+          }
+          if (d <= m) mark(tk, d);
+        });
+        return hit;
+      });
+      products.forEach(function (p, ix) {
+        var s = 0, nm = true, ld = 0, fr = 0, pos = 99, k, h;
+        for (k = 0; k < per.length; k++) {
+          if (!(h = per[k][ix])) return;
+          s += h.d; nm = nm && h.nm; ld += h.ld; fr += Math.log(1 + h.f);
+          if (!k) { pos = p.__gw.indexOf(h.tk); if (pos < 0) pos = 98; }
+        }
+        out.push({ p: p, s: s, nm: nm, ld: ld, fr: fr, pos: pos });
+      });
+      if (!out.length) return { list: [], close: false };
+      best = Math.min.apply(null, out.map(function (o) { return o.s; }));
+      out = out.filter(function (o) { return o.s === best; });
+      if (out.some(function (o) { return o.nm; })) out = out.filter(function (o) { return o.nm; });
+      out.sort(function (a, b) { return b.fr - a.fr || a.ld - b.ld || a.pos - b.pos || (b.p.stock - a.p.stock); });
+      return { list: out.slice(0, G.max).map(function (o) { return o.p; }), close: best > 0 };
+    };
+    G.head = function (n, q) { return (n === 1 ? T.head1 : T.head).replace('{n}', n).replace('{q}', q); };
+    G.note = function (q) { return T.close.replace('{q}', q); };
+    G.words = words;
+
+    /* ---------- the request card ---------- */
+    function el(tag, a, kids) {
+      var x = D.createElement(tag), k;
+      if (a) for (k in a) if (a[k] != null) {
+        if (k === 'class') x.className = a[k];
+        else if (k === 'text') x.textContent = a[k];
+        else if (k.slice(0, 2) === 'on') x.addEventListener(k.slice(2), a[k]);
+        else x.setAttribute(k, a[k]);
+      }
+      (kids || []).forEach(function (c) { if (c) x.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+      return x;
+    }
+    function clean(s) { return String(s || '').replace(/\s+/g, ' ').trim().slice(0, 140); }
+    function slug(s) { return fold(s).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48); }
+    function inBasket(id) {
+      try { var b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null'), it = b && b.items && b.items[id]; return it ? +it.n || 0 : 0; }
+      catch (e) { return 0; }
+    }
+    /* a request line in the shared basket (same shape as the pharmacy page's lines); true when it went in */
+    G.addRequest = function (text) {
+      var api = W.GGSX_SHOP_API, v = clean(text);
+      if (!v || !api || !api.add) return false;
+      var id = 'req:' + (slug(v) || Date.now().toString(36));
+      api.add({ id: id, name: T.line + v, size: T.size, price: 0, img: '', stock: true }, Math.min(99, inBasket(id) + 1));
+      return inBasket(id) > 0;
+    };
+    /* the pharmacy page, with the words waiting for its request box */
+    G.toPharmacy = function (text) {
+      try { sessionStorage.setItem(G.key, JSON.stringify({ v: clean(text), t: Date.now() })); } catch (e) {}
+      var P = W.GGSX_MORE_PAGES, url = (P && P.pharmacy) || G.pharmacy;
+      if (P && P.go) P.go(url); else location.assign(url);
+    };
+    /* Shop 2 calls this under "Nothing matched that…" (after = false) or after the close matches (after = true) */
+    G.card = function (host, q, after) {
+      if (!host) return null;
+      var v = clean(q), input, msg;
+      function say(t, bad) { msg.textContent = t; msg.className = 'gs-req-msg' + (bad ? ' gs-req-err' : ''); }
+      function add() {
+        var x = clean(input.value);
+        if (!x) { say(T.empty, true); input.focus(); return; }
+        if (G.addRequest(x)) say(T.added + T.line + x); else say(T.fail, true);
+      }
+      input = el('input', { type: 'text', id: 'gs-req-q', value: v, placeholder: T.ph, autocomplete: 'off', enterkeyhint: 'done',
+        onkeydown: function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } } });
+      msg = el('div', { class: 'gs-req-msg', role: 'status', 'aria-live': 'polite' });
+      var card = el('div', { class: 'gs-req' + (after ? ' gs-req-after' : '') }, [
+        el('h3', { text: after ? T.titleAfter : T.title.replace('{q}', v) }),
+        el('p', { text: T.lead }),
+        el('label', { for: 'gs-req-q', text: T.label }),
+        input,
+        el('div', { class: 'gs-req-b' }, [
+          el('button', { type: 'button', class: 'gs-btn', text: T.add, onclick: add }),
+          el('button', { type: 'button', class: 'gs-btn gs-sec', text: T.pharm, onclick: function () { G.toPharmacy(input.value || v); } })
+        ]),
+        msg,
+        el('small', { text: T.hint })
+      ]);
+      host.appendChild(card);
+      return card;
+    };
+    /* after close matches: the "Nothing matched that…" line Shop 16's log looks for, kept but hidden */
+    G.marker = function (host, text) {
+      if (host && text) host.appendChild(el('p', { class: 'gs-muted', hidden: 'hidden', 'aria-hidden': 'true', text: text }));
+    };
+
+    /* ---------- the pharmacy page: put the waiting words into its request box ---------- */
+    var tries = 0, timer = 0;
+    G.pharmFill = function () {
+      clearTimeout(timer);
+      var ask = null;
+      try { ask = JSON.parse(sessionStorage.getItem(G.key) || 'null'); } catch (e) {}
+      if (!ask || !ask.v) return;
+      if (Date.now() - (+ask.t || 0) > G.keep) { try { sessionStorage.removeItem(G.key); } catch (e) {} return; }
+      var P = W.GGSX_MORE_PAGES, here = location.pathname.replace(/\/+$/, '');
+      if (here !== ((P && P.pharmacy) || G.pharmacy).replace(/\/+$/, '')) return;
+      var ta = D.querySelector('#ggsx-more-page .gm-card textarea');
+      if (!ta) { if (++tries < 60) timer = setTimeout(G.pharmFill, 250); return; }
+      tries = 0;
+      try { sessionStorage.removeItem(G.key); } catch (e) {}
+      if (ta.value.trim()) return;
+      ta.value = ask.v;
+      ta.classList.add('gs-filled');
+      setTimeout(function () { ta.classList.remove('gs-filled'); }, 4000);
+      var m = ta.parentNode && ta.parentNode.querySelector('.gm-msg');
+      if (m && !m.textContent) m.textContent = T.filled;
+      try { ta.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+      try { ta.focus({ preventScroll: true }); ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) {}
+    };
+  })();
+  try { W.GGSX_SEARCH.pharmFill(); } catch (e) {}
+})();
+</script>

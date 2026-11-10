@@ -1,5 +1,446 @@
-<!-- GrocerGoSx Home 2 Engine v1.1 (24 Oct 2026: a hero card's images line takes an optional third part after a second |, a shop department written as Department > Subcategory, or a link, so each picture tile opens its own page; without it the tile opens the card's link) · v1.0 (17 Oct 2026): builds the app-style home page on / from the Home tab of the sheet (rows by kind), a
-     daily sample of products with pictures (Products tab, one query), the Departments tab and the restaurants Shop 5 loads; replaces the Wix
-     home sections (they stay in the editor, collapsed on the live page). Basket = the Shop Now basket. Needs Shop 1 + 2 + Home 1 above it.
-     Body – end · All pages · each new page · Essential. Source: home2-engine.src.js -->
-<script>!function(){var t=window,e=document,n=t.GGSX_HOME||{},i=n.u,a=t.GGSX_SHOP||{},r=n.copy||{};if(i){var s=i.h,o=i.svg,l=i.money,c=i.num,h=i.truthy,d=i.on,u=i.slug,f=i.trim,p=i.light,g=i.img,v=i.gviz,m=(i.icons,n.tab||"Home"),b=a.tabs||{},y=(n.shopPath||a.path||"/shop-now").replace(/\/+$/,""),x=(n.path||"/").replace(/\/+$/,""),E="ggsx_basket",k="ggsx_home_cache",C={root:null,els:{},set:{},prods:[],byId:{},depts:[],vendors:null,cur:{},hi:-1},w=0,S=!1;t.addEventListener("ggsx-basket",B);var L=!1;new MutationObserver(function(){L||(L=!0,(t.requestAnimationFrame||setTimeout)(function(){L=!1,$()}))}).observe(e.documentElement,{childList:!0,subtree:!0}),$()}function _(t,e){return C.set[t]||e||""}function N(t){var e=u(t);return C.prods.filter(function(t){return u(t.cat)===e})}function A(t){var e=N(t);if(!e.length)return null;var n=C.cur[t]=C.cur[t]||0;return C.cur[t]=n+1,e[n%e.length]}function G(){try{var t=JSON.parse(localStorage.getItem(E)||"null");if(t&&t.items)return t}catch(t){}return{v:1,items:{}}}function O(t){var e=G().items[t];return e?e.n:0}function z(e,n){n=Math.max(0,Math.min(99,0|n));var i=t.GGSX_SHOP_API;if(i&&i.add)try{i.add(e,n)}catch(t){}else{var a=G(),r=a.items[e.id],s=0;Object.keys(a.items).forEach(function(t){s=Math.max(s,a.items[t].o||0)}),n?r?r.n=n:a.items[e.id]={id:e.id,n:n,name:e.name,size:e.size,price:e.price,img:e.img,o:s+1}:delete a.items[e.id],a.t=Date.now();try{localStorage.setItem(E,JSON.stringify(a))}catch(t){}try{t.dispatchEvent(new CustomEvent("ggsx-basket"))}catch(t){}}B()}function P(t){var e=O(t.id);return e?s("div",{class:"gh-step"},[s("button",{type:"button","aria-label":"Remove one "+t.name,text:"−",onclick:function(){z(t,O(t.id)-1)}}),s("span",{text:String(e)}),s("button",{type:"button","aria-label":"Add one "+t.name,text:"+",onclick:function(){z(t,O(t.id)+1)}})]):s("button",{type:"button",class:"gh-add","aria-label":(r.add||"Add")+" "+t.name,text:r.add||"Add",onclick:function(){z(t,1)}})}function B(){if(C.root){[].forEach.call(C.root.querySelectorAll(".gh-st"),function(t){var e=C.byId[t.getAttribute("data-id")];e&&(t.innerHTML="",t.appendChild(P(e)))});var t,e=(t=G(),Object.keys(t.items).map(function(e){return t.items[e]}).sort(function(t,e){return t.o-e.o})),n=0,i=0;e.forEach(function(t){n+=t.n,i+=t.n*t.price});var a=C.els.basket;if(a.innerHTML="",a.classList.toggle("on",n>0),n){var o=s("div",{class:"gh-bi"});e.slice(0,4).forEach(function(t){o.appendChild(t.img?s("img",{src:g(t.img,96),alt:""}):s("span"))}),a.appendChild(o),a.appendChild(s("div",{class:"gh-bt"},[s("b",{text:_("basket","Your basket")+" · "+n+(1===n?r.item||" item":r.items||" items")}),s("small",{text:l(i)+(r.basketNote?" · "+r.basketNote:"")})])),a.appendChild(s("a",{class:"gh-btn",href:y+"#basket",text:r.viewBasket||"View basket"}))}}}function I(t){(t=f(t))&&location.assign(y+"#q/"+encodeURIComponent(t))}function M(e){var n=t.SpeechRecognition||t.webkitSpeechRecognition;if(!n)return null;var i=s("button",{type:"button",class:"gh-mic","aria-label":r.voice||"Search by voice"},[o("mic")]);return i.addEventListener("click",function(){try{var t=new n;t.lang=r.lang||"en-US",t.interimResults=!1,i.classList.add("on"),e.placeholder=r.listening||"Listening…",t.onresult=function(t){var n=t.results[0][0].transcript;e.value=n,I(n)},t.onend=t.onerror=function(){i.classList.remove("on"),e.placeholder=_("search_ph",r.search||"Search")},t.start()}catch(t){i.classList.remove("on")}}),i}function q(e,n){var i=t.GGSX_MORE;return i&&i.logo?i.logo(e,n):s("div",{class:"gm-logo"},[s("b",{text:(e.name||"?")[0]})])}function F(t,e){return s("a",{class:"gh-tile"+(t.ph?" ph":""),href:t.href||"#"},[t.el||s("img",{src:g(t.img,400),alt:"",loading:e?"lazy":null}),t.cap?s("span",{text:t.cap}):null])}function H(t,e){var n,i=(n=t,[-1,1].map(function(t){return s("button",{type:"button",class:"gh-arr "+(t<0?"l":"r"),"aria-label":t<0?"Previous":"Next",text:t<0?"‹":"›",onclick:function(){n.scrollBy({left:t*n.clientWidth*.8,behavior:"smooth"})}})}));return s("div",{class:"gh-rw "+(e||"")},[i[0],t,i[1]])}function ggLk(t){return t?/^(https?:|\/|mailto:|tel:)/i.test(t)?t:"#"===t.charAt(0)?y+t:(t=t.split(/\s*[>›]\s*/),y+"#d/"+u(t[0])+(t[1]?"/"+u(t[1]):"")):""}function R(t){var e,n=s("div",{class:"gh-heros"}),i=s("div",{class:"gh-dots"}),a=[];t.forEach(function(t,e){var r=function(t,e){var n=f(t.dept),i=null,a=[],r=/^restaurants?$/i.test(n);r?i=s("div",{class:"gh-grid","data-rest":"4"}):n?n.split(",").map(f).filter(Boolean).slice(0,4).forEach(function(t){var e=A(t);e&&a.push({img:e.img,cap:t,href:y+"#d/"+u(t)})}):f(t.images).split(/\n+/).map(f).filter(Boolean).slice(0,4).forEach(function(e){var n=e.split("|");a.push({img:f(n[0]),cap:f(n[1]),href:ggLk(f(n[2]))||t.link,ph:!0})}),a.length&&(i=s("div",{class:"gh-grid n"+a.length}),a.forEach(function(t){i.appendChild(F(t,e>0))}));var o=s("article",{class:"gh-hero",style:"--c:"+(t.color||"#F4551B")},[s("div",{class:"gh-ht"},[s("h2",{text:t.title}),t.subtitle?s("p",{text:t.subtitle}):null]),i,t.cta?s("a",{class:"gh-cta",href:t.link||y,text:t.cta}):null]);return r&&o.setAttribute("data-rest","1"),o}(t,e);a.push(r),n.appendChild(r),i.appendChild(s("i",{class:e?"":"on"}))}),n.addEventListener("scroll",function(){e||(e=!0,requestAnimationFrame(function(){var r,s,o;e=!1,r=n.scrollLeft+(a[0]?a[0].offsetWidth/2:0),s=0,o=1e9,a.forEach(function(t,e){var i=Math.abs(t.offsetLeft-n.offsetLeft+t.offsetWidth/2-r);i<o&&(o=i,s=e)}),s!==C.hi&&(C.hi=s,C.root.style.setProperty("--c",t[s].color||"#F4551B"),[].forEach.call(i.children,function(t,e){t.classList.toggle("on",e===s)}))}))}),C.hi=-1,C.root.style.setProperty("--c",t[0]&&t[0].color||"#F4551B");var r=H(n,"gh-hw");return r.appendChild(i),r}function T(t,e,n,i,a){return s("section",{class:"gh-sec "+(a||"")},[s("div",{class:"gh-sh"},[s("h2",{text:_(t,e)}),i?s("a",{href:i,text:r.seeAll||"See all"}):null]),n])}function D(){return e.querySelector('main[id^="PAGE_SECTIONS"] > section')||e.querySelector("main > section")||e.querySelector("main")}function J(){return location.pathname.replace(/\/+$/,"")===x}function W(t,e,n){function i(i){i!==e&&i!==t&&(i.style.minHeight=n?"":"0",i.style.height=n?"":"0",i.style.overflow=n?"":"hidden",i.style.padding=n?"":"0",i.style.margin=n?"":"0")}[].forEach.call(t.children,i),t.parentNode&&[].forEach.call(t.parentNode.children,i)}function X(t,n){t.appendChild(n),W(t,n),e.documentElement.classList.add("gh-on")}function $(){if(!J())return C.root=null,S=!1,w=0,void e.documentElement.classList.remove("gh-on");if(!e.getElementById("ggsx-home")){var n=D();if(n&&e.body.contains(n)){if(C.root)X(n,C.root);else if(!S){S=!0;var i=s("section",{id:"ggsx-home"},[s("div",{class:"gh-loading",text:r.loading||"Loading…"})]);X(n,i),function(){var t=String(Math.floor(Date.now()/864e5)%10);try{var e=JSON.parse(sessionStorage.getItem(k)||"null");if(e&&e.t&&Date.now()-e.t<6e5&&e.d===t&&e.rows)return Promise.resolve(e)}catch(t){}return Promise.all([v(m),v(b.products||"Products","select A,B,D,E,F,G,J,K,L where G is not null and (J = true or A ends with '"+t+"')").catch(function(){return[]}),v(b.depts||"Departments").catch(function(){return[]})]).then(function(e){var n={t:Date.now(),d:t,rows:e[0].filter(function(t){return t.kind&&d(t.active)}).sort(function(t,e){return c(t.order)-c(e.order)}),prods:e[1].filter(function(t){return t.product&&t.image&&d(t.active)&&d(t.in_stock)}).map(function(t){return{id:t.id||u(t.category+"-"+t.product+"-"+t.size),cat:t.category,name:t.product,size:t.size,price:c(t.price),img:t.image,feat:h(t.featured),stock:!0}}),depts:e[2].filter(function(t){return t.category&&d(t.active)}).sort(function(t,e){return c(t.sort)-c(e.sort)})};try{sessionStorage.setItem(k,JSON.stringify(n))}catch(t){}return n})}().then(function(n){i.parentNode&&i.parentNode.removeChild(i),!e.getElementById("ggsx-home")&&J()&&function(n,i){var a={};i.rows.forEach(function(t){var e=t.kind.toLowerCase();(a[e]=a[e]||[]).push(t)}),C.set={},(a.setting||[]).forEach(function(t){C.set[f(t.title)]=t.text}),C.prods=i.prods,C.byId={},i.prods.forEach(function(t){C.byId[t.id]=t}),C.depts=i.depts,C.cur={};var c,h,d,v,m,b,x=C.root=s("section",{id:"ggsx-home"}),E=s("div",{class:"gh-wrap"});x.appendChild(s("div",{class:"gh-top"},[s("div",{class:"gh-wrap"},[(v=s("input",{type:"search",placeholder:_("search_ph",r.search||"Search"),autocomplete:"off","aria-label":r.search||"Search"}),m=s("div",{class:"gh-sugg"}),b=s("form",{class:"gh-search",onsubmit:function(t){t.preventDefault(),I(v.value)}},[v,M(v),s("button",{type:"submit","aria-label":r.search||"Search"},[o("search")]),m]),v.addEventListener("input",function(){clearTimeout(d),d=setTimeout(function(){!function(t,e){if(e.innerHTML="",t.length<2)e.classList.remove("show");else{var n=t.toLowerCase().split(/\s+/).filter(Boolean);C.prods.filter(function(t){var e=(t.name+" "+t.size+" "+t.cat).toLowerCase();return n.every(function(t){return e.indexOf(t)>=0})}).slice(0,5).forEach(function(t){e.appendChild(s("div",{class:"gh-sg"},[s("img",{src:g(t.img,96),alt:""}),s("span",{class:"gh-sn",text:t.name+(t.size?" · "+t.size:"")}),s("b",{text:l(t.price)}),s("span",{class:"gh-st","data-id":t.id},[P(t)])]))}),e.appendChild(s("div",{class:"gh-sall",text:(r.searchAll||"Search the shop for")+" “"+t+"”",onclick:function(){I(t)}})),e.classList.add("show")}}(f(v.value),m)},150)}),e.addEventListener("click",function(t){b.contains(t.target)||m.classList.remove("show")}),b),(c=a.chip||[],h=s("div",{class:"gh-chips"}),c.forEach(function(t){h.appendChild(s("a",{class:"gh-chip"+(p(t.color)?" lt":""),href:t.link||y,style:"--c:"+(t.color||"#fff"),text:(t.text?t.text+" ":"")+t.title}))}),h),_("sub_tagline")?s("span",{class:"gh-tag",text:_("sub_tagline")}):null]),R(a.hero||[])])),x.appendChild(E),C.els.basket=s("div",{class:"gh-basket"}),E.appendChild(C.els.basket);var k=function(){var t=C.prods.filter(function(t){return t.feat}),e={},n=[];t.forEach(function(t){e[t.id]=1}),C.prods.forEach(function(t){n.indexOf(t.cat)<0&&n.push(t.cat)});for(var i=0;t.length<12&&i<4;i++)n.forEach(function(n){var i=A(n);i&&!e[i.id]&&t.length<12&&(e[i.id]=1,t.push(i))});return t}();if(k.length){var w=s("div",{class:"gh-rail"});k.forEach(function(t){w.appendChild(function(t){return s("div",{class:"gh-p"},[s("img",{src:g(t.img,320),alt:"",loading:"lazy"}),s("div",{class:"gh-pn",text:t.name}),s("div",{class:"gh-pm",text:t.size}),s("div",{class:"gh-pr"},[s("b",{text:l(t.price)}),s("span",{class:"gh-st","data-id":t.id},[P(t)])])])}(t))}),E.appendChild(T("popular","Popular",H(w),y))}if(C.depts.length){var S=s("div",{class:"gh-rail"});C.depts.forEach(function(t){var e=t.image||(N(t.category)[0]||{}).img;S.appendChild(s("a",{class:"gh-d",href:y+"#d/"+u(t.category)},[s("div",{},[e?s("img",{src:g(e,200),alt:"",loading:"lazy"}):null]),t.category]))}),E.appendChild(T("depts","Shop by department",H(S),y))}var L=s("div");if(E.appendChild(L),(a.service||[]).length){var G=s("div",{class:"gh-services"});a.service.forEach(function(t){var e=f(t.images).split(/\n+/)[0];G.appendChild(s("a",{class:"gh-s",href:t.link||"#"},[e?s("img",{src:g(e,480),alt:"",loading:"lazy"}):null,s("div",{},[s("b",{text:t.title}),t.subtitle?s("small",{text:t.subtitle}):null])]))}),E.appendChild(T("services","Everything we do",G,"/pricing"))}if((a.why||[]).length){var O=s("ul");a.why.forEach(function(t){O.appendChild(s("li",{style:"--c:"+(t.color||"#F4551B")},[s("i"),s("div",{},[s("b",{text:t.title}),t.text?s("p",{text:t.text}):null])]))}),E.appendChild(T("why","Why guests choose GrocerGoSx",s("div",{},[_("why_intro")?s("p",{text:_("why_intro")}):null,O]),null,"gh-why"))}if((a.review||[]).length){var z=s("div",{class:"gh-rail"});a.review.forEach(function(t){z.appendChild(s("blockquote",{class:"gh-r"},[s("i",{text:"★★★★★"}),s("p",{text:t.text}),s("div",{class:"gh-rf"},[s("b",{text:t.title}),t.subtitle?", "+t.subtitle:null])]))}),E.appendChild(T("reviews","What our guests are saying",H(z)))}if((a.cta||[]).slice(0,1).forEach(function(t){E.appendChild(s("div",{class:"gh-cta2",style:"--c:"+(t.color||"#F4551B")},[s("div",{},[s("h2",{text:t.title}),t.text?s("p",{text:t.text}):null]),t.cta?s("a",{href:t.link||"#",target:/^https?:/.test(t.link||"")?"_blank":null,rel:"noopener",text:t.cta}):null]))}),(a.link||[]).length){var D=s("nav",{class:"gh-links","aria-label":_("links","More")});a.link.forEach(function(t){D.appendChild(s("a",{href:t.link||"/",text:t.title}))}),E.appendChild(D)}X(n,x),B(),function(){if(C.vendors)return Promise.resolve(C.vendors);var e=t.GGSX_MORE;return e&&e.load?e.load().then(function(t){return C.vendors=t.vendors||[]}).catch(function(){return C.vendors=[]}):Promise.resolve([])}().then(function(t){if(C.root&&([].forEach.call(C.root.querySelectorAll(".gh-hero[data-rest]"),function(e){var n,i=e.querySelector("[data-rest]");t.length?(n=i,(C.vendors||[]).slice(0,4).forEach(function(t){n.appendChild(F({el:q(t,200),cap:t.name,href:y+"#restaurants/"+t.vendor_id},!0))}),n.className="gh-grid n"+n.children.length):e.style.display="none"}),t.length)){var e=s("div",{class:"gh-rail"});t.forEach(function(t){e.appendChild(s("a",{class:"gh-v",href:y+"#restaurants/"+t.vendor_id},[q(t,160),t.name]))}),L.appendChild(T("restaurants","Restaurant pickup",H(e),y+"#restaurants"))}})}(D(),n)}).catch(function(){i.parentNode&&(W(i.parentNode,i,!0),i.parentNode.removeChild(i)),e.documentElement.classList.remove("gh-on")})}}else++w<80&&setTimeout($,250)}}}();</script>
+<!-- v1.8 (4 Nov 2026): items sold by weight (size "per lb" on the Products tab), see Shop 42 Sold by Weight: ½ lb steps and prices per lb on the home page -->
+<!-- GrocerGoSx Home 2 Engine v2.0 (2 Nov 2026, page speed): the home page no longer waits for the Google Sheet. It is drawn at once from
+     the copy the visitor's browser kept from an earlier visit today, or else from the snapshot built into the site code (Home Snapshot,
+     made by snapshot.js when the bundle is built), and then refreshed from the sheet in the background: new prices are written into the
+     cards in place; if the cards themselves changed (another product, a new text or picture) the home is redrawn once, unless the visitor
+     has already started using it. The restaurants come with the page (Vendors tab only); before, the home loaded every restaurant menu
+     through Shop 5 (about 120 KB) and filled or hid the Restaurant pickup card after the page was drawn, which made the cards jump. Sets
+     html.gh-done once the final version is on screen (First Paint waits for it). The first screen (search, cards, Popular) is built first and the
+     sections below it in the next step, so the phone is never busy for long at a time. Works with Home 3 v1.4, which adds a copy of the hero
+     cards for its endless loop (cards carry data-i so the dots and the colour follow either copy). Restore copy of v1.1:
+     ggsx-bundle/restore/RESTORE-home2-rev5-v1.4-33f1b3a3.html.
+     v1.1 (24 Oct 2026: a hero card's images line takes an optional third part after a second |, a shop department written as Department >
+     Subcategory, or a link, so each picture tile opens its own page; without it the tile opens the card's link) · v1.0 (17 Oct 2026): builds
+     the app-style home page on / from the Home tab of the sheet (rows by kind), a daily sample of the Products tab, the Departments tab and
+     the restaurants. Needs Home 1 above it. Bundle-only (home group of the site code bundle). -->
+<script>
+(function () {
+  var W = window, D = document, CFG = W.GGSX_HOME || {}, U = CFG.u, SHOP = W.GGSX_SHOP || {}, T = CFG.copy || {};
+  if (!U) return;
+  var h = U.h, svg = U.svg, money = U.money, num = U.num, truthy = U.truthy, on = U.on, slug = U.slug, trim = U.trim, light = U.light, pic = U.img, gviz = U.gviz;
+  var TAB = CFG.tab || 'Home', TABS = SHOP.tabs || {}, SHOPP = (CFG.shopPath || SHOP.path || '/shop-now').replace(/\/+$/, ''), HOMEP = (CFG.path || '/').replace(/\/+$/, '');
+  var BASKET = 'ggsx_basket', KEY = 'ggsx_home_v2', FRESH = 6e5, KEEP = 864e5, ROW = ['kind', 'title', 'subtitle', 'text', 'cta', 'link', 'color', 'dept', 'images'];
+  var C = { root: null, set: {}, prods: [], byId: {}, data: null, sig: '', price: '', touched: false, hi: -1, basket: null, started: false, busy: false };
+  var tries = 0, queued = false, html = D.documentElement;
+  var ST = W.__ggsxHome = { from: '', refreshed: '', redraws: 0 };            /* status, for tests and support */
+
+  W.addEventListener('ggsx-basket', basketUi);
+  new MutationObserver(function () {
+    if (queued) return;
+    queued = true;
+    (W.requestAnimationFrame || setTimeout)(function () { queued = false; tick(); });
+  }).observe(html, { childList: true, subtree: true });
+  tick();
+
+  /* ---------- data: browser copy, build snapshot, the sheet ---------- */
+  function store(n) { try { return W[n] || null; } catch (e) { return null; } }
+  function day() { return String(Math.floor(Date.now() / 864e5) % 10); }
+  function kept(s, age, d) {
+    if (!s) return null;
+    try { var x = JSON.parse(s.getItem(KEY) || 'null'); if (x && x.v === 2 && x.d === d && x.rows && x.prods && Date.now() - x.t < age) return x; } catch (e) {}
+    return null;
+  }
+  function save(x) {
+    var j; try { j = JSON.stringify(x); } catch (e) { return; }
+    ['sessionStorage', 'localStorage'].forEach(function (n) { var s = store(n); try { s && s.setItem(KEY, j); } catch (e) {} });
+  }
+  function snapshot(d) {
+    var S = W.GGSX_HOME_SNAP;
+    if (!S || !S.rows || !S.days || !S.days[d]) return null;
+    return { v: 2, t: S.t, d: d, snap: 1, rows: S.rows, depts: S.depts || [], vendors: S.vendors || [], prods: S.days[d].map(function (i) {
+      var p = S.prods[i] || []; return { id: p[0], cat: p[1], name: p[2], size: p[3], price: p[4], img: p[5], feat: !!p[6], stock: true };
+    }) };
+  }
+  function first() {
+    var d = day(), x = kept(store('sessionStorage'), FRESH, d);
+    if (x) return { data: x, fresh: true };
+    x = kept(store('localStorage'), KEEP, d) || snapshot(d);
+    return x ? { data: x } : null;
+  }
+  function row(r) { var o = {}; ROW.forEach(function (k) { if (r[k]) o[k] = r[k]; }); o.kind = r.kind; return o; }
+  function live() {
+    var d = day(), none = function () { return []; }, M = W.GGSX_MORE || {};
+    return Promise.all([
+      gviz(TAB),
+      gviz(TABS.products || 'Products', "select A,B,D,E,F,G,J,K,L where G is not null and (J = true or A ends with '" + d + "')").catch(none),
+      gviz(TABS.depts || 'Departments').catch(none),
+      gviz((M.tabs && M.tabs.vendors) || 'Vendors').catch(function () { return null; })
+    ]).then(function (e) {
+      return {
+        v: 2, t: Date.now(), d: d,
+        rows: e[0].filter(function (r) { return r.kind && on(r.active); }).sort(function (a, b) { return num(a.order) - num(b.order); }).map(row),
+        prods: e[1].filter(function (r) { return r.product && r.image && on(r.active) && on(r.in_stock); }).map(function (r) {
+          return { id: r.id || slug(r.category + '-' + r.product + '-' + r.size), cat: r.category, name: r.product, size: r.size, price: num(r.price), img: r.image, feat: truthy(r.featured), stock: true };
+        }),
+        depts: e[2].filter(function (r) { return r.category && on(r.active); }).sort(function (a, b) { return num(a.sort) - num(b.sort); })
+          .map(function (r) { return r.image ? { category: r.category, image: r.image } : { category: r.category }; }),
+        vendors: e[3] ? e[3].filter(function (v) { return v.vendor_id && v.name && truthy(v.active) && (!v.type || /restaurant/i.test(v.type)); })
+          .map(function (v) { return { vendor_id: v.vendor_id, name: v.name, logo: v.logo || '' }; }) : null
+      };
+    });
+  }
+  function useProds(list) { C.prods = list || []; C.byId = {}; C.prods.forEach(function (p) { C.byId[p.id] = p; }); }
+
+  /* ---------- what the page shows (the same choices as v1.1) ---------- */
+  function link(t) {
+    return t ? /^(https?:|\/|mailto:|tel:)/i.test(t) ? t : t.charAt(0) === '#' ? SHOPP + t
+      : (t = t.split(/\s*[>›]\s*/), SHOPP + '#d/' + slug(t[0]) + (t[1] ? '/' + slug(t[1]) : '')) : '';
+  }
+  function model(x) {
+    var g = {}, set = {}, cur = {}, prods = x.prods || [], vend = x.vendors || [];
+    (x.rows || []).forEach(function (r) { var k = String(r.kind).toLowerCase(); (g[k] = g[k] || []).push(r); });
+    (g.setting || []).forEach(function (r) { set[trim(r.title)] = r.text; });
+    function N(c) { var e = slug(c); return prods.filter(function (p) { return slug(p.cat) === e; }); }
+    function A(c) { var e = N(c); if (!e.length) return null; var n = cur[c] = cur[c] || 0; cur[c] = n + 1; return e[n % e.length]; }
+    var heroes = [];
+    (g.hero || []).forEach(function (t) {
+      var dept = trim(t.dept), rest = /^restaurants?$/i.test(dept), tiles = [];
+      if (rest) {
+        vend.slice(0, 4).forEach(function (v) { tiles.push({ v: v, cap: v.name, href: SHOPP + '#restaurants/' + v.vendor_id }); });
+        if (!tiles.length) return;                                     /* no restaurants: no card */
+      } else if (dept) {
+        dept.split(',').map(trim).filter(Boolean).slice(0, 4).forEach(function (c) { var p = A(c); if (p) tiles.push({ img: p.img, cap: c, href: SHOPP + '#d/' + slug(c) }); });
+      } else {
+        trim(t.images).split(/\n+/).map(trim).filter(Boolean).slice(0, 4).forEach(function (l) {
+          var b = l.split('|'); tiles.push({ img: trim(b[0]), cap: trim(b[1]), href: link(trim(b[2])) || t.link, ph: 1 });
+        });
+      }
+      heroes.push({ title: t.title || '', sub: t.subtitle || '', color: t.color || '#F4551B', cta: t.cta || '', link: t.link || '', rest: rest ? 1 : 0, tiles: tiles });
+    });
+    var rail = prods.filter(function (p) { return p.feat; }), seen = {}, cats = [];
+    rail.forEach(function (p) { seen[p.id] = 1; });
+    prods.forEach(function (p) { if (cats.indexOf(p.cat) < 0) cats.push(p.cat); });
+    for (var i = 0; rail.length < 12 && i < 4; i++) cats.forEach(function (c) { var p = A(c); if (p && !seen[p.id] && rail.length < 12) { seen[p.id] = 1; rail.push(p); } });
+    return {
+      set: set, chips: g.chip || [], heroes: heroes,
+      rail: rail.map(function (p) { return { id: p.id, name: p.name, size: p.size, img: p.img, price: p.price }; }),
+      depts: (x.depts || []).map(function (d) { return { cat: d.category, img: d.image || (N(d.category)[0] || {}).img || '' }; }),
+      vendors: vend, service: g.service || [], why: g.why || [], review: g.review || [], cta: (g.cta || []).slice(0, 1), link: g.link || []
+    };
+  }
+  function sigOf(m) { return JSON.stringify(m, function (k, v) { return k === 'price' ? undefined : v; }); }
+  function priceOf(m) { return m.rail.map(function (p) { return p.price; }).join(','); }
+
+  /* ---------- basket ---------- */
+  function txt(k, d) { return C.set[k] || d || ''; }
+  function bag() { try { var b = JSON.parse(localStorage.getItem(BASKET) || 'null'); if (b && b.items) return b; } catch (e) {} return { v: 1, items: {} }; }
+  function count(id) { var e = bag().items[id]; return e ? e.n : 0; }
+  function put(p, n) {
+    n = W.GGSX_WEIGHT && W.GGSX_WEIGHT.is(p) ? W.GGSX_WEIGHT.clamp(n) : Math.max(0, Math.min(99, n | 0));
+    var api = W.GGSX_SHOP_API;
+    if (api && api.add) { try { api.add(p, n); } catch (e) {} }
+    else {
+      var b = bag(), it = b.items[p.id], o = 0;
+      Object.keys(b.items).forEach(function (k) { o = Math.max(o, b.items[k].o || 0); });
+      if (n) { if (it) { it.n = n; if (W.GGSX_WEIGHT && W.GGSX_WEIGHT.is(p)) it.size = p.size; } else b.items[p.id] = { id: p.id, n: n, name: p.name, size: p.size, price: p.price, img: p.img, o: o + 1 }; }
+      else delete b.items[p.id];
+      b.t = Date.now();
+      try { localStorage.setItem(BASKET, JSON.stringify(b)); } catch (e) {}
+      try { W.dispatchEvent(new CustomEvent('ggsx-basket')); } catch (e) {}
+    }
+    basketUi();
+  }
+  function stepper(p) {
+    var n = count(p.id), G = W.GGSX_WEIGHT, wt = !!(G && G.is(p)), d = wt ? G.step : 1;
+    function now() { return C.byId[p.id] || p; }                            /* the latest price, even after a refresh */
+    return n ? h('div', { class: 'gh-step' + (wt ? ' gh-wt' : '') }, [
+      h('button', { type: 'button', 'aria-label': (wt ? 'Remove ½ lb of ' : 'Remove one ') + p.name, text: '−', onclick: function () { put(now(), count(p.id) - d); } }),
+      h('span', { text: wt ? G.lb(n) : String(n) }),
+      h('button', { type: 'button', 'aria-label': (wt ? 'Add ½ lb of ' : 'Add one ') + p.name, text: '+', onclick: function () { put(now(), count(p.id) + d); } })
+    ]) : h('button', { type: 'button', class: 'gh-add', 'aria-label': (T.add || 'Add') + ' ' + p.name, text: T.add || 'Add', onclick: function () { put(now(), wt ? G.start : 1); } });
+  }
+  function basketUi() {
+    if (!C.root) return;
+    [].forEach.call(C.root.querySelectorAll('.gh-st'), function (el) {
+      var p = C.byId[el.getAttribute('data-id')];
+      if (p) { el.innerHTML = ''; el.appendChild(stepper(p)); }
+    });
+    var b = bag(), list = Object.keys(b.items).map(function (k) { return b.items[k]; }).sort(function (x, y) { return x.o - y.o; }), n = 0, sum = 0, box = C.basket;
+    list.forEach(function (it) { n += W.GGSX_WEIGHT ? W.GGSX_WEIGHT.count(it) : it.n; sum += it.n * it.price; });
+    if (!box) return;
+    box.innerHTML = '';
+    box.classList.toggle('on', n > 0);
+    if (!n) return;
+    var pics = h('div', { class: 'gh-bi' });
+    list.slice(0, 4).forEach(function (it) { pics.appendChild(it.img ? h('img', { src: pic(it.img, 96), alt: '' }) : h('span')); });
+    box.appendChild(pics);
+    box.appendChild(h('div', { class: 'gh-bt' }, [
+      h('b', { text: txt('basket', 'Your basket') + ' · ' + n + (n === 1 ? T.item || ' item' : T.items || ' items') }),
+      h('small', { text: money(sum) + (T.basketNote ? ' · ' + T.basketNote : '') })
+    ]));
+    box.appendChild(h('a', { class: 'gh-btn', href: SHOPP + '#basket', text: T.viewBasket || 'View basket' }));
+  }
+
+  /* ---------- search ---------- */
+  function go(q) { q = trim(q); if (q) location.assign(SHOPP + '#q/' + encodeURIComponent(q)); }
+  function voice(input) {
+    var R = W.SpeechRecognition || W.webkitSpeechRecognition;
+    if (!R) return null;
+    var b = h('button', { type: 'button', class: 'gh-mic', 'aria-label': T.voice || 'Search by voice' }, [svg('mic')]);
+    b.addEventListener('click', function () {
+      try {
+        var r = new R();
+        r.lang = T.lang || 'en-US'; r.interimResults = false;
+        b.classList.add('on'); input.placeholder = T.listening || 'Listening…';
+        r.onresult = function (e) { var s = e.results[0][0].transcript; input.value = s; go(s); };
+        r.onend = r.onerror = function () { b.classList.remove('on'); input.placeholder = txt('search_ph', T.search || 'Search'); };
+        r.start();
+      } catch (e) { b.classList.remove('on'); }
+    });
+    return b;
+  }
+  function suggest(q, box) {
+    box.innerHTML = '';
+    if (q.length < 2) { box.classList.remove('show'); return; }
+    var words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    C.prods.filter(function (p) { var s = (p.name + ' ' + p.size + ' ' + p.cat).toLowerCase(); return words.every(function (w) { return s.indexOf(w) >= 0; }); })
+      .slice(0, 5).forEach(function (p) {
+        box.appendChild(h('div', { class: 'gh-sg' }, [
+          h('img', { src: pic(p.img, 96), alt: '' }),
+          h('span', { class: 'gh-sn', text: p.name + (p.size ? ' · ' + p.size : '') }),
+          h('b', { text: money(p.price) + (W.GGSX_WEIGHT && W.GGSX_WEIGHT.is(p) ? W.GGSX_WEIGHT.copy.per : '') }),
+          h('span', { class: 'gh-st', 'data-id': p.id }, [stepper(p)])
+        ]));
+      });
+    box.appendChild(h('div', { class: 'gh-sall', text: (T.searchAll || 'Search the shop for') + ' “' + q + '”', onclick: function () { go(q); } }));
+    box.classList.add('show');
+  }
+  function searchBox() {
+    var input = h('input', { type: 'search', placeholder: txt('search_ph', T.search || 'Search'), autocomplete: 'off', 'aria-label': T.search || 'Search' }),
+      box = h('div', { class: 'gh-sugg' }), wait,
+      form = h('form', { class: 'gh-search', onsubmit: function (e) { e.preventDefault(); go(input.value); } },
+        [input, voice(input), h('button', { type: 'submit', 'aria-label': T.search || 'Search' }, [svg('search')]), box]);
+    input.addEventListener('input', function () { clearTimeout(wait); wait = setTimeout(function () { suggest(trim(input.value), box); }, 150); });
+    D.addEventListener('click', function (e) { if (!form.contains(e.target)) box.classList.remove('show'); });
+    return form;
+  }
+
+  /* ---------- pieces ---------- */
+  function logo(v, n) {
+    var M = W.GGSX_MORE;
+    return M && M.logo ? M.logo(v, n) : h('div', { class: 'gm-logo' }, [h('b', { text: (v.name || '?')[0] })]);
+  }
+  function tile(t, lazy, first) {
+    return h('a', { class: 'gh-tile' + (t.ph ? ' ph' : ''), href: t.href || '#' }, [
+      t.el || h('img', { src: pic(t.img, 400), alt: '', loading: lazy ? 'lazy' : null, fetchpriority: first ? 'high' : null }),
+      t.cap ? h('span', { text: t.cap }) : null
+    ]);
+  }
+  function rail(el, cls) {
+    var arrows = [-1, 1].map(function (d) {
+      return h('button', { type: 'button', class: 'gh-arr ' + (d < 0 ? 'l' : 'r'), 'aria-label': d < 0 ? 'Previous' : 'Next', text: d < 0 ? '‹' : '›',
+        onclick: function () { el.scrollBy({ left: d * el.clientWidth * 0.8, behavior: 'smooth' }); } });
+    });
+    return h('div', { class: 'gh-rw ' + (cls || '') }, [arrows[0], el, arrows[1]]);
+  }
+  function section(key, title, body, more, cls) {
+    return h('section', { class: 'gh-sec ' + (cls || '') }, [
+      h('div', { class: 'gh-sh' }, [h('h2', { text: txt(key, title) }), more ? h('a', { href: more, text: T.seeAll || 'See all' }) : null]),
+      body
+    ]);
+  }
+  function heroes(list, root) {
+    var row = h('div', { class: 'gh-heros' }), dots = h('div', { class: 'gh-dots' }), busy = false;
+    list.forEach(function (c, i) {
+      var grid = null;
+      if (c.tiles.length) {
+        grid = h('div', c.rest ? { class: 'gh-grid n' + c.tiles.length, 'data-rest': '4' } : { class: 'gh-grid n' + c.tiles.length });
+        c.tiles.forEach(function (t) { grid.appendChild(c.rest ? tile({ el: logo(t.v, 200), cap: t.cap, href: t.href }, true) : tile(t, i > 0, i === 0)); });
+      }
+      var card = h('article', { class: 'gh-hero', style: '--c:' + c.color, 'data-i': String(i) }, [
+        h('div', { class: 'gh-ht' }, [h('h2', { text: c.title }), c.sub ? h('p', { text: c.sub }) : null]),
+        grid,
+        c.cta ? h('a', { class: 'gh-cta', href: c.link || SHOPP, text: c.cta }) : null
+      ]);
+      if (c.rest) card.setAttribute('data-rest', '1');
+      row.appendChild(card);
+      dots.appendChild(h('i', { class: i ? '' : 'on' }));
+    });
+    row.addEventListener('scroll', function () {
+      if (busy) return;
+      busy = true;
+      requestAnimationFrame(function () {
+        busy = false;
+        var kids = row.children, at = row.scrollLeft + (kids[0] ? kids[0].offsetWidth / 2 : 0), best = 0, dist = 1e9, k, el, x;
+        for (k = 0; k < kids.length; k++) {
+          el = kids[k]; x = Math.abs(el.offsetLeft - row.offsetLeft + el.offsetWidth / 2 - at);
+          if (x < dist) { dist = x; best = +el.getAttribute('data-i') || 0; }
+        }
+        if (best === C.hi) return;
+        C.hi = best;
+        root.style.setProperty('--c', (list[best] && list[best].color) || '#F4551B');
+        [].forEach.call(dots.children, function (d, j) { d.classList.toggle('on', j === best); });
+      });
+    });
+    C.hi = -1;
+    root.style.setProperty('--c', (list[0] && list[0].color) || '#F4551B');
+    var w = rail(row, 'gh-hw');
+    w.appendChild(dots);
+    return w;
+  }
+
+  /* ---------- the page ---------- */
+  function build(m) {
+    C.set = m.set;
+    var root = h('section', { id: 'ggsx-home' }), wrap = h('div', { class: 'gh-wrap' }), chips = h('div', { class: 'gh-chips' });
+    m.chips.forEach(function (t) {
+      chips.appendChild(h('a', { class: 'gh-chip' + (light(t.color) ? ' lt' : ''), href: t.link || SHOPP, style: '--c:' + (t.color || '#fff'), text: (t.text ? t.text + ' ' : '') + t.title }));
+    });
+    root.appendChild(h('div', { class: 'gh-top' }, [
+      h('div', { class: 'gh-wrap' }, [searchBox(), chips, txt('sub_tagline') ? h('span', { class: 'gh-tag', text: txt('sub_tagline') }) : null]),
+      heroes(m.heroes, root)
+    ]));
+    root.appendChild(wrap);
+    wrap.appendChild(C.basket = h('div', { class: 'gh-basket' }));
+    if (m.rail.length) {
+      var pr = h('div', { class: 'gh-rail' });
+      m.rail.forEach(function (p) {
+        var full = C.byId[p.id] || p;
+        pr.appendChild(h('div', { class: 'gh-p', 'data-pid': p.id }, [
+          h('img', { src: pic(p.img, 320), alt: '', loading: 'lazy' }),
+          h('div', { class: 'gh-pn', text: p.name }),
+          h('div', { class: 'gh-pm', text: W.GGSX_WEIGHT && W.GGSX_WEIGHT.is(p) ? W.GGSX_WEIGHT.copy.sold : p.size }),
+          h('div', { class: 'gh-pr' }, [h('b', { text: money(p.price) + (W.GGSX_WEIGHT && W.GGSX_WEIGHT.is(p) ? W.GGSX_WEIGHT.copy.per : '') }), h('span', { class: 'gh-st', 'data-id': p.id }, [stepper(full)])])
+        ]));
+      });
+      wrap.appendChild(section('popular', 'Popular', rail(pr), SHOPP));
+    }
+    ['pointerdown', 'keydown', 'focusin', 'wheel', 'touchstart'].forEach(function (ev) { root.addEventListener(ev, function () { C.touched = true; }, { passive: true }); });
+    root.__wrap = wrap;
+    return root;
+  }
+  /* the sections below the first screen, built in a second step so the first screen can be drawn sooner */
+  function rest(m, wrap) {
+    if (m.depts.length) {
+      var dr = h('div', { class: 'gh-rail' });
+      m.depts.forEach(function (d) {
+        dr.appendChild(h('a', { class: 'gh-d', href: SHOPP + '#d/' + slug(d.cat) }, [h('div', {}, [d.img ? h('img', { src: pic(d.img, 200), alt: '', loading: 'lazy' }) : null]), d.cat]));
+      });
+      wrap.appendChild(section('depts', 'Shop by department', rail(dr), SHOPP));
+    }
+    if (m.vendors.length) {
+      var vr = h('div', { class: 'gh-rail' });
+      m.vendors.forEach(function (v) { vr.appendChild(h('a', { class: 'gh-v', href: SHOPP + '#restaurants/' + v.vendor_id }, [logo(v, 160), v.name])); });
+      wrap.appendChild(h('div', {}, [section('restaurants', 'Restaurant pickup', rail(vr), SHOPP + '#restaurants')]));
+    }
+    if (m.service.length) {
+      var sv = h('div', { class: 'gh-services' });
+      m.service.forEach(function (t) {
+        var im = trim(t.images).split(/\n+/)[0];
+        sv.appendChild(h('a', { class: 'gh-s', href: t.link || '#' }, [
+          im ? h('img', { src: pic(im, 480), alt: '', loading: 'lazy' }) : null,
+          h('div', {}, [h('b', { text: t.title }), t.subtitle ? h('small', { text: t.subtitle }) : null])
+        ]));
+      });
+      wrap.appendChild(section('services', 'Everything we do', sv, '/pricing'));
+    }
+    if (m.why.length) {
+      var ul = h('ul');
+      m.why.forEach(function (t) { ul.appendChild(h('li', { style: '--c:' + (t.color || '#F4551B') }, [h('i'), h('div', {}, [h('b', { text: t.title }), t.text ? h('p', { text: t.text }) : null])])); });
+      wrap.appendChild(section('why', 'Why guests choose GrocerGoSx', h('div', {}, [txt('why_intro') ? h('p', { text: txt('why_intro') }) : null, ul]), null, 'gh-why'));
+    }
+    if (m.review.length) {
+      var rv = h('div', { class: 'gh-rail' });
+      m.review.forEach(function (t) {
+        rv.appendChild(h('blockquote', { class: 'gh-r' }, [h('i', { text: '★★★★★' }), h('p', { text: t.text }), h('div', { class: 'gh-rf' }, [h('b', { text: t.title }), t.subtitle ? ', ' + t.subtitle : null])]));
+      });
+      wrap.appendChild(section('reviews', 'What our guests are saying', rail(rv)));
+    }
+    m.cta.forEach(function (t) {
+      wrap.appendChild(h('div', { class: 'gh-cta2', style: '--c:' + (t.color || '#F4551B') }, [
+        h('div', {}, [h('h2', { text: t.title }), t.text ? h('p', { text: t.text }) : null]),
+        t.cta ? h('a', { href: t.link || '#', target: /^https?:/.test(t.link || '') ? '_blank' : null, rel: 'noopener', text: t.cta }) : null
+      ]));
+    });
+    if (m.link.length) {
+      var nav = h('nav', { class: 'gh-links', 'aria-label': txt('links', 'More') });
+      m.link.forEach(function (t) { nav.appendChild(h('a', { href: t.link || '/', text: t.title })); });
+      wrap.appendChild(nav);
+    }
+  }
+  function findSection() { return D.querySelector('main[id^="PAGE_SECTIONS"] > section') || D.querySelector('main > section') || D.querySelector('main'); }
+  function isHome() { return location.pathname.replace(/\/+$/, '') === HOMEP; }
+  function collapse(t, keep, undo) {
+    function one(el) {
+      if (el === keep || el === t) return;
+      el.style.minHeight = undo ? '' : '0'; el.style.height = undo ? '' : '0'; el.style.overflow = undo ? '' : 'hidden';
+      el.style.padding = undo ? '' : '0'; el.style.margin = undo ? '' : '0';
+    }
+    [].forEach.call(t.children, one);
+    if (t.parentNode) [].forEach.call(t.parentNode.children, one);
+  }
+  function attach(sec, el) { sec.appendChild(el); collapse(sec, el); html.classList.add('gh-on'); }
+  function show(sec, x) {
+    C.data = x;
+    useProds(x.prods);
+    var m = model(x);
+    C.sig = sigOf(m); C.price = priceOf(m);
+    var root = C.root = build(m);
+    attach(sec, root);
+    basketUi();
+    setTimeout(function () { if (C.root === root && D.body.contains(root)) rest(m, root.__wrap); }, 0);
+  }
+  function done() { if (C.root && isHome()) html.classList.add('gh-done'); }
+  function prices(m) {
+    m.rail.forEach(function (p) {
+      var b = C.root.querySelector('.gh-p[data-pid="' + String(p.id).replace(/["\\]/g, '\\$&') + '"] .gh-pr b');
+      if (b) b.textContent = money(p.price) + (W.GGSX_WEIGHT && W.GGSX_WEIGHT.is(p) ? W.GGSX_WEIGHT.copy.per : '');
+    });
+  }
+  function refresh() {
+    if (C.busy) return;
+    C.busy = true;
+    setTimeout(done, 1200);                                                  /* a slow sheet never holds the page */
+    live().then(function (x) {
+      if (!x.vendors) x.vendors = (C.data && C.data.vendors) || [];
+      save(x);
+      if (!C.root || !isHome()) return;
+      C.data = x; useProds(x.prods);
+      var m = model(x), s = sigOf(m);
+      if (s === C.sig) { ST.refreshed = priceOf(m) !== C.price ? 'prices' : 'same'; if (ST.refreshed === 'prices') { prices(m); C.price = priceOf(m); } basketUi(); return; }
+      if (C.touched) { ST.refreshed = 'kept (in use)'; return; }             /* in use: the next visit shows the new version */
+      ST.refreshed = 'redrawn'; ST.redraws++;
+      var old = C.root, nw = build(m);
+      rest(m, nw.__wrap);
+      [].slice.call(old.children).forEach(function (c) { if (!/(^|\s)gh-/.test(c.className || '')) nw.appendChild(c); });   /* e.g. SEO Content's block */
+      C.sig = s; C.price = priceOf(m); C.root = nw;
+      if (old.parentNode) old.parentNode.replaceChild(nw, old);
+      basketUi();
+    }).catch(function () {}).then(function () { C.busy = false; done(); });
+  }
+  function tick() {
+    if (!isHome()) {
+      C.root = null; C.started = false; tries = 0;
+      html.classList.remove('gh-on'); html.classList.remove('gh-done'); html.classList.remove('gg-home');
+      return;
+    }
+    if (D.getElementById('ggsx-home')) return;
+    var sec = findSection();
+    if (!sec || !D.body.contains(sec)) { if (++tries < 80) setTimeout(tick, 250); return; }
+    if (C.root) { attach(sec, C.root); return; }                             /* Wix redrew the page: put the home back */
+    if (C.started) return;
+    C.started = true;
+    var f = first();
+    if (f) {
+      ST.from = f.fresh ? 'session' : f.data.snap ? 'snapshot' : 'browser';
+      show(sec, f.data);
+      if (f.fresh) done(); else refresh();
+      return;
+    }
+    /* no copy at all (no snapshot in this build): wait for the sheet behind a "Loading…" box, as v1.1 did */
+    var box = h('section', { id: 'ggsx-home' }, [h('div', { class: 'gh-loading', text: T.loading || 'Loading…' })]);
+    attach(sec, box);
+    ST.from = 'sheet';
+    live().then(function (x) {
+      if (!x.vendors) x.vendors = [];
+      save(x);
+      if (box.parentNode) box.parentNode.removeChild(box);
+      if (!D.getElementById('ggsx-home') && isHome()) show(findSection(), x);
+      done();
+    }).catch(function () {
+      if (box.parentNode) { collapse(box.parentNode, box, true); box.parentNode.removeChild(box); }
+      html.classList.remove('gh-on'); html.classList.remove('gg-home');
+    });
+  }
+})();
+</script>

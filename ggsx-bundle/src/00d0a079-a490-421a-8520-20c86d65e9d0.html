@@ -1,3 +1,4 @@
+<!-- v1.8 (4 Nov 2026): items sold by weight (size "per lb" on the Products tab), see Shop 42 Sold by Weight: a weighed line counts as one item -->
 <!-- 23 Oct 2026 (v2): 15% service fee, min $80 ($70 planned/partner), max $120; delivery free; $100 minimum on shop orders (Shop 22); pass-through handling folded into the service fee. -->
 <!-- GrocerGoSx Shop 13 Order Changes Core v1.0.3 (24 Oct 2026: a "Laundry, wash & fold" line (Shop 24) is left out of the service fee and adds
      $20 each way, laundry_fee_each_way) · v1.0.2 (19 Oct 2026; v1.0.2 fair pricing: flat shopping fee, $20 stops, 15% handling on restaurant
@@ -99,7 +100,7 @@
     var F = (W.GGSX_RUN && W.GGSX_RUN.fees) || {}, del = 0,
         sub = 0, n = 0, pharm = false, groc = false, food = 0, vend = {}, lau = 0, hasL = false;
     lines.forEach(function (l) {
-      sub += l[2] * l[3]; n += l[2];
+      sub += l[2] * l[3]; n += W.GGSX_WEIGHT ? W.GGSX_WEIGHT.count(l) : l[2];
       var m = /\(([^()]+)\)\s*$/.exec(l[0]), v = m ? m[1].trim().toLowerCase() : '';
       if (/^laundry, wash/i.test(l[0])) { hasL = true; lau += l[2] * l[3]; }
       else if (/^pharmacy\b/i.test(l[0])) pharm = true;

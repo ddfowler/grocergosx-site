@@ -1,0 +1,170 @@
+<!-- GrocerGoSx Shop 46 Saved Basket Links v1.0 (9 Nov 2026, bundle v2.2; bundle-only module, core). Dwayne chose (9 Nov 2026) to have each
+     "Checkout not sent" submission carry a "finish your order" link, so a follow-up message can hand the client their basket back in one tap.
+     * GGSX_SAVED.save() stores the current basket encrypted in the CMS collection "Short tracker links" (GrocerGoSxShortLinks, as Shop 19's
+       tracker links: the key exists only in the link, so the stored row can't be read without it; the row holds the basket lines only, nothing
+       the client typed) and resolves with a short link like grocergosx.com/shop-now#b/aB3dE9Xy7Qk2. The same basket isn't stored twice in a
+       visit. GGSX_SAVED.current() gives that link at once while the basket is unchanged (Shop 17 Checkout Follow-up v1.2 puts it on the record).
+       Shop 17 calls save() when the checkout opens (so only for visitors who allow its Functional category) and after basket changes.
+     * Opening a #b/ link puts that basket back on the device (the basket that was there is kept as ggsx_basket_before_link), reloads Shop Now
+       with the basket open and says "Welcome back…". A link that can't be read leaves the basket alone and says so.
+     Visitor access through the site's Headless client, as in Shop 8, 16, 17 and 19. Texts: window.GGSX_SAVED_CFG. -->
+<style>
+.gsv-toast{position:fixed;left:50%;bottom:92px;z-index:9500;transform:translateX(-50%);max-width:min(92vw,440px);padding:12px 16px;border-radius:14px;background:#1b1b1b;color:#fff;font-size:14px;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;transition:opacity .25s ease;pointer-events:none}
+.gsv-toast.on{opacity:1}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxSaved) return;
+  W.__ggsxSaved = 1;
+  var CFG = W.GGSX_SAVED_CFG = {
+    clientId: 'b0274d30-48b0-4e8d-b352-2f70ff783547',   /* the site's Headless client (same as Shop 3, 8, 16, 17, 19) */
+    col: 'GrocerGoSxShortLinks',                          /* CMS "Short tracker links" (Shop 19) */
+    base: 'https://www.grocergosx.com/shop-now#b/',
+    page: '/shop-now',
+    back: 'Welcome back! Your basket is ready ({n}). Check out whenever you like.',
+    gone: 'We couldn’t open that saved basket. Your basket hasn’t changed. Message us and we’ll sort it out.'
+  };
+  var API = 'https://www.wixapis.com', TOK = 'ggsx_live_tok', KEY = 'ggsx_saved', BACK = 'ggsx_saved_back';
+  var ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  var ok = !!(W.crypto && W.crypto.subtle && W.crypto.getRandomValues && W.TextEncoder && W.TextDecoder);
+  var enc = ok && new TextEncoder(), dec = ok && new TextDecoder(), pending = null;
+
+  function sget(k) { try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+  function sset(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function b64(u8) { var s = ''; for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function unb64(s) { s = String(s || '').replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+  function keys(sec) {   /* the link's secret → the row ID and the AES key (neither reveals the secret) */
+    return Promise.all([crypto.subtle.digest('SHA-256', enc.encode('k:' + sec)), crypto.subtle.digest('SHA-256', enc.encode('i:' + sec))])
+      .then(function (h) {
+        return crypto.subtle.importKey('raw', h[0], 'AES-GCM', false, ['encrypt', 'decrypt'])
+          .then(function (k) { return { key: k, id: 'b' + hex(h[1]).slice(0, 23) }; });
+      });
+  }
+  function token(fresh) {   /* visitor access, shared with Shop 8, 16, 17 and 19 */
+    var t = fresh ? null : sget(TOK);
+    if (t && t.v && t.exp > Date.now() + 60000) return Promise.resolve(t.v);
+    return fetch(API + '/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ clientId: CFG.clientId, grantType: 'anonymous' }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.access_token) throw new Error('token');
+        sset(TOK, { v: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 });
+        return j.access_token;
+      });
+  }
+  function api(method, path, body, retry) {
+    return token(retry).then(function (t) {
+      return fetch(API + path, { method: method, headers: { 'Content-Type': 'application/json', Authorization: t }, body: body ? JSON.stringify(body) : undefined });
+    }).then(function (r) {
+      if (r.status === 401 && !retry) return api(method, path, body, true);
+      if (!r.ok) throw new Error('wix ' + r.status);
+      return r.json();
+    });
+  }
+
+  /* ---------- the basket ---------- */
+  function items() {
+    try {
+      var b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null'), out = {}, k;
+      if (b && b.items) for (k in b.items) if (b.items[k] && (+b.items[k].n || 0) > 0) out[k] = b.items[k];
+      return out;
+    } catch (e) { return {}; }
+  }
+  function sig(it) { return JSON.stringify(Object.keys(it).sort().map(function (k) { return [k, +it[k].n || 0, +it[k].price || 0, it[k].name || '']; })); }
+  function count(it) {
+    var n = 0, k;
+    for (k in it) n += (W.GGSX_WEIGHT && W.GGSX_WEIGHT.count) ? W.GGSX_WEIGHT.count(it[k]) : (+it[k].n || 0);
+    return n + (n === 1 ? ' item' : ' items');
+  }
+  function secret() {
+    var r = crypto.getRandomValues(new Uint8Array(12)), s = '';
+    for (var i = 0; i < r.length; i++) s += ABC[r[i] % ABC.length];
+    return s;
+  }
+
+  /* store the basket as it is now → its short link */
+  function save() {
+    if (!ok) return Promise.reject(new Error('no crypto'));
+    var it = items(), sg = sig(it), have = sget(KEY);
+    if (!Object.keys(it).length) return Promise.reject(new Error('empty basket'));
+    if (have && have.sig === sg && have.url) return Promise.resolve(have.url);
+    if (pending && pending.sig === sg) return pending.p;
+    var sec = secret(), url = CFG.base + sec;
+    var p = keys(sec).then(function (K) {
+      var iv = crypto.getRandomValues(new Uint8Array(12)), body = JSON.stringify({ v: 1, t: Date.now(), items: it });
+      return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, K.key, enc.encode(body)).then(function (ct) {
+        return api('POST', '/wix-data/v2/items', { dataCollectionId: CFG.col,
+          dataItem: { id: K.id, data: { t: b64(iv) + '.' + b64(new Uint8Array(ct)), kind: 'basket' } } });
+      });
+    }).then(function () {
+      if (pending && pending.p === p) pending = null;
+      sset(KEY, { sig: sg, url: url, t: Date.now() });
+      return url;
+    }, function (e) {
+      if (pending && pending.p === p) pending = null;
+      throw e;
+    });
+    pending = { sig: sg, p: p };
+    return p;
+  }
+  /* the link for the basket as it is now, if it is already stored ('' if not) */
+  function current() {
+    var have = sget(KEY);
+    return have && have.url && have.sig === sig(items()) ? have.url : '';
+  }
+
+  /* ---------- a #b/ link opened ---------- */
+  function toast(text) {
+    var t = D.createElement('div');
+    t.className = 'gsv-toast';
+    t.setAttribute('role', 'status');
+    t.textContent = text;
+    (D.body || D.documentElement).appendChild(t);
+    setTimeout(function () { t.classList.add('on'); }, 30);
+    setTimeout(function () { t.classList.remove('on'); setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 400); }, 7000);
+  }
+  function here() { return location.pathname.replace(/\/+$/, '') === CFG.page; }
+  function restore() {
+    var m = /^#b\/([A-Za-z0-9]{8,20})$/.exec(location.hash);
+    if (!m || restore.busy === m[1]) return;
+    restore.busy = m[1];
+    if (!ok) { toast(CFG.gone); return; }
+    keys(m[1]).then(function (K) {
+      return api('GET', '/wix-data/v2/items/' + K.id + '?dataCollectionId=' + CFG.col).then(function (j) {
+        var p = String((j.dataItem && j.dataItem.data && j.dataItem.data.t) || '').split('.');
+        return crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(p[0]) }, K.key, unb64(p[1]));
+      });
+    }).then(function (pt) {
+      var b = JSON.parse(dec.decode(pt)), it = {}, k;
+      for (k in (b && b.items) || {}) if (b.items[k] && b.items[k].id && (+b.items[k].n || 0) > 0) it[k] = b.items[k];
+      if (!Object.keys(it).length) throw new Error('empty');
+      try {
+        var old = localStorage.getItem('ggsx_basket');
+        if (old) localStorage.setItem('ggsx_basket_before_link', old);
+        localStorage.setItem('ggsx_basket', JSON.stringify({ v: 1, t: Date.now(), items: it }));
+      } catch (e) {}
+      sset(BACK, count(it));
+      sset(KEY, { sig: sig(it), url: CFG.base + m[1], t: Date.now() });   /* the same basket keeps its link */
+      var to = CFG.page + '#basket';
+      if (here()) { history.replaceState(null, '', to); location.reload(); }
+      else location.replace(to);
+    }).catch(function () {
+      restore.busy = null;
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      toast(CFG.gone);
+    });
+  }
+
+  W.GGSX_SAVED = { save: save, current: current, restore: restore };
+  restore();
+  W.addEventListener('hashchange', restore);
+  (function welcome() {
+    var n = sget(BACK);
+    if (!n) return;
+    try { sessionStorage.removeItem(BACK); } catch (e) {}
+    setTimeout(function () { toast(CFG.back.replace('{n}', n)); }, 900);
+  })();
+})();
+</script>

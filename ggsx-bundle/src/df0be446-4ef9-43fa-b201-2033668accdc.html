@@ -1,3 +1,4 @@
+<!-- v1.8 (4 Nov 2026): items sold by weight (size "per lb" on the Products tab), see Shop 42 Sold by Weight: "about 1.5 lb", then the weighed weight and price -->
 <!-- GrocerGoSx Shop 10 Client Live Page v1.0.2 (17 Oct 2026; v1.0.1 reads GGSX_TRACK from Shop 8 v1.0.1; v1.0.2 treats a record that only holds order edits (Shop 13–15) as "waiting" instead of "couldn't confirm"): the client's own view of their shop at /shop-now#track/… (the link in their
      order confirmation email, the "Send live link" message and every update email). Shows their items with photos (Shop 7) and each
      item's status as you tick the run sheet: waiting, got it, substituted (with the name and price), out of stock. Refreshes every
@@ -113,6 +114,7 @@
           it = el('div', { class: 'gr-item' }, [el('div', { class: 'gr-it-h' }, [
             el('div', { class: 'gr-it-n' }, [el('b', { text: ln[2] + ' × ' }), C.itemName(ln)]),
             el('div', { class: 'gr-it-p', text: C.money(ln[2] * ln[3]) })]), chip]);
+      if (W.GGSX_WEIGHT) W.GGSX_WEIGHT.liveRow(it, ln);
       list.appendChild(it);
       return { it: it, chip: chip };
     });
@@ -163,6 +165,7 @@
       if (st === 'out' && (ln[4] || rule) === 'skip') text += T.skipped;
       x.it.className = 'gr-item' + (st ? ' ' + st : '');
       x.chip.textContent = text;
+      if (W.GGSX_WEIGHT) W.GGSX_WEIGHT.liveState(x, ln, st, (R.w || {})[i]);
     });
     u.ul.innerHTML = '';
     lines.forEach(function (ln, i) {

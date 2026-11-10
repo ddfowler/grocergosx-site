@@ -1,0 +1,276 @@
+<!-- GrocerGoSx Shop 45 Basket Estimate & ASAP v1.0 (9 Nov 2026, bundle v2.2; bundle-only module, core, after Shop 44). From his review of the
+     "Checkout not sent" submissions (9 Nov 2026) Dwayne chose to build: (1) the basket says what the order comes to and when it can arrive before
+     checkout, instead of the note "… no fee is added after your quote" (which read as if there were no fees at all); (2) restaurant-only orders
+     can pick "As soon as possible" instead of a window with lead_hours' notice.
+     * Basket line, under "Basket total" in Shop 2's basket: "Estimated total $X, incl. service & delivery" (the checkout's own maths,
+       GGSX_CHECKOUT.estimate in Shop 3 v1.18, for the earliest window; "from" while we don't know the island side), "Booked 2+ days ahead: $Y"
+       when that is cheaper, "Earliest delivery: …", "Add $Z more to check out (minimum $M)" while Settings min_order isn't met (no totals
+       then, as at checkout) and "Taxes included · your final total follows the receipts". A restaurant that isn't taking orders shows its
+       hours instead. Settings basket_estimate 0 = the old note.
+     * "As soon as possible" (GGSX_ASAP, asked by Shop 12 v1.2): at the top of the window list when every line is restaurant food (a laundry
+       add-on is fine), the date is today and every restaurant in the basket is taking orders (Shop 27; a restaurant with no hours on the Vendors
+       tab: 8:30 AM to 10 PM). Picked for the client when such a checkout opens with no date yet. Settings restaurant_asap 0 = off. The Shop Now
+       checkout form's window dropdown lists the value since 9 Nov 2026.
+     Texts: window.GGSX_EST. -->
+<style>
+.ge-box{margin:4px 0 12px;padding:10px 12px;background:#f6f3ee;border-radius:12px;font-size:13px;line-height:1.45;color:#3a3a3a;text-align:left}
+.ge-box p{margin:0}
+.ge-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ge-row span{font-weight:700;color:#1b1b1b}
+.ge-row span small{display:block;font-weight:400;font-size:12px;color:#6b6b6b}
+.ge-row b{font-size:16px;color:#F4551B;white-space:nowrap}
+.ge-ahead,.ge-when{margin-top:5px}
+.ge-when b{color:#1b1b1b}
+.ge-min{margin-top:6px;font-weight:700;color:#b3261e}
+.ge-fine{margin-top:6px;font-size:12px;color:#6b6b6b}
+.gc-f .ge-asap{display:block;margin-top:2px;font-weight:400;font-size:12px;line-height:1.4;color:#6b6b6b}
+.gc-f .ge-asap:empty{display:none}
+</style>
+<script>
+window.GGSX_EST = {
+  asap: 'As soon as possible',
+  asapHint: 'We place your order right away and bring it over as soon as it’s ready.',
+  total: 'Estimated total',
+  incl: 'incl. service & delivery',
+  from: 'from ',
+  ahead: 'Booked 2+ days ahead: ',
+  when: 'Earliest delivery: ',
+  asapWhen: 'as soon as possible',
+  today: 'today',
+  tomorrow: 'tomorrow',
+  min: 'Add {more} more to check out (minimum {min}).',
+  closed: '{n} takes orders {a}–{last} (island time).',
+  fine: 'Taxes included · your final total follows the receipts.',
+  days: 14,
+  noHours: [510, 1320]    /* a restaurant with no hours on the Vendors tab: "As soon as possible" from 8:30 AM to 10 PM island time */
+};
+</script>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxBasketEst) return;
+  W.__ggsxBasketEst = 1;
+  var T = W.GGSX_EST, SET = null, AHEAD_DAYS = 3;
+  var RE_WIN = /(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})/;
+
+  function money(v) { return '$' + (Math.round((+v || 0) * 100) / 100).toFixed(2); }
+  function el(tag, cls, kids) {
+    var e = D.createElement(tag);
+    if (cls) e.className = cls;
+    (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  }
+  function lines() {
+    try {
+      var b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null'), out = [], k;
+      if (b && b.items) for (k in b.items) if (b.items[k] && (+b.items[k].n || 0) > 0) out.push(b.items[k]);
+      out.sort(function (a, c) { return (a.o || 0) - (c.o || 0); });
+      return out;
+    } catch (e) { return []; }
+  }
+  /* Settings switches: 1 (or blank) = on, 0 = off */
+  function on(key) {
+    var v = SET ? SET[key] : null;
+    return !(v != null && String(v).trim() === '0');
+  }
+  function load() {
+    var M = W.GGSX_MORE;
+    if (SET || !M || !M.load || load.busy) return;
+    load.busy = 1;
+    M.load().then(function (d) { load.busy = 0; SET = (d && d.set) || {}; later(); }, function () { load.busy = 0; });
+    try { var H = W.GGSX_SHOPHOURS; if (H && H.load) H.load(); } catch (e) {}
+    try { var P = W.GGSX_POLISH; if (P && P.settings) P.settings(); } catch (e) {}
+  }
+  function addDays(ymd, n) { var d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function restOnly(ls) {
+    var F = W.GGSX_FEE_SPLIT;
+    try { if (F && F.kind) return F.kind(ls).restOnly; } catch (e) {}
+    var r = 0, o = 0;
+    ls.forEach(function (l) { var id = String(l.id || ''); if (/^laundry:/.test(id)) return; if (/^rest:/.test(id)) r++; else o++; });
+    return r > 0 && !o;
+  }
+
+  /* ---------- "As soon as possible" ---------- */
+  function asapOK(ymd) {
+    var P = W.GGSX_POLISH, H = W.GGSX_HOURS, ls = lines();
+    if (!on('restaurant_asap') || !P || !P.now || !ls.length || !restOnly(ls)) return false;
+    var t = P.now();
+    if ((ymd || t.ymd) !== t.ymd) return false;
+    var known = H && H.inBasket ? H.inBasket() : [];
+    if (known.length && H.closedIn && H.closedIn().length) return false;          /* a restaurant isn't taking orders now */
+    var ids = {}, n = 0;
+    ls.forEach(function (l) { var m = /^rest:([^:]+):/.exec(String(l.id || '')); if (m && !ids[m[1]]) { ids[m[1]] = 1; n++; } });
+    if (n > known.length && !(t.mins >= T.noHours[0] && t.mins <= T.noHours[1])) return false;   /* one with no hours: daytime only */
+    return true;
+  }
+  W.GGSX_ASAP = { is: function (label) { return String(label || '') === T.asap; }, ok: asapOK };
+
+  function fire(i) { ['input', 'change'].forEach(function (t) { try { i.dispatchEvent(new Event(t, { bubbles: true })); } catch (e) {} }); }
+  function form() { return D.querySelector('.gc-wrap[data-ggsx-co] .gc-form') || D.querySelector('.gc-wrap .gc-form'); }
+  function sync() {
+    var f = form(), sel = f && f.querySelector('select[name=win]'), date = f && f.querySelector('input[name=date]');
+    if (!sel || !date) return;
+    var ok = asapOK(date.value), opt = sel.querySelector('option[data-asap]');
+    if (ok && !opt) {
+      opt = D.createElement('option');
+      opt.value = T.asap;
+      opt.textContent = T.asap;
+      opt.setAttribute('data-asap', '1');
+      var first = sel.querySelector('option[value=""]');
+      sel.insertBefore(opt, first ? first.nextSibling : sel.firstChild);
+    } else if (!ok && opt) {
+      var was = sel.value === T.asap;
+      opt.parentNode.removeChild(opt);
+      if (was) { sel.value = ''; fire(sel); }
+    }
+    var fl = sel.closest('.gc-f'), hint = fl && fl.querySelector('.ge-asap');
+    if (fl && !hint) { hint = el('small', 'ge-asap'); fl.appendChild(hint); }
+    if (hint) hint.textContent = sel.value === T.asap ? T.asapHint : '';
+    var P = W.GGSX_POLISH;
+    if (P && P.refresh) P.refresh();
+  }
+  function autoPick() {
+    var f = form(), sel = f && f.querySelector('select[name=win]'), date = f && f.querySelector('input[name=date]'), P = W.GGSX_POLISH;
+    if (!sel || !date || !P || !P.now) return;
+    var today = P.now().ymd;
+    if (date.value || sel.value || !asapOK(today)) return;
+    date.value = today;
+    fire(date);
+    sync();
+    if (sel.querySelector('option[data-asap]')) { sel.value = T.asap; fire(sel); }
+  }
+
+  /* ---------- the earliest delivery ---------- */
+  function overlaps(label, rs) {
+    var m = RE_WIN.exec(label);
+    if (!m) return true;
+    var a = +m[1] * 60 + +m[2], b = +m[3] * 60 + +m[4];
+    return rs.every(function (v) { return a < v.r.b && b > v.r.a; });
+  }
+  function earliest(ls) {
+    var P = W.GGSX_POLISH, H = W.GGSX_HOURS, CK = W.GGSX_CHECKOUT;
+    var t = P.now(), all = (CK.windows || []).slice(), wins = all.filter(function (w) { return RE_WIN.test(w); });
+    var rs = H && H.inBasket ? H.inBasket() : [], shut = H && H.closedIn ? H.closedIn() : [];
+    if (shut.length) return { closed: shut[0] };
+    if (asapOK(t.ymd)) return { asap: true, ymd: t.ymd, day: 0 };
+    for (var i = 0; i <= T.days; i++) {
+      var ymd = addDays(t.ymd, i);
+      for (var j = 0; j < wins.length; j++) {
+        if (P.why(ymd, wins[j], all)) continue;
+        if (rs.length && !overlaps(wins[j], rs)) continue;
+        return { ymd: ymd, label: wins[j], day: i };
+      }
+    }
+    return null;
+  }
+  function clock(m) {
+    var h = Math.floor(m / 60) % 24, mm = m % 60;
+    return (h % 12 || 12) + (mm ? ':' + ('0' + mm).slice(-2) : '') + (h < 12 ? ' AM' : ' PM');
+  }
+  function winText(label) {
+    var m = RE_WIN.exec(label), name = String(label).split('·')[0].trim().toLowerCase();
+    if (!m) return name;
+    var a = clock(+m[1] * 60 + +m[2]), b = clock(+m[3] * 60 + +m[4]);
+    if (a.slice(-2) === b.slice(-2)) a = a.slice(0, -3);   /* 5–11 PM */
+    return name + ' (' + a + '–' + b + ')';
+  }
+  function dayText(e) {
+    if (e.day === 0) return T.today;
+    if (e.day === 1) return T.tomorrow;
+    var d = new Date(e.ymd + 'T12:00:00Z');
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  }
+  /* booked-ahead or not, as Shop 3 works it out from a date and a window (device time) */
+  function plannedFor(ymd, label) {
+    var hrs = 48;
+    try { var v = +W.GGSX_MORE.setting('planned_hours', 48); if (v > 0) hrs = v; } catch (e) {}
+    var n = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd || ''), a = /(\d{1,2}):(\d{2})/.exec(label || '');
+    return !!n && new Date(+n[1], n[2] - 1, +n[3], a ? +a[1] : 8, a ? +a[2] : 30) - Date.now() >= hrs * 36e5;
+  }
+  function side() {
+    var CK = W.GGSX_CHECKOUT, s = '', w = D.querySelector('.gc-wrap select[name=side]');
+    if (w && w.value) s = w.value;
+    if (!s) { try { s = (JSON.parse(localStorage.getItem('ggsx_customer') || 'null') || {}).side || ''; } catch (e) {} }
+    return { v: s || ((CK && CK.sides && CK.sides[0]) || 'Dutch side (Sint Maarten)'), known: !!s };
+  }
+  function estimate(ls, ymd, label, planned) {
+    var CK = W.GGSX_CHECKOUT;
+    W.GGSX_PLAN_FORCE = !!planned;
+    try { return CK.estimate(ls, side().v, ymd, label || ''); }
+    catch (e) { return null; }
+    finally { W.GGSX_PLAN_FORCE = null; }
+  }
+
+  /* ---------- the basket line ---------- */
+  function content(ls) {
+    var CK = W.GGSX_CHECKOUT, P = W.GGSX_POLISH;
+    if (!CK || !CK.estimate || !P || !P.why || !P.now) return null;
+    var out = [], first = earliest(ls), t = P.now(), sd = side(), H = W.GGSX_HOURS;
+    var mn = null;
+    try { mn = W.GGSX_MIN && W.GGSX_MIN.state ? W.GGSX_MIN.state() : null; } catch (e) {}
+    if (mn && !mn.ok) {
+      out.push(el('p', 'ge-min', [T.min.replace('{more}', money(mn.m - mn.s)).replace('{min}', money(mn.m))]));
+    } else {
+      var ymd = first && first.ymd ? first.ymd : t.ymd, label = first && first.label ? first.label : '';
+      var now = estimate(ls, ymd, label, plannedFor(ymd, label));
+      if (!now || !(now.total > 0)) return null;
+      out.push(el('div', 'ge-row', [el('span', null, [T.total, el('small', null, [T.incl])]), el('b', null, [(sd.known ? '' : T.from) + money(now.total)])]));
+      if (!restOnly(ls) && !plannedFor(ymd, label)) {
+        var ahead = estimate(ls, addDays(t.ymd, AHEAD_DAYS), (CK.windows || [])[0] || '', true);
+        if (ahead && ahead.total > 0 && now.total - ahead.total >= 1) out.push(el('p', 'ge-ahead', [T.ahead + (sd.known ? '' : T.from) + money(ahead.total)]));
+      }
+    }
+    if (first && first.closed && H && H.state && H.fmt) {
+      var st = H.state(first.closed.r);
+      out.push(el('p', 'ge-when', [T.closed.replace('{n}', first.closed.name).replace('{a}', H.fmt(st.a)).replace('{last}', H.fmt(st.last))]));
+    } else if (first && first.asap) {
+      out.push(el('p', 'ge-when', [T.when, el('b', null, [T.asapWhen])]));
+    } else if (first) {
+      out.push(el('p', 'ge-when', [T.when, el('b', null, [dayText(first) + ', ' + winText(first.label)])]));
+    }
+    out.push(el('p', 'ge-fine', [T.fine]));
+    return out;
+  }
+  function paint() {
+    var notes = D.querySelectorAll('#ggsx-shop .gs-cart .gs-note');
+    if (!notes.length) return;
+    load();
+    var ls = lines(), kids = null;
+    if (ls.length && on('basket_estimate')) { try { kids = content(ls); } catch (e) { kids = null; } }
+    Array.prototype.forEach.call(notes, function (n) {
+      var box = n.nextElementSibling && n.nextElementSibling.classList.contains('ge-box') ? n.nextElementSibling : null;
+      if (!kids) { n.style.display = ''; if (box) box.style.display = 'none'; return; }
+      if (!box) { box = el('div', 'ge-box'); box.setAttribute('aria-live', 'polite'); n.parentNode.insertBefore(box, n.nextSibling); }
+      n.style.display = 'none';
+      box.style.display = '';
+      box.textContent = '';
+      kids.forEach(function (k) { box.appendChild(k.cloneNode(true)); });
+    });
+  }
+  function later() { clearTimeout(later.t); later.t = setTimeout(function () { paint(); sync(); }, 60); }
+
+  /* ---------- wiring ---------- */
+  var seen = null, busy = false;
+  new MutationObserver(function () {
+    if (busy) return;
+    busy = true;
+    (W.requestAnimationFrame || setTimeout)(function () {
+      busy = false;
+      var n = D.querySelector('#ggsx-shop .gs-cart .gs-note');
+      if (n && n !== seen) { seen = n; later(); }
+    });
+  }).observe(D.documentElement, { childList: true, subtree: true });
+  W.addEventListener('ggsx-basket', later);
+  D.addEventListener('ggsx-fees', later);
+  D.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('#ggsx-shop .gs-bar, .gs-cart-open, [aria-label="Basket"]')) later();
+  }, true);
+  D.addEventListener('ggsx-checkout-build', function () { load(); setTimeout(sync, 0); });
+  D.addEventListener('ggsx-checkout-open', function () { load(); setTimeout(sync, 80); setTimeout(autoPick, 450); });
+  D.addEventListener('change', function (e) { if (e.target && e.target.closest && e.target.closest('.gc-wrap')) setTimeout(sync, 90); }, true);
+  setInterval(function () { if (D.visibilityState !== 'hidden') { paint(); sync(); } }, 60000);
+  load();
+  later();
+})();
+</script>

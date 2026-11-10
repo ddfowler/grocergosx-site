@@ -1,0 +1,145 @@
+<!-- GrocerGoSx Shop 17 Checkout Follow-up v1.1 (20 Oct 2026; v1.1: also sends the moment an order fails to send; v1.0.1 links the note to the privacy policy). When someone opens the Shop Now checkout, types a phone number
+     or email and then leaves without sending the order (closes the checkout, leaves or switches away from the page, or stops
+     typing for 10 minutes), it sends their name, phone, email, basket and the delivery they picked to the Wix Form
+     "📝 Checkout not sent"; Wix's own form notification pushes that to your phone. Nothing is sent once the order goes
+     through, the same details are never sent twice in one visit (3 at most), and the delivery address and notes are never
+     read. Adds a line under the email and phone fields telling people their details are saved as they type.
+     Visit ID matches Shop 16 Live Baskets; browsers opted out with #lb-off are skipped. Needs Shop 3. Settings: GGSX_FOLLOW.
+     Wix: Settings → Custom Code → Body – end · All pages · Load code on each new page · Functional. -->
+<style>
+.gc-saved{margin:-4px 0 0;font-size:12.5px;line-height:1.4;font-weight:400;color:#6b6b6b}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxFollow) return;
+  W.__ggsxFollow = 1;
+  var CFG = W.GGSX_FOLLOW = {
+    clientId: 'b0274d30-48b0-4e8d-b352-2f70ff783547',     /* the site's Headless client (same as Shop 3 and 8) */
+    formId: '5d9dd960-515f-41d7-b615-1e3d0ab4ba3f',       /* Wix Form "📝 Checkout not sent" */
+    f: { name: 'name_c7n2', phone: 'phone_c7n2', email: 'email_c7n2', basket: 'basket_c7n2', total: 'total_c7n2',
+         delivery: 'delivery_c7n2', left: 'left_c7n2', device: 'device_c7n2', visit: 'visit_c7n2' },
+    note: 'We save your name and contact details as you type, so we can help if you’re interrupted before sending.',
+    idleMin: 10,
+    maxPerVisit: 3,
+    tz: 'America/Lower_Princes'
+  };
+  var API = 'https://www.wixapis.com', TOK = 'ggsx_live_tok', SENT = 'ggsx_follow_sent';
+  var IN = null, WRAP = null, open = false, done = false, busy = 0, last = 0, timer = 0, tried = false;
+
+  function now() { return Date.now(); }
+  function val(k) { try { return String((IN && IN[k] && IN[k].value) || '').trim(); } catch (e) { return ''; } }
+  function sget(k) { try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+  function sset(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function optedOut() { try { return localStorage.getItem('ggsx_lb_off') === '1'; } catch (e) { return false; } }
+  function money(v) { return '$' + (Math.round((+v || 0) * 100) / 100).toFixed(2); }
+  function stamp() {
+    try { return new Date().toLocaleString('en-GB', { timeZone: CFG.tz, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }); }
+    catch (e) { return new Date().toISOString().slice(0, 16); }
+  }
+  function reachable() {
+    return val('phone').replace(/\D/g, '').length >= 7 || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val('email'));
+  }
+  function basket() {
+    var b = null, items, k, it, q, p, n = 0, s = 0, out = [];
+    try { b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null'); } catch (e) {}
+    items = (b && b.items) || {};
+    for (k in items) {
+      it = items[k] || {}; q = +it.n || 0; p = +it.price || 0;
+      n += q; s += q * p;
+      out.push(q + '× ' + (/^pharm:/.test(it.id || k) ? 'Pharmacy request' : String(it.name || 'Item') + (it.size ? ' ' + it.size : ''))
+               + (p ? ' (' + money(q * p) + ')' : ''));
+    }
+    return { n: n, s: s, t: out.join(' · ') };
+  }
+
+  /* ---------- the line under email / phone ---------- */
+  function addNote() {
+    if (!IN || !IN.phone || D.querySelector('.gc-saved')) return;
+    var row = IN.phone.closest('.gc-row') || IN.phone.closest('.gc-f');
+    if (!row || !row.parentNode) return;
+    var p = D.createElement('p');
+    p.className = 'gc-saved';
+    p.textContent = CFG.note + ' ';
+    var a = D.createElement('a');
+    a.href = '/#privacy-policy';
+    a.textContent = 'Privacy policy';
+    a.style.color = '#F4551B';
+    p.appendChild(a);
+    row.parentNode.insertBefore(p, row.nextSibling);
+  }
+
+  /* ---------- sending what they typed ---------- */
+  function capture(how) {
+    if (!IN || done || busy > now() || optedOut() || !reachable()) return;
+    var name = (val('first') + ' ' + val('last')).trim(),
+        sig = [name, val('phone'), val('email')].join('|').toLowerCase(),
+        sent = sget(SENT) || [];
+    if (sent.indexOf(sig) > -1 || sent.length >= CFG.maxPerVisit) return;
+    sent.push(sig); sset(SENT, sent);
+    var b = basket(), v = sget('ggsx_lb') || {}, f = CFG.f, data = {}, put = function (k, x, max) { x = String(x || '').trim(); if (x) data[f[k]] = x.slice(0, max); };
+    put('name', name || '(no name typed)', 120);
+    put('phone', val('phone'), 40);
+    put('email', val('email'), 120);
+    put('basket', b.t || '(basket empty)', 900);
+    put('total', b.n ? money(b.s) + ' · ' + b.n + (b.n === 1 ? ' item' : ' items') : '', 60);
+    put('delivery', [val('side'), val('date'), val('win')].filter(Boolean).join(' · '), 160);
+    put('left', how + ' · ' + stamp(), 120);
+    put('device', v.dev || (navigator.userAgent || '').slice(0, 60), 120);
+    put('visit', v.id, 80);
+    send({ submission: { formId: CFG.formId, submissions: data } });
+  }
+  function token(fresh) {
+    var t = fresh ? null : sget(TOK);
+    if (t && t.v && t.exp > now() + 60000) return Promise.resolve(t.v);
+    return fetch(API + '/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ clientId: CFG.clientId, grantType: 'anonymous' }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.access_token) throw new Error('token');
+        sset(TOK, { v: j.access_token, exp: now() + (j.expires_in || 3600) * 1000 });
+        return j.access_token;
+      });
+  }
+  function send(body, retry) {
+    return token(retry).then(function (t) {
+      return fetch(API + '/form-submission-service/v4/submissions', { method: 'POST', keepalive: true,
+        headers: { 'Content-Type': 'application/json', Authorization: t }, body: JSON.stringify(body) });
+    }).then(function (r) {
+      if (r.status === 401 && !retry) return send(body, true);
+      return r.ok;
+    }).catch(function () { return false; });
+  }
+
+  /* ---------- watching the checkout ---------- */
+  function watch() {
+    clearInterval(timer);
+    timer = setInterval(function () {
+      if (!open) { clearInterval(timer); return; }
+      var er = tried && WRAP && WRAP.querySelector('.gc-err');
+      if (er && er.textContent.trim()) { tried = false; busy = 0; capture('tried to order but it didn\'t go through'); }
+      if (WRAP && !WRAP.classList.contains('open')) { open = false; clearInterval(timer); capture('closed the checkout'); return; }
+      if (now() - last > CFG.idleMin * 60000) { last = now(); capture('stopped typing for ' + CFG.idleMin + ' min'); }
+    }, 2000);
+  }
+  D.addEventListener('ggsx-checkout-open', function (e) {
+    try {
+      IN = ((e && e.detail) || {}).inputs || IN;
+      if (!IN || !IN.first) return;
+      WRAP = IN.first.closest('.gc-wrap');
+      open = true; done = false; busy = 0; last = now();
+      addNote();
+      token().catch(function () {});        /* ready before they leave */
+      watch();
+    } catch (x) {}
+  });
+  D.addEventListener('input', function (e) {
+    var t = e.target;
+    if (open && t && t.closest && t.closest('.gc-form')) last = now();
+  }, true);
+  D.addEventListener('ggsx-checkout-submit', function () { busy = now() + 25000; tried = true; });
+  D.addEventListener('ggsx-checkout-sent', function () { done = true; busy = 0; tried = false; });
+  D.addEventListener('visibilitychange', function () { if (D.visibilityState === 'hidden' && open) capture('left the page'); });
+  W.addEventListener('pagehide', function () { if (open) capture('left the page'); });
+})();
+</script>

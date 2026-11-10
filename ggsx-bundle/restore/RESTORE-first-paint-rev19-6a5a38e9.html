@@ -1,0 +1,153 @@
+<!-- Rev 19 (9 Nov 2026, site code v2.2 · checkout helpers: basket estimate line, "As soon as possible", "Dates not set yet?", saved basket links; only the core file changed, home/pages/rentals are v2.0): build "22" in BUILDS (try ?ggsx_v=22). Rev 20: LIVE="22". Restore copies: restore/RESTORE-first-paint-rev18/19-6a5a38e9.html. -->
+<!-- Rev 17 (7 Nov 2026, site code v2.1 · Orders app v1.1.2: the "Confirmed" message is written from what the client chose at checkout; only the
+     core file changed, so build "21" reuses the v2.0 home, pages and rentals files): build "21" in BUILDS (try it with ?ggsx_v=21). Rev 18 (7 Nov 2026): LIVE="21", v2.1 for every visitor (?ggsx_v=20 shows v2.0 in one tab).
+     Restore copies of rev 16 and rev 17: ggsx-bundle/restore/RESTORE-first-paint-rev16-6a5a38e9.html, RESTORE-first-paint-rev17-6a5a38e9.html. -->
+<!-- Rev 15 (6 Nov 2026, site code v2.0 · shopping hours: grocery orders are shopped on the delivery day while the supermarkets are open,
+     Shop 44 Shopping Hours): build "20" in BUILDS (try it with ?ggsx_v=20). Rev 16 (6 Nov 2026): LIVE="20", v2.0 for every visitor (?ggsx_v=19 shows v1.9 in one tab).
+     Restore copies of rev 14 and rev 15: ggsx-bundle/restore/RESTORE-first-paint-rev14-6a5a38e9.html, RESTORE-first-paint-rev15-6a5a38e9.html. -->
+<!-- Revs 7-14 (4-5 Nov 2026): builds "16"-"19" added to BUILDS and made LIVE in turn (v1.6 Rentals page: "rentals" group, /rentals in CODE,
+     the cover waits for #ggsx-rentals; v1.7 "Rentals" wording; v1.8 sold by weight + Orders app v1.1.1; v1.9 Shop Now search help). Full notes:
+     ggsx-bundle/README.md (History) and the restore copies ggsx-bundle/restore/RESTORE-first-paint-rev<6-16>-6a5a38e9.html. -->
+<!-- GrocerGoSx First Paint v1.1 (2 Nov 2026, page speed). Live build: 15 (site code v1.5) for every visitor since 2 Nov 2026 (rev 4);
+     ?ggsx_v=14 shows v1.4 again in one browser tab, ?ggsx_v=0 goes back; restore copy of rev 3 (LIVE 14): ggsx-bundle/restore/
+     RESTORE-first-paint-rev3-6a5a38e9.html. Rev 5: the home's first section keeps its screen-high space on computers too (Wix's own
+     "min-height: 0" rule for that section had won there, so the footer sat right under the header until the home was drawn and then
+     jumped down: a layout shift of 0.67). Rev 6: the same for every page the site code draws (CODE below: Shop Now, Restaurants, Pharmacy,
+     the restaurant pages, Laundry, Errands, the service pages; add new ones there): on computers their footer used to jump up and down
+     while the Wix text was swapped for the drawn page (0.30 on Shop Now with v1.4, 0.79 with v1.5); the two :not(#…) only make this rule
+     outrank the site code's own "min-height: 0" rules for those sections. New: (1) it picks the site code build (BUILDS / LIVE below; ?ggsx_v=<n> tries build n in this
+     browser tab) and starts downloading that build's files from the head, before Wix has even read the
+     page, instead of from the Bundle Loader at the end of the page; (2) from build 1.5 on, phones get the App Shell's page frame from the
+     first paint (no tall Wix header, room for the slim top bar and tab bar) and the home page keeps its Wix Editor content hidden and its
+     space reserved until the home is drawn, so nothing on the page jumps when the site code runs (if the site code has not run after 12
+     seconds, the Wix page is shown as it is); (3) the white cover waits for a page's group of the site code, and on the home page for the
+     final version (html.gh-done); (4) the cover's icon is loaded at the size it is shown. A new build: put its file URLs into BUILDS and its
+     number into LIVE (keep the previous build in BUILDS for a while: ?ggsx_v=<old> shows it again). Restore copy of v1.0: ggsx-bundle/restore/
+     RESTORE-first-paint-rev1-6a5a38e9.html.
+     v1.0 (27 Oct 2026): every page change on grocergosx.com is a full page load, and the body-end snippets that draw the phone bars and
+     the code-drawn pages (Home, Shop Now, Restaurants, Pharmacy, Pricing, Villa stocking, Laundry, Errands…) can only run after Wix has
+     painted its own page, so visitors saw the tall Wix header, the plain Editor text and unsized photos for a moment on every page. This puts
+     a white curtain with the GrocerGoSx icon over the page from the very first paint and lifts it once the page has drawn and settled (phone
+     bars in, the page's engine drawn, then no new elements for 150 ms or at most 0.7 s later), or after 3.5 seconds at the latest, so
+     nothing can ever stay hidden. Skips bots, the Editor and ?ggsx_nocurtain=1.
+     Wix: Settings → Custom Code → Add Custom Code · Place in: Head · Add to: All pages, Load code once · Type: Essential -->
+<style id="ggsx-fp-css">
+html.gg-wait body::before{content:"";position:fixed;inset:0;z-index:8990;background:#fff}
+html.gg-wait body::after{content:"";position:fixed;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;z-index:8991;border-radius:16px;background:#F4551B url(https://static.wixstatic.com/media/85c3c2_628a738b50ae4491b71edb9b2b1b46ec~mv2.png/v1/fit/w_128,h_128,q_90,enc_auto/GrocerGoSx-icon.png) center/contain no-repeat;box-shadow:0 8px 24px rgba(244,85,27,.25);animation:ggsx-fp 1.1s ease-in-out infinite}
+@media (max-width:860px){html.gg-wait:not(.ggsx-inapp) body::before{box-shadow:inset 0 calc(56px + env(safe-area-inset-top,0px)) 0 0 #F4551B}}
+html.gg-lift body::before,html.gg-lift body::after{opacity:0;transition:opacity .22s ease;pointer-events:none;animation:none}
+@keyframes ggsx-fp{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@media (max-width:860px){
+html.gg-m.gg-early:not(.ggsx-inapp):not(.gg-hdr) header{display:none!important}
+html.gg-m.gg-early:not(.ggsx-inapp) #SITE_CONTAINER{padding-top:calc(56px + env(safe-area-inset-top,0px))}
+html.gg-m.gg-early #SITE_CONTAINER{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+html.gg-m.gg-early:not(.ggsx-inapp) #SITE_CONTAINER::before{content:"";position:fixed;top:0;left:0;right:0;height:calc(56px + env(safe-area-inset-top,0px));z-index:8999;background:linear-gradient(90deg,#F4581F,#F58453)}
+}
+html.gg-cp main[id^="PAGE_SECTIONS"]>section:first-of-type:not(#gg-x):not(#gg-y){min-height:100vh!important}
+html.gg-home main[id^="PAGE_SECTIONS"]>section:first-of-type{min-height:100vh!important;background:linear-gradient(180deg,#F4551B 0,#F4551B 150px,#f6f3ee 300px)!important}
+html.gg-home main[id^="PAGE_SECTIONS"]>section:first-of-type>:not(#ggsx-home){display:none!important}
+html.gg-home main[id^="PAGE_SECTIONS"]>section:first-of-type~:not(.ggsx-note-sec){display:none!important}
+</style>
+<script>
+!function(){
+  var d=document,w=window,h=d.documentElement;
+  if(!h)return;
+  var path=location.pathname.replace(/\/+$/,"")||"/";
+
+  /* ---- the site code build for this visit, downloaded from here ---- */
+  var M="https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_";
+  var BUILDS={
+    "14":{v:"1.4",files:{body:[M+"f2e52822518449e08c58281866b826c9.txt",M+"935061aaa8034fdbb2467c0c5240deb8.txt"]}},
+    "15":{v:"1.5",frame:1,files:{body:[M+"10b85db55cf8498aac4de36649cd5311.txt",M+"de4adc2e65f34ef4bc5457d71fca996e.txt"],home:[M+"fabbbfcb8ea3493391c284ad7bb03413.txt",M+"7d56ea73341b4c458c409b5df081b8b7.txt"],pages:[M+"393566fb2fdf41e8841c43d274fa1482.txt",M+"980fb21fd2d847aeb56cd8dd6819e2c1.txt"]}},
+    "16":{v:"1.6",frame:1,files:{body:[M+"e137d9b64ddd4e03954979d6103625eb.txt",M+"d7e223c1f1f44489ba4eda4d85217d04.txt"],home:[M+"94512b1c49644b13abb3c7d6097d100f.txt",M+"b5744ed007c34a30a080ebbf50da3444.txt"],pages:[M+"86370d5c118b468c9dd4e54b7ce5d084.txt",M+"0ef580cac3cf42d58be026c99a45228f.txt"],rentals:[M+"12c1d7f331204a419f7106800fe27224.txt",M+"dd3e05a103f14f9a89b320dfb8cf47e2.txt"]}},
+    "17":{v:"1.7",frame:1,files:{body:[M+"5a9b01c4f15042d8a6310c93ce357da6.txt",M+"b330a25d94f548dbbe8bbcfc7a356d0f.txt"],home:[M+"d387b93efb7441c285ce6c92a2ce3331.txt",M+"9c921f9af8ab4a33b77d5af09581762b.txt"],pages:[M+"8b4707d810cd4f51a3a7b5e72286bfa1.txt",M+"6abeaa3cd82f4459922bbee11afe6b8f.txt"],rentals:[M+"c9c83d8f6f8944ed9564d4bffff053d6.txt",M+"a7797a5ef3af4776944aad5a50cde3f5.txt"]}},
+    "18":{v:"1.8",frame:1,files:{body:[M+"8b685840a4554395a62aaaed628af631.txt",M+"3c75ae73bd6d4d5d8a0d149c07bbf943.txt"],home:[M+"bf5829d64a1c420da3c0e92ed8beffc5.txt",M+"1e7c4039b64b4d31a90ef5e29ea992fd.txt"],pages:[M+"e008002126374f6385daf03859ebac3b.txt",M+"d3098f9de2f947e2b48decb57084779f.txt"],rentals:[M+"bedc8b66cb3e4cf4b7ced2c4d86d893a.txt",M+"520ed20011dc4532ad430b6d20ffa73c.txt"]}},
+    "19":{v:"1.9",frame:1,files:{body:[M+"8c8fc4f3be8041b39c4e7fff4b888f19.txt",M+"9db761f30fa446a7a5757e059f675a42.txt"],home:[M+"c3a1c21b7f004d1bbea8808d0c1c4998.txt",M+"7104f54a7c044d8e994fc14ab6089bd3.txt"],pages:[M+"f6668755dd20463da5651afa6983d5c6.txt",M+"b2dbe8f757b7472c85c6145f8f377b00.txt"],rentals:[M+"c8996a415051471496d2f6a4aa810fd6.txt",M+"18148ac9fd024fcaa7eabcaeef4f302c.txt"]}},
+    "20":{v:"2.0",frame:1,files:{body:[M+"596c60a0b99c4317a048ab699ffbd18d.txt",M+"dbd9107518b3450cb22953ae8f6a402f.txt"],home:[M+"465b66b0d694416dbde06caf4001d581.txt",M+"9cb87049f0c3461aac90213e97be8116.txt"],pages:[M+"20d878bd488b4024875b115294a65dc0.txt",M+"46609832a98147dca75697dfc52e335c.txt"],rentals:[M+"8f5d7f7eff3044b4977d50c728372e2b.txt",M+"9c7de257406e4d6287ae2ac126943399.txt"]}},
+    "21":{v:"2.1",frame:1,files:{body:[M+"6b2e1fd38a004a1199e408ea66cff0b1.txt",M+"4708fe556af442f2ba849d9f730a3a75.txt"],home:[M+"465b66b0d694416dbde06caf4001d581.txt",M+"9cb87049f0c3461aac90213e97be8116.txt"],pages:[M+"20d878bd488b4024875b115294a65dc0.txt",M+"46609832a98147dca75697dfc52e335c.txt"],rentals:[M+"8f5d7f7eff3044b4977d50c728372e2b.txt",M+"9c7de257406e4d6287ae2ac126943399.txt"]}},
+    "22":{v:"2.2",frame:1,files:{body:[M+"9d7ec51e3c7449d1866a2e91da8aa0e1.txt",M+"26aa4135aaa64ec88b06bb140ccdb53b.txt"],home:[M+"465b66b0d694416dbde06caf4001d581.txt",M+"9cb87049f0c3461aac90213e97be8116.txt"],pages:[M+"20d878bd488b4024875b115294a65dc0.txt",M+"46609832a98147dca75697dfc52e335c.txt"],rentals:[M+"8f5d7f7eff3044b4977d50c728372e2b.txt",M+"9c7de257406e4d6287ae2ac126943399.txt"]}}
+  };
+  var LIVE="21";
+  var GROUPS={home:["/"],pages:["/villa-stocking","/stocking-packages","/pricing","/service-area","/yacht-provisioning","/partners","/services-hub","/concierge-services"],rentals:["/rentals"]};
+  var CODE=["/","/shop-now","/run","/restaurants","/pharmacy","/hanami-sushi","/rolling-boil","/subway","/laundry","/errands","/rentals"].concat(GROUPS.pages);   /* pages the site code draws */
+  var B=w.__GGSX_BUNDLE=w.__GGSX_BUNDLE||{},id=LIVE,ss=null,m;
+  try{ss=w.sessionStorage}catch(e){}
+  try{
+    m=/[?&]ggsx_v=(\d+)/.exec(location.search);
+    if(m&&ss){if(BUILDS[m[1]]&&m[1]!==LIVE)ss.setItem("ggsx_v",m[1]);else ss.removeItem("ggsx_v")}
+    m=ss&&ss.getItem("ggsx_v");if(m&&BUILDS[m])id=m;
+  }catch(e){}
+  var P=BUILDS[id];
+  function group(p){for(var g in GROUPS)if(P.files[g]&&GROUPS[g].indexOf(p)>=0)return g;return""}
+  B.pick={id:id,v:P.v,files:P.files,frame:!!P.frame,group:group};
+  if(!B.early&&w.fetch&&w.DecompressionStream&&w.Response&&w.ReadableStream&&ReadableStream.prototype.pipeThrough){
+    B.early={};
+    var get=function(u){return fetch(u).then(function(r){if(!r.ok||!r.body)throw new Error("HTTP "+r.status);return new Response(r.body.pipeThrough(new DecompressionStream("gzip"))).text()})};
+    var names=["body"],g0=group(path);if(g0)names.push(g0);
+    names.forEach(function(n){var p=B.early[n]=get(P.files[n][0]);p.catch(function(){})});
+  }
+  if(w.top!==w.self)return;
+
+  /* ---- pages the site code draws: their first section keeps a screen of space from the first paint, so the footer below it never jumps ---- */
+  if(CODE.indexOf(path)>=0)h.classList.add("gg-cp");
+
+  /* ---- build 1.5+: the page frame from the first paint ---- */
+  if(P.frame){
+    h.classList.add("gg-m");h.classList.add("gg-early");
+    if(path==="/")h.classList.add("gg-home");
+    setTimeout(function(){
+      if(!(w.__GGSX_BUNDLE&&w.__GGSX_BUNDLE.runs)){h.classList.remove("gg-early");h.classList.remove("gg-home")}
+      else if(!d.getElementById("ggsx-home"))h.classList.remove("gg-home");
+    },12000);
+  }
+
+  /* ---- the white cover ---- */
+  try{
+    if(w.__ggsxFP)return;
+    if(/bot|crawl|spider|slurp|lighthouse|pagespeed|gtmetrix|headless/i.test(navigator.userAgent))return;
+    if(/[?&]ggsx_nocurtain=1/.test(location.search))return;
+    w.__ggsxFP=1;
+  }catch(e){return}
+  var MAX=3500,QUIET=150,GRACE=700,MIN=120,t0=Date.now(),last=t0,readyAt=0,done=false,mo=null;
+  h.classList.add("gg-wait");
+  function lift(){
+    if(done)return;done=true;
+    try{mo&&mo.disconnect()}catch(e){}
+    h.classList.add("gg-lift");
+    setTimeout(function(){h.classList.remove("gg-wait");h.classList.remove("gg-lift")},260);
+  }
+  try{mo=new MutationObserver(function(ms){for(var i=0;i<ms.length;i++){var m=ms[i],j;for(j=0;j<m.addedNodes.length;j++)if(m.addedNodes[j].nodeType===1){last=Date.now();return}for(j=0;j<m.removedNodes.length;j++)if(m.removedNodes[j].nodeType===1){last=Date.now();return}}});mo.observe(d,{childList:true,subtree:true})}catch(e){}
+  function drawn(sel){return !!d.querySelector(sel)}
+  function waiting(){
+    try{
+      var g=group(path);if(g&&!(B.ran&&B.ran[g]))return true;
+      if(path==="/")return !h.classList.contains(P.frame?"gh-done":"gh-on");
+      var Q=w.GGSX_PAGES;if(Q&&Q.pages&&Q.pages[path])return !h.classList.contains("gp-on")&&!drawn("#ggsx-page");
+      var S=w.GGSX_SHOP;if(S&&S.path===path)return !drawn("#ggsx-shop");
+      var Mo=w.GGSX_MORE_PAGES;if(Mo&&(Mo.restaurants===path||Mo.pharmacy===path))return !drawn("#ggsx-more-page");
+      var R=w.GGSX_REST_ADDR;if(R&&R.pages){for(var k in R.pages)if(R.pages[k]===path)return !drawn("#ggsx-more-page")}
+      var L=w.GGSX_LAUNDRY;if(L&&L.path===path)return !drawn("#ggsx-laundry");
+      var E=w.GGSX_ERRANDS;if(E&&E.path===path)return !drawn("#ggsx-errands");
+      var Rn=w.GGSX_RENTALS;if(Rn&&Rn.path===path)return !drawn("#ggsx-rentals");
+    }catch(e){}
+    return false;
+  }
+  function bars(){
+    try{
+      if(h.classList.contains("ggsx-inapp"))return true;
+      return !w.matchMedia("(max-width:860px)").matches||drawn(".gg-tabs");
+    }catch(e){return true}
+  }
+  function tick(){
+    if(done)return;
+    var now=Date.now();
+    if(now-t0>=MAX)return lift();
+    var ready=d.readyState!=="loading"&&now-t0>=MIN&&bars()&&!waiting();
+    if(ready&&!readyAt)readyAt=now;
+    if(ready&&(now-last>=QUIET||now-readyAt>=GRACE))return lift();
+    setTimeout(tick,40);
+  }
+  setTimeout(tick,MIN);
+  w.addEventListener("pageshow",function(e){if(e.persisted)lift()});
+}();
+</script>

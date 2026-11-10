@@ -1,0 +1,447 @@
+{
+"g0003": {
+"row": 4,
+"size": "1 lb",
+"name": "Apples Honeycrisp"
+},
+"g0006": {
+"row": 7,
+"size": "1 lb",
+"name": "Black Seedless Grapes"
+},
+"g0008": {
+"row": 9,
+"size": "1 lb",
+"name": "Bosc Pears"
+},
+"g0017": {
+"row": 18,
+"size": "1 lb",
+"name": "Gala Apples"
+},
+"g0022": {
+"row": 23,
+"size": "1 lb",
+"name": "Granny Smith Apples"
+},
+"g0025": {
+"row": 26,
+"size": "1 lb",
+"name": "Green D'anjou Pears"
+},
+"g0027": {
+"row": 28,
+"size": "1 lb",
+"name": "Guava"
+},
+"g0053": {
+"row": 53,
+"size": "1 lb",
+"name": "Papaya"
+},
+"g0056": {
+"row": 56,
+"size": "1 lb",
+"name": "Pink Lady Apples"
+},
+"g0059": {
+"row": 59,
+"size": "1 lb",
+"name": "Red Delicious Apples"
+},
+"g0070": {
+"row": 70,
+"size": "1 lb",
+"name": "Whole Papaya"
+},
+"g0141": {
+"row": 141,
+"size": "1 lb",
+"name": "Ginger Root"
+},
+"g0152": {
+"row": 152,
+"size": "1 lb",
+"name": "Green Zucchini Squash"
+},
+"g0159": {
+"row": 159,
+"size": "1 lb",
+"name": "Local Cassava"
+},
+"g0161": {
+"row": 161,
+"size": "1 lb",
+"name": "Local Eggplant"
+},
+"g0166": {
+"row": 166,
+"size": "1 lb",
+"name": "Loose Idaho Potatoes"
+},
+"g0179": {
+"row": 179,
+"size": "",
+"name": "Okra per lb"
+},
+"g0206": {
+"row": 206,
+"size": "1 lb",
+"name": "Red Onions"
+},
+"g0219": {
+"row": 219,
+"size": "1 lb",
+"name": "Sweet Yellow Onions"
+},
+"g0235": {
+"row": 235,
+"size": "1 lb",
+"name": "White Onions"
+},
+"g0236": {
+"row": 236,
+"size": "1 lb",
+"name": "White Turnips"
+},
+"g0238": {
+"row": 238,
+"size": "",
+"name": "Yellow Bell Peppers / lb"
+},
+"g0239": {
+"row": 239,
+"size": "1 lb",
+"name": "Yellow Jumbo Onions"
+},
+"g0242": {
+"row": 242,
+"size": "1 lb",
+"name": "Yellow Squash"
+},
+"g0333": {
+"row": 333,
+"size": "1 lb",
+"name": "Salmon Fillets"
+},
+"g0334": {
+"row": 334,
+"size": "",
+"name": "Salted Ling Fish"
+},
+"g0337": {
+"row": 337,
+"size": "1 lb",
+"name": "Beef Boneless Sirloin Steak"
+},
+"g0338": {
+"row": 338,
+"size": "",
+"name": "Beef Bottom Round Roast"
+},
+"g0339": {
+"row": 339,
+"size": "1 lb",
+"name": "Beef Bottom Round Thin Steak Value Pack"
+},
+"g0340": {
+"row": 340,
+"size": "1 lb",
+"name": "Beef Chuck Mock Value Pack"
+},
+"g0341": {
+"row": 341,
+"size": "",
+"name": "Beef Chuck Stew Bone In"
+},
+"g0342": {
+"row": 342,
+"size": "1 lb",
+"name": "Beef Chuck Stew Meat"
+},
+"g0343": {
+"row": 343,
+"size": "",
+"name": "Beef Cube Steak Value Pack"
+},
+"g0344": {
+"row": 344,
+"size": "1 lb",
+"name": "Beef Eye of Round Steak Value"
+},
+"g0345": {
+"row": 345,
+"size": "",
+"name": "Beef Eye Round Roast"
+},
+"g0346": {
+"row": 346,
+"size": "",
+"name": "Beef Porterhouse Steak"
+},
+"g0347": {
+"row": 347,
+"size": "",
+"name": "Beef Rib Steaks"
+},
+"g0348": {
+"row": 348,
+"size": "1 lb",
+"name": "Beef Round Tip Steak Value Pack"
+},
+"g0349": {
+"row": 349,
+"size": "",
+"name": "Beef Round Top Steak"
+},
+"g0350": {
+"row": 350,
+"size": "",
+"name": "Beef Short Rib Regular"
+},
+"g0351": {
+"row": 351,
+"size": "",
+"name": "Beef Shoulder Steak"
+},
+"g0352": {
+"row": 352,
+"size": "1 lb",
+"name": "Boneless Beef Stew Meat"
+},
+"g0353": {
+"row": 353,
+"size": "",
+"name": "Boneless Cross Rib Roast"
+},
+"g0354": {
+"row": 354,
+"size": "1 lb",
+"name": "Boneless Thin Cut Pork Chops"
+},
+"g0355": {
+"row": 355,
+"size": "",
+"name": "C.a.b Beef Flank Steaks"
+},
+"g0356": {
+"row": 356,
+"size": "",
+"name": "C.a.b. Filet Mignon"
+},
+"g0357": {
+"row": 357,
+"size": "",
+"name": "CAB New York Strip Steaks"
+},
+"g0358": {
+"row": 358,
+"size": "",
+"name": "CAP Delmonico Ribeye"
+},
+"g0360": {
+"row": 360,
+"size": "1 lb",
+"name": "Chicken Breast Skinless/boneless"
+},
+"g0361": {
+"row": 361,
+"size": "1 lb",
+"name": "Chicken Feet"
+},
+"g0362": {
+"row": 362,
+"size": "1 lb",
+"name": "Chicken Leg Quarter"
+},
+"g0363": {
+"row": 363,
+"size": "",
+"name": "Chicken Thigh & Wings"
+},
+"g0364": {
+"row": 364,
+"size": "1 lb",
+"name": "Chicken Thighs/Skin"
+},
+"g0365": {
+"row": 365,
+"size": "1 lb",
+"name": "Chicken Wings"
+},
+"g0367": {
+"row": 367,
+"size": "",
+"name": "Drumstick Tray Pack"
+},
+"g0368": {
+"row": 368,
+"size": "1 lb",
+"name": "Fresh Chicken Gizzards"
+},
+"g0369": {
+"row": 369,
+"size": "",
+"name": "Fresh Ground Pork"
+},
+"g0370": {
+"row": 370,
+"size": "1 lb",
+"name": "Fresh Oxtail"
+},
+"g0371": {
+"row": 371,
+"size": "1 lb",
+"name": "Fresh Oxtail Value Pack"
+},
+"g0372": {
+"row": 372,
+"size": "",
+"name": "Grass Fed 97% Ground Beef"
+},
+"g0373": {
+"row": 373,
+"size": "1 lb",
+"name": "Grass Fed Filet Mignon"
+},
+"g0374": {
+"row": 374,
+"size": "",
+"name": "Grass Fed Lamb Rack"
+},
+"g0375": {
+"row": 375,
+"size": "1 lb",
+"name": "Grass Fed NY Strip Steak"
+},
+"g0376": {
+"row": 376,
+"size": "",
+"name": "Ground Beef 73% Lean"
+},
+"g0377": {
+"row": 377,
+"size": "",
+"name": "Ground Beef 73% Lean Value"
+},
+"g0378": {
+"row": 378,
+"size": "1 lb",
+"name": "Ground Round 93% Lean"
+},
+"g0379": {
+"row": 379,
+"size": "",
+"name": "Ground Sirloin 97%"
+},
+"g0380": {
+"row": 380,
+"size": "1 lb",
+"name": "Leg Quarters"
+},
+"g0381": {
+"row": 381,
+"size": "",
+"name": "Mutton Cut Up For Stew"
+},
+"g0383": {
+"row": 383,
+"size": "1 lb",
+"name": "Pork Baby Back Ribs"
+},
+"g0384": {
+"row": 384,
+"size": "1 lb",
+"name": "Pork Loin Assorted Chops"
+},
+"g0385": {
+"row": 385,
+"size": "1 lb",
+"name": "Pork Loin Center Cut Loin"
+},
+"g0386": {
+"row": 386,
+"size": "",
+"name": "Pork Spare Ribs Value Pack"
+},
+"g0387": {
+"row": 387,
+"size": "1 lb",
+"name": "Pork Steaks Value Pack"
+},
+"g0388": {
+"row": 388,
+"size": "",
+"name": "Pork Tails In Brine Tray"
+},
+"g0389": {
+"row": 389,
+"size": "1 lb",
+"name": "Ribeye Steak Boneless Family Pack"
+},
+"g0390": {
+"row": 390,
+"size": "",
+"name": "Skinless Chicken Thighs"
+},
+"g0391": {
+"row": 391,
+"size": "1 lb",
+"name": "SM Boneless Skinless Chicken Thighs"
+},
+"g0393": {
+"row": 393,
+"size": "",
+"name": "Smoked Pork Loin Chops"
+},
+"g0394": {
+"row": 394,
+"size": "1 lb",
+"name": "Smoked Pork Neck Bones"
+},
+"g0395": {
+"row": 395,
+"size": "",
+"name": "Smoked Turkey Wings"
+},
+"g0396": {
+"row": 396,
+"size": "",
+"name": "Stew Mutton Value Pack"
+},
+"g0397": {
+"row": 397,
+"size": "1 lb",
+"name": "Strip Loin Steaks"
+},
+"g0398": {
+"row": 398,
+"size": "1 lb",
+"name": "Turkey Wing Value Pack"
+},
+"g0399": {
+"row": 399,
+"size": "",
+"name": "USDA Choice Beef Shanks"
+},
+"g0400": {
+"row": 400,
+"size": "",
+"name": "Whole Chicken Wings"
+},
+"g0401": {
+"row": 401,
+"size": "",
+"name": "Whole Chicken Wings Value Pack"
+},
+"g0402": {
+"row": 402,
+"size": "",
+"name": "Whole Duckling"
+},
+"g0403": {
+"row": 403,
+"size": "1 lb",
+"name": "Whole Fresh Pork Picnic"
+}
+}

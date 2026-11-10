@@ -1,3 +1,4 @@
+<!-- v1.8 (4 Nov 2026): items sold by weight (size "per lb" on the Products tab), see Shop 42 Sold by Weight: the label weights (state w) are saved and synced with the ticks -->
 <!-- GrocerGoSx Shop 9 Live Run Sheet v1.2 (20 Oct 2026: "Send live link" and "Follow it live" use the short link from Shop 19; v1.1.1 17 Oct 2026; v1.1 adds the "Copy tracker link" button; v1.1.1 reads GGSX_TRACK from Shop 8 v1.0.1): the shopper side of the client's live page. On the run sheet
      (/shop-now#run/…) every tap and every substitute name or price is saved to the client's page (Shop 10) within a second.
      Substitutions, out-of-stock items and items found after all are emailed to the client through the "Live order update" form
@@ -42,7 +43,7 @@
     function readState(ctx) { try { return JSON.parse(localStorage.getItem(ctx.skey) || 'null') || { s: {}, n: {}, p: {} }; } catch (e) { return { s: {}, n: {}, p: {} }; } }
     function sent(ctx) { try { return JSON.parse(localStorage.getItem('ggsx_live_' + ctx.K.id) || 'null') || { em: {}, ms: {} }; } catch (e) { return { em: {}, ms: {} }; } }
     function keep(ctx, N) { try { localStorage.setItem('ggsx_live_' + ctx.K.id, JSON.stringify(N)); } catch (e) {} }
-    function plain(S, N) { return JSON.stringify({ s: S.s || {}, n: S.n || {}, p: S.p || {}, em: N.em || {}, ms: N.ms || {} }); }
+    function plain(S, N) { return JSON.stringify({ s: S.s || {}, n: S.n || {}, p: S.p || {}, w: S.w || {}, em: N.em || {}, ms: N.ms || {} }); }
     /* what the client was already told, as recorded by another phone or browser */
     function mergeSent(ctx, R, S) {
       var N = sent(ctx), changed = 0;
@@ -64,7 +65,7 @@
       if (body === ctx.last) { paint(ctx); schedule(ctx); return; }
       ctx.busy = 1;
       setStatus(ctx, 'wait', "Saving to the client's page…");
-      var at = Date.now(), state = JSON.stringify({ v: 1, s: S.s || {}, n: S.n || {}, p: S.p || {}, em: N.em, ms: N.ms, u: at });
+      var at = Date.now(), state = JSON.stringify({ v: 1, s: S.s || {}, n: S.n || {}, p: S.p || {}, w: S.w || {}, em: N.em, ms: N.ms, u: at });
       C.sign(ctx.K, state).then(function (sig) { return C.store(ctx.K.id, { state: state, sig: sig, at: at }); }).then(function () {
         ctx.last = body;
         setStatus(ctx, 'ok', "Client's live page updated " + C.hhmm(at));
@@ -174,7 +175,7 @@
         if (local) { push(ctx); return; }
         if (R && Object.keys(R.s || {}).length && !sessionStorage.getItem(flag)) {
           /* ticks made on another phone or browser: load them into this run sheet */
-          try { localStorage.setItem(ctx.skey, JSON.stringify({ s: R.s || {}, n: R.n || {}, p: R.p || {} })); sessionStorage.setItem(flag, '1'); location.reload(); return 'reload'; } catch (e) {}
+          try { localStorage.setItem(ctx.skey, JSON.stringify({ s: R.s || {}, n: R.n || {}, p: R.p || {}, w: R.w || {} })); sessionStorage.setItem(flag, '1'); location.reload(); return 'reload'; } catch (e) {}
         }
         if (R) ctx.last = plain(R, sent(ctx));
         setStatus(ctx, R === false ? 'err' : 'ok', R === false ? 'Offline, will retry on your next tap' : R ? "Client's live page on" : "Client's live page ready: it fills in as you tick");
@@ -184,7 +185,7 @@
     D.addEventListener('click', function (e) {
       var t = e.target, w = t && t.closest && t.closest('.gr-wrap'), ctx = w && w.__glctx;
       if (!ctx) return;
-      if (t.closest('.gr-b') || t.closest('.gr-reset')) later(ctx, 600);
+      if (t.closest('.gr-b') || t.closest('.gr-reset') || t.closest('.gr-wt-u')) later(ctx, 600);
       else if (t.closest('.gr-foot .gr-btn') && !t.closest('.sec')) addLinkToMessage(ctx);
       else if (t.closest('.gr-panel-b .gr-btn') && !t.closest('.sec')) {
         var h = w.querySelector('.gr-panel.open .gr-panel-h b');
@@ -193,7 +194,7 @@
     });
     D.addEventListener('input', function (e) {
       var t = e.target, w = t && t.closest && t.closest('.gr-wrap'), ctx = w && w.__glctx;
-      if (ctx && t.closest('.gr-sub')) later(ctx, 1200);
+      if (ctx && (t.closest('.gr-sub') || t.closest('.gr-wt'))) later(ctx, 1200);
     });
     D.addEventListener('visibilitychange', function () { if (D.visibilityState === 'visible' && CUR && CUR.K && D.body.contains(CUR.wrap)) schedule(CUR); });
 

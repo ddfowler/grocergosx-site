@@ -1,0 +1,1 @@
+{"id": "ops-loader", "name": "GrocerGoSx Ops Loader", "revision": "2", "enabled": true, "loadOnce": false, "position": "BODY_END", "category": "ESSENTIAL", "bundleOnly": true}

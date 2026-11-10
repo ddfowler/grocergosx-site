@@ -1,3 +1,5 @@
+<!-- v1.1 (6 Nov 2026, bundle v2.0): asks Shop 44 Shopping Hours (GGSX_SHOPHOURS) about every delivery window and for the hint, so a basket with shop items only gets windows we can shop on the delivery day while the supermarkets are open ("— outside shopping hours"); a window Shop 27 Restaurant Hours switched off stays off when the date changes (it used to come back); GGSX_POLISH.refresh / .now / .endOf -->
+<!-- v1.2 (9 Nov 2026, bundle v2.2): "As soon as possible" (GGSX_ASAP, Shop 45) is answered first in why(): open while every restaurant in a restaurant-only basket takes orders, today only. why / open / settings are on GGSX_POLISH for the basket's estimate line. The thank-you recap leaves out an empty date (an order sent with "Dates to confirm by message"). -->
 <!-- GrocerGoSx Shop 12 Checkout Polish v1.0.2 (20 Oct 2026; v1.0.2: the date picker can reach up to 366 days ahead, set by the sheet's window_days with a
      180-day fallback (was 7 days, sheet values capped below 60); v1.0.1: the thank-you "Track my order" button opens the live page itself, because
      the site's own link handling swallows in-page link clicks without a hashchange): (1) delivery windows that have already passed, or that fall inside the
@@ -34,6 +36,7 @@
       thanksLead: "We'll confirm by message shortly (WhatsApp, iMessage or text) and send your invoice / payment link once we've shopped. A copy of your order is on its way to ",
       hint: "Orders need at least {h} hours' notice.",
       tooLate: ' — too late for this day',
+      outside: ' — outside shopping hours',     /* v1.1: a window outside the supermarkets' hours (Shop 44 Shopping Hours) */
       noneToday: "Today's windows have passed — please pick tomorrow or later.",
       pickWindow: "That window is no longer open for the date you picked — please choose another.",
       delivery: 'Delivery', address: 'Address', basket: 'Your basket', estimate: 'estimate incl. fees',
@@ -74,12 +77,18 @@
     var mx = 0; (all || []).forEach(function (w) { var k = /(\d{1,2}):(\d{2})\s*[–—-]\s*(\d{1,2}):(\d{2})/.exec(w); if (k) mx = Math.max(mx, (+k[3]) * 60 + (+k[4])); });
     return mx || 23 * 60;                      /* "Any time": open as long as the last window is */
   }
-  function open(ymd, label, all) {
-    var t = now(), d = dayNo(ymd || t.ymd), td = dayNo(t.ymd);
-    if (d == null) return true;
-    if (d < td) return false;
-    return (d - td) * 1440 + endOf(label, all) > t.mins + P.leadHours * 60;
+  /* why a window can't be picked for that date: '' = it can, 'late' = inside the lead time, 'hours' = outside the shopping hours.
+     v1.1: a basket with shop items follows the supermarkets' hours (Shop 44 Shopping Hours answers through GGSX_SHOPHOURS.why) */
+  function why(ymd, label, all) {
+    var A = W.GGSX_ASAP;   /* v1.2: "As soon as possible" (Shop 45): open while the restaurants take orders, today only */
+    if (A && A.is && A.is(label)) { try { return A.ok(ymd || now().ymd) ? '' : 'late'; } catch (e) { return 'late'; } }
+    var t = now(), d = dayNo(ymd || t.ymd), td = dayNo(t.ymd), end = endOf(label, all), H = W.GGSX_SHOPHOURS, r;
+    if (d == null) return '';
+    if (d < td) return 'late';
+    if (H && H.why) { try { r = H.why(ymd || t.ymd, end, t, P.leadHours); } catch (e) { r = undefined; } if (r != null) return r; }
+    return (d - td) * 1440 + end > t.mins + P.leadHours * 60 ? '' : 'late';
   }
+  function open(ymd, label, all) { return !why(ymd, label, all); }
   function refresh() {
     if (!INP || !INP.win) return;
     var win = INP.win, date = INP.date, t = now(), all = [], any = false, ymd = date.value || t.ymd;
@@ -89,15 +98,18 @@
     Array.prototype.forEach.call(win.options, function (o) {
       if (!o.value) return;
       if (!o.getAttribute('data-base')) o.setAttribute('data-base', o.textContent);
-      var ok = open(ymd, o.value, all);
+      /* v1.1: a window Shop 27 switched off for a restaurant's hours (data-gh-off) stays off, with its wording */
+      var w = why(ymd, o.value, all), gh = !!o.getAttribute('data-gh-off'), ok = !w && !gh;
       o.disabled = !ok;
-      o.textContent = o.getAttribute('data-base') + (ok ? '' : P.copy.tooLate);
+      o.textContent = o.getAttribute('data-base') + (w === 'hours' ? P.copy.outside : w ? P.copy.tooLate :
+                      gh ? ((W.GGSX_HOURS && W.GGSX_HOURS.win) || '') : '');
       if (ok) any = true;
     });
     if (win.value && win.selectedOptions[0] && win.selectedOptions[0].disabled) win.value = '';
     if (!HINT) { HINT = el('div', { class: 'gc-hint' }); win.parentNode.appendChild(HINT); }
-    var hours = P.leadHours % 1 ? P.leadHours : Math.round(P.leadHours);
-    HINT.textContent = any ? (hours > 0 ? P.copy.hint.replace('{h}', hours) : '') : P.copy.noneToday;
+    var hours = P.leadHours % 1 ? P.leadHours : Math.round(P.leadHours), H = W.GGSX_SHOPHOURS, hx;
+    try { hx = H && H.hint ? H.hint(ymd, any, P.leadHours, t) : undefined; } catch (e) { hx = undefined; }   /* v1.1: the shopping hours */
+    HINT.textContent = hx != null ? hx : any ? (hours > 0 ? P.copy.hint.replace('{h}', hours) : '') : P.copy.noneToday;
     HINT.className = 'gc-hint' + (any ? '' : ' bad');
   }
   function guard(e) {
@@ -138,6 +150,7 @@
       refresh();
     }).catch(function () {});
   }
+  P.refresh = refresh; P.now = now; P.endOf = endOf; P.why = why; P.open = open; P.settings = settings;   /* v1.2: why/open/settings for Shop 45 */          /* v1.1: for Shop 44 Shopping Hours */
   /* ---------- wording ---------- */
   if (CK && CK.copy) { CK.copy.lead = P.copy.lead; CK.copy.thanksLead = P.copy.thanksLead; }
   D.addEventListener('ggsx-checkout-build', function (e) {
@@ -160,7 +173,7 @@
         bt = /Basket total: (\$[\d.,]+) \(([^)]+)\)/.exec(order), est = /: (\$[\d.,]+)\s*\nFinal total/.exec(order),
         live = f[(W.GGSX_TRACK && W.GGSX_TRACK.linkField) || P.linkField] || '',
         recap = el('div', { class: 'gc-recap' }, [
-          el('p', {}, [el('b', { text: P.copy.delivery }), pretty(f[k.date] || '') + (f[k.win] ? ' · ' + f[k.win] : '')]),
+          el('p', {}, [el('b', { text: P.copy.delivery }), (f[k.date] ? pretty(f[k.date]) + (f[k.win] ? ' · ' + f[k.win] : '') : (f[k.win] || ''))]),
           el('p', {}, [el('b', { text: P.copy.address }), (f[k.address] || '') + (f[k.side] ? ' (' + f[k.side] + ')' : '')]),
           bt ? el('p', {}, [el('b', { text: P.copy.basket }), bt[2].replace(/,.*$/, '') + ' · ' + bt[1] + (est ? ' · ' + P.copy.estimate + ' ' + est[1] : '')]) : null
         ]),

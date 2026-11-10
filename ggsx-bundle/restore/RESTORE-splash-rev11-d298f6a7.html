@@ -1,0 +1,146 @@
+<!-- ============================================================
+  GrocerGoSx Splash — branded intro screen for grocergosx.com
+  v10.1 (1 Nov 2026): skipped on Dwayne's Orders app (/shop-now#ops) and on shopper run sheets (#r/…, #run/…).
+  Where it goes: Wix dashboard → Settings → Custom Code → + Add Custom Code
+    Name:        GrocerGoSx Splash
+    Add code to: All pages  ·  Load code on each new page
+    Place in:    Body – start
+    Type:        Essential
+  What it does: an orange full-screen GrocerGoSx logo + tagline that shows
+  every time the site is opened, then fades away to the page (about
+  4 seconds). Tap/click anywhere (or press Esc) to skip. Never shows in
+  the Editor, to search bots, or to PageSpeed tests. Everything you may
+  want to change lives in the GGSX_SPLASH block below.
+============================================================ -->
+<script>
+window.GGSX_SPLASH = {
+  enabled: true,
+  logo: 'https://static.wixstatic.com/media/85c3c2_862c7c7deba142b5a50ca891db1246aa~mv2.png/v1/fit/w_900,h_294,q_90,enc_auto/GrocerGoSx-logo.png',
+  tagline: 'St. Maarten Concierge Services',
+  colour: '#F4551B',           // brand orange (background)
+  showEvery: 'always',         // 'always' = every time the site is opened  ·  'visit' = once per visit  ·  'device' = once every `days` days
+  showBetweenPages: false,     // true = also replay it when a visitor moves from page to page inside the site
+  visitGapMinutes: 30,         // used by showEvery: 'visit' — a visit "ends" after this many minutes away
+  days: 30,                    // used by showEvery: 'device'
+  pages: 'all',                // 'all' or 'home' (only when they land on the homepage)
+  holdMs: 4000,                // how long the logo sits on screen once it has appeared (ms) — 2000 quick · 3000 relaxed · 4000 long
+  maxWaitMs: 1200,             // max wait for the logo image before showing the tagline anyway
+  maxMs: 7500,                 // hard limit: the splash is always gone by this time
+  tapToSkip: true,
+  skipFromSearch: true,        // visitors arriving from Google or Bing (search or Maps), an ad or a campaign link go straight to the page
+  showLoader: true             // the thin line that fills up under the tagline
+};
+</script>
+<style id="ggsx-splash-css">
+#ggsx-splash{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#F4551B;background-image:radial-gradient(120% 90% at 50% 38%,#FF7B47 0%,#F4551B 52%,#D6430E 100%);color:#fff;font-family:"helvetica-w01-bold","Helvetica Neue",Helvetica,Arial,sans-serif;opacity:1;transition:opacity .55s ease;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;animation:ggsx-failsafe 0s 9s forwards}
+#ggsx-splash.is-leaving{opacity:0;pointer-events:none}
+#ggsx-splash .ggsx-in{display:flex;flex-direction:column;align-items:center;gap:16px;padding:0 24px;transition:transform .55s ease}
+#ggsx-splash.is-leaving .ggsx-in{transform:translateY(-10px) scale(1.02)}
+#ggsx-splash img{width:min(62vw,400px);height:auto;display:block;opacity:0;transform:translateY(14px) scale(.98);filter:drop-shadow(0 14px 32px rgba(120,30,0,.28))}
+#ggsx-splash .ggsx-tag{margin:0;font-size:12px;line-height:1.4;letter-spacing:.24em;text-indent:.24em;text-transform:uppercase;font-weight:700;text-align:center;opacity:0;transform:translateY(8px)}
+#ggsx-splash .ggsx-bar{width:72px;height:2px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden;opacity:0}
+#ggsx-splash .ggsx-bar i{display:block;height:100%;width:100%;background:#fff;transform:translateX(-100%)}
+#ggsx-splash.is-ready img{animation:ggsx-rise .6s cubic-bezier(.2,.7,.2,1) forwards}
+#ggsx-splash.is-ready .ggsx-tag{animation:ggsx-rise .6s .18s cubic-bezier(.2,.7,.2,1) forwards}
+#ggsx-splash.is-ready .ggsx-bar{animation:ggsx-fade .4s .3s forwards}
+@keyframes ggsx-rise{to{opacity:1;transform:none}}
+@keyframes ggsx-fade{to{opacity:1}}
+@keyframes ggsx-failsafe{to{opacity:0;visibility:hidden;pointer-events:none}}
+@media (max-width:750px){#ggsx-splash img{width:min(68vw,300px)}#ggsx-splash .ggsx-tag{font-size:11px;letter-spacing:.2em}}
+@media (prefers-reduced-motion:reduce){#ggsx-splash{transition-duration:.25s}#ggsx-splash .ggsx-in,#ggsx-splash .ggsx-in *{animation-duration:.01s!important;animation-delay:0s!important;transition:none!important;transform:none!important}}
+</style>
+<script>
+(function () {
+  var C = window.GGSX_SPLASH || {};
+  if (C.enabled === false) return;
+  try {
+    if (window.top !== window.self) return;                                  // never inside the Wix Editor / preview frame
+    if (/^#(ops(\/|$)|r\/|run\/)/.test(location.hash)) return;              // v10.1 (1 Nov 2026): never over the Orders app (#ops) or a shopper run sheet (#r/, #run/)
+    if (/bot|crawl|spider|slurp|lighthouse|pagespeed|gtmetrix|headless/i.test(navigator.userAgent)) return;
+    if (C.skipFromSearch !== false && (/[?&](gclid|gbraid|wbraid|msclkid|fbclid|utm_source)=/i.test(location.search) || /(^|\.)(google|bing|yahoo|duckduckgo|ecosia|yandex|baidu)\.[a-z.]+$/i.test(document.referrer.split('/')[2] || ''))) return;   // from a search engine, Google Maps, an ad or a campaign link: straight to the page
+    if (C.pages === 'home' && !/^\/(home\/?)?$/i.test(location.pathname)) return;
+    if (document.getElementById('ggsx-splash')) return;
+    if (window.__ggsxSplashDone && !C.showBetweenPages) return;              // Wix re-runs this on page-to-page clicks; only replay if asked
+    window.__ggsxSplashDone = true;
+    if (!C.showBetweenPages) {                                                // a full page load that came from another page of this site
+      var fromSite = false, navType = '';                                     // (e.g. calendar → booking form) is not a new visit
+      try { fromSite = !!document.referrer && new URL(document.referrer).hostname === location.hostname; } catch (e) {}
+      try { var nav = performance.getEntriesByType('navigation')[0]; navType = nav ? nav.type : ''; } catch (e) {}
+      if (fromSite && navType !== 'reload') return;
+    }
+
+    // ---- how often ------------------------------------------------------
+    var now = Date.now(), mode = C.showEvery || 'always', show = true, ls = null, ss = null;
+    try { ls = window.localStorage; ss = window.sessionStorage; } catch (e) {}
+    function get(s, k) { try { return s ? s.getItem(k) : null; } catch (e) { return null; } }
+    function set(s, k, v) { try { if (s) s.setItem(k, v); } catch (e) {} }
+    if (mode === 'device') {
+      var shown = +get(ls, 'ggsx_splash_shown') || 0;
+      show = now - shown > (C.days || 30) * 864e5;
+    } else if (mode !== 'always') {                                          // 'visit'
+      var last = +get(ls, 'ggsx_splash_last') || 0;
+      show = !get(ss, 'ggsx_splash_seen') && now - last > (C.visitGapMinutes || 30) * 6e4;
+      set(ls, 'ggsx_splash_last', now);                                      // every page view extends the visit
+    }
+    if (!show) return;
+    set(ls, 'ggsx_splash_shown', now); set(ss, 'ggsx_splash_seen', '1');
+
+    // ---- build ----------------------------------------------------------
+    var el = document.createElement('div'), inner = document.createElement('div'),
+        img = document.createElement('img'), tag = document.createElement('p'), bar = null, fill = null;
+    el.id = 'ggsx-splash'; el.setAttribute('aria-hidden', 'true'); el.setAttribute('role', 'presentation');
+    if (C.colour) el.style.backgroundColor = C.colour;
+    inner.className = 'ggsx-in';
+    img.alt = ''; img.decoding = 'async'; img.setAttribute('fetchpriority', 'high');
+    tag.className = 'ggsx-tag'; tag.textContent = C.tagline || '';
+    inner.appendChild(img); if (C.tagline) inner.appendChild(tag);
+    if (C.showLoader !== false) {
+      bar = document.createElement('div'); bar.className = 'ggsx-bar';
+      fill = document.createElement('i'); bar.appendChild(fill); inner.appendChild(bar);
+    }
+    el.appendChild(inner);
+
+    // ---- timeline -------------------------------------------------------
+    var reduce = false; try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    var hold = Math.max(200, +C.holdMs || 3000); if (reduce) hold = Math.min(hold, 800);
+    var rise = reduce ? 0 : 600, fade = reduce ? 250 : 550, timers = [], ready = false, gone = false;
+    function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+    function reveal() {
+      if (ready || gone) return; ready = true;
+      el.classList.add('is-ready');
+      if (fill && !reduce) {
+        fill.style.transition = 'transform ' + (rise + hold) + 'ms linear';
+        requestAnimationFrame(function () { requestAnimationFrame(function () { fill.style.transform = 'translateX(0)'; }); });
+      }
+      later(leave, rise + hold);
+    }
+    function leave() {
+      if (gone) return; gone = true;
+      for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]);
+      el.classList.add('is-leaving');
+      document.removeEventListener('keydown', onKey);
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, fade + 60);
+    }
+    function onKey(e) { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') leave(); }
+    img.onload = reveal;
+    img.onerror = function () { img.style.display = 'none'; reveal(); };
+    img.src = C.logo || '';
+    if (img.complete && img.naturalWidth) reveal();                          // already cached
+
+    function mount() {
+      if (!document.body) return setTimeout(mount, 8);                       // (only if placed in Head)
+      document.body.appendChild(el);
+      later(reveal, +C.maxWaitMs || 1200);                                   // slow logo? show the tagline anyway
+      later(leave, +C.maxMs || 7500);                                        // hard failsafe
+      if (C.tapToSkip !== false) {
+        el.addEventListener('click', leave);
+        el.addEventListener('touchend', leave, { passive: true });
+        document.addEventListener('keydown', onKey);
+      }
+    }
+    mount();
+  } catch (e) {
+    var s = document.getElementById('ggsx-splash'); if (s && s.parentNode) s.parentNode.removeChild(s);
+  }
+})();
+</script>

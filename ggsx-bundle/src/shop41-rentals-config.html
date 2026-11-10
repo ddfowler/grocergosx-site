@@ -1,0 +1,99 @@
+<!-- GrocerGoSx Shop 41 Rentals 1 Config v1.0 (4 Nov 2026, bundle v1.6; bundle-only module, no Custom Code copy; core file, before the page
+     groups run): window.GGSX_RENTALS, the wording of rentals at checkout (ck) and the line prefix, and the helpers
+     that Shop 41 Rentals 2 Page (rentals group: runs on /rentals only) and Shop 41 Rentals 3 Checkout (core, last module) share (GGSX_RENTALS.fn).
+     Items: the Rentals tab of the Vendors & Menus sheet (id, category, item, size, description, photo, price_3day, price_week, qty, active).
+     Settings tab, RENTALS: rental_collection_fee, rental_collection_fee_french, rental_lead_days (earliest start, days from today), rental_max_days.
+     Basket lines: id rent:<item>:<start>:<end>, name "Rental: <item> <size>", size = the dates, price = the price for those dates,
+     rent: {item, start, end, days}. Dates are YYYY-MM-DD in island time; the start and end day both count as rental days. -->
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.GGSX_RENTALS && W.GGSX_RENTALS.fn) return;
+  var KEY = 'ggsx_basket', TZ = 'America/Lower_Princes';
+  var R = W.GGSX_RENTALS = {
+    path: '/rentals', shop: '/shop-now', tab: 'Rentals', wa: '590690779119',
+    sheetId: '1-h6W54Wbscz_5zMAVU0myRr0PCYoVW_sJZo4XWe2MXE',
+    copy: { line: 'Rental: ' },   /* the page's own wording: GGSX_RENTALS.page (Shop 41 Rentals 2 Page) */
+    ck: {
+      date: 'Delivery date (rental start) *',
+      hint: 'Your rental start date. To change it, update your dates on the Rentals page.',
+      lead: 'Tell us where to bring your rental. No payment now: we confirm by message, then send your invoice.',
+      diff: 'Your rental starts {d}, a different day from this delivery. We’ll bring it on its start date and confirm the extra trip by message.',
+      stale: 'The dates of the rentals in your basket are no longer available.', staleLink: 'Pick new dates on the Rentals page',
+      coll: 'Rental collection', colls: 'Rental collections ×'
+    }
+  };
+
+  function el(tag, attrs, kids) {
+    var n = D.createElement(tag), k;
+    if (attrs) for (k in attrs) {
+      if (attrs[k] == null) continue;
+      if (k === 'class') n.className = attrs[k];
+      else if (k === 'text') n.textContent = attrs[k];
+      else if (k.slice(0, 2) === 'on') n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function (c) { if (c != null && c !== false) n.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return n;
+  }
+  function round(x) { return Math.round(x * 100) / 100; }
+  function money(x) { return '$' + round(x).toFixed(2); }
+  function money0(x) { var v = round(x); return '$' + (v % 1 ? v.toFixed(2) : String(v)); }
+  function pct(x) { return Math.round(x * 1000) / 10 + '%'; }
+  function num(v) { var x = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return isNaN(x) ? NaN : x; }
+  function truthy(v) { return /^(true|yes|y|1|x|✓|✔)$/i.test(String(v == null ? '' : v).trim()); }
+  /* Settings tab values (GGSX_MORE, Shop 5): the default until the sheet has loaded */
+  function setting(k, d) { var v = NaN; try { v = +W.GGSX_MORE.setting(k, NaN); } catch (e) {} return v >= 0 ? v : d; }
+  function french(side) { return side === 'f' || /french|saint-martin/i.test(String(side || '')); }
+  function collFee(side) { return french(side) ? setting('rental_collection_fee_french', 25) : setting('rental_collection_fee', 20); }
+  function leadDays() { return Math.max(0, Math.round(setting('rental_lead_days', 1))); }
+  function maxDays() { var v = Math.round(setting('rental_max_days', 60)); return v >= 1 ? v : 60; }
+  function horizon() { var v = Math.round(setting('window_days', 180)); return v >= 1 ? v : 180; }
+  function today() {
+    try {
+      var o = {};
+      new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).forEach(function (p) { o[p.type] = p.value; });
+      if (o.year && o.month && o.day) return o.year + '-' + o.month + '-' + o.day;
+    } catch (e) {}
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function dayNo(ymd) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || ''); return m ? Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5) : null; }
+  function addDays(ymd, n) { var d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function pretty(ymd) { var d = new Date(ymd + 'T12:00:00Z'); return isNaN(d) ? ymd : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+  function daysOf(a, b) { var x = dayNo(a), y = dayNo(b); return x == null || y == null ? 0 : y - x + 1; }
+  function daysTxt(n) { return n + (n === 1 ? ' day' : ' days'); }
+  function periodTxt(a, b) { return a === b ? pretty(a) : pretty(a) + ' – ' + pretty(b); }
+  function minStart() { return addDays(today(), leadDays()); }
+  function maxStart() { return addDays(today(), horizon()); }
+  function tooSoon(start) { return dayNo(start) < dayNo(minStart()); }
+  /* the shared basket (localStorage ggsx_basket, as Shop 2 / Shop 31) */
+  function basket() { try { var b = JSON.parse(localStorage.getItem(KEY) || 'null'); if (b && b.items) return b; } catch (e) {} return { v: 1, items: {} }; }
+  function save(b) {
+    b.v = b.v || 1; b.t = Date.now();
+    try { localStorage.setItem(KEY, JSON.stringify(b)); } catch (e) { return false; }
+    try { W.dispatchEvent(new CustomEvent('ggsx-basket')); } catch (e) {}
+    return true;
+  }
+  function lines(b) { var out = [], k; b = b || basket(); for (k in b.items) if (b.items[k] && b.items[k].n > 0) out.push(b.items[k]); return out; }
+  function isRent(l) { return !!l && /^rent:/.test(l.id || ''); }
+  function isLaundry(l) { return !!l && (/^laundry:/.test(l.id || '') || /^laundry, wash/i.test(l.name || '')); }
+  function isErrand(l) { return !!l && (/^errand:/.test(l.id || '') || /^errand: /i.test(l.name || '')); }
+  function info(l) {
+    var r = l.rent || {}, m = /^rent:([^:]+):(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/.exec(l.id || '') || [];
+    return { item: r.item || m[1] || '', start: r.start || m[2] || '', end: r.end || m[3] || '' };
+  }
+  /* the basket's rental dates: the earliest start among its rental lines (one period per basket) */
+  function periodOf(ls) {
+    var p = null;
+    (ls || []).filter(isRent).forEach(function (l) { var i = info(l); if (!i.start || !i.end) return; if (!p || dayNo(i.start) < dayNo(p.start)) p = { start: i.start, end: i.end }; });
+    return p;
+  }
+  function lineId(item, a, b) { return 'rent:' + item + ':' + a + ':' + b; }
+  function sizeTxt(a, b) { return periodTxt(a, b) + ' · ' + daysTxt(daysOf(a, b)); }
+  R.fn = { el: el, round: round, money: money, money0: money0, pct: pct, num: num, truthy: truthy, setting: setting, french: french, collFee: collFee,
+    leadDays: leadDays, maxDays: maxDays, horizon: horizon, today: today, dayNo: dayNo, addDays: addDays, pretty: pretty, daysOf: daysOf, daysTxt: daysTxt,
+    periodTxt: periodTxt, minStart: minStart, maxStart: maxStart, tooSoon: tooSoon, basket: basket, save: save, lines: lines, isRent: isRent,
+    isLaundry: isLaundry, isErrand: isErrand, info: info, periodOf: periodOf, lineId: lineId, sizeTxt: sizeTxt, KEY: KEY };
+})();
+</script>

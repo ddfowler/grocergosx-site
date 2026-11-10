@@ -1,3 +1,4 @@
+<!-- v1.8 (4 Nov 2026): items sold by weight (size "per lb" on the Products tab), see Shop 42 Sold by Weight: ½ lb steps and prices per lb in the editor -->
 <!-- GrocerGoSx Shop 15 Order Editor v1.0.1 (18 Oct 2026; v1.0.1 uses Shop 13's H.rank for search results): the "Edit order" / "Edit my order" screen that Shop 14 opens on the run sheet and
      on the client's live page — quantity steppers, remove / undo, add items from the Products tab (search) or as a custom line with an
      optional price, a note, live basket and estimate totals, then Save (shopper, with "Email the client") or Send (client). After
@@ -104,13 +105,13 @@ html.ge-lock,html.ge-lock body{overflow:hidden!important}
     function paintList() {
       list.innerHTML = '';
       L.forEach(function (l) {
-        var rm = !!removed[l[5]], isNew = l[5].charAt(0) === 'a', qty = el('span', { text: String(l[2]) }),
+        var rm = !!removed[l[5]], isNew = l[5].charAt(0) === 'a', wq = !!(W.GGSX_WEIGHT && W.GGSX_WEIGHT.is(l)), qty = el('span', { text: wq ? W.GGSX_WEIGHT.lb(l[2]) : String(l[2]) }),
             step = el('div', { class: 'ge-step' }, [
-              el('button', { type: 'button', 'aria-label': T.less, text: '−', onclick: function () { if (l[2] <= 1) { if (isNew) L = L.filter(function (x) { return x !== l; }); else removed[l[5]] = 1; } else l[2]--; paintList(); } }),
+              el('button', { type: 'button', 'aria-label': T.less, text: '−', onclick: function () { if (l[2] <= (wq ? W.GGSX_WEIGHT.step : 1)) { if (isNew) L = L.filter(function (x) { return x !== l; }); else removed[l[5]] = 1; } else l[2] = wq ? W.GGSX_WEIGHT.clamp(l[2] - W.GGSX_WEIGHT.step) : l[2] - 1; paintList(); } }),
               qty,
-              el('button', { type: 'button', 'aria-label': T.more, text: '+', onclick: function () { if (l[2] < 99) l[2]++; paintList(); } })]);
+              el('button', { type: 'button', 'aria-label': T.more, text: '+', onclick: function () { if (wq) l[2] = W.GGSX_WEIGHT.clamp(l[2] + W.GGSX_WEIGHT.step); else if (l[2] < 99) l[2]++; paintList(); } })]);
         list.appendChild(el('div', { class: 'ge-it' + (rm ? ' rm' : '') }, [
-          el('div', { class: 'ge-in' }, [el('b', {}, [nm(l), isNew ? el('i', { class: 'ge-new', text: T.newTag }) : null]), el('small', { text: l[3] ? money(l[3]) + T.each : T.priced })]),
+          el('div', { class: 'ge-in' }, [el('b', {}, [nm(l), isNew ? el('i', { class: 'ge-new', text: T.newTag }) : null]), el('small', { text: l[3] ? money(l[3]) + (wq ? W.GGSX_WEIGHT.copy.per : T.each) : T.priced })]),
           rm ? el('button', { type: 'button', class: 'ge-undo', text: T.undo, onclick: function () { delete removed[l[5]]; paintList(); } }) : step,
           rm ? null : el('button', { type: 'button', class: 'ge-x', 'aria-label': T.remove, text: '×', onclick: function () { if (isNew) L = L.filter(function (x) { return x !== l; }); else removed[l[5]] = 1; paintList(); } })]));
       });

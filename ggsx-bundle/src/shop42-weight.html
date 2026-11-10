@@ -1,0 +1,219 @@
+<!-- GrocerGoSx Shop 42 Sold by Weight v1.0 (4 Nov 2026, bundle v1.8; bundle-only module, no Custom Code copy; core, right after Shop 1 Config):
+     items sold by weight (meat, fish, loose fruit and vegetables). An item is sold by weight when its size on the Products tab of the
+     Vendors & Menus sheet is "per lb"; its price there is then the price per lb.
+     * Shop Now, the home page and the order editor: the client picks a weight in ½ lb steps (Add = 1 lb), shown as "about 1.5 lb" with an
+       estimated price. A basket line keeps n = the weight in lb and price = the price per lb, so every total (n × price) is the estimate and
+       the checkout's order text stays "1.5 × <item> per lb — $29.24" (the format the Orders API reads); item counts count such a line once.
+     * Run sheet (Shop 4 calls GGSX_WEIGHT.row for each item): a "Label weight" box with an lb / kg switch (kept per phone). The weight on
+       the store label × the price per lb becomes the item's price, the item is ticked Got it, and the weight is saved with the ticks
+       (state field w, synced by Shop 9, remapped by Shop 14), so the client's live page (Shop 10) shows it and the Orders app's
+       "Use the run sheet" (v1.1.1) puts it on the invoice. Typing "1.1 + 0.95" adds two packs.
+     Wording: GGSX_WEIGHT.copy below. -->
+<style>
+#ggsx-shop .gs-price small{font-size:12px;font-weight:700;color:var(--mute,#6b6b6b);margin-left:1px}
+#ggsx-shop .gs-step.gs-wt .gs-n{min-width:54px;font-size:14px;white-space:nowrap}
+#ggsx-shop .gs-line .gs-step.gs-wt .gs-n{min-width:48px;font-size:13px}
+.gh-step.gh-wt span{min-width:50px;white-space:nowrap;font-size:13px;text-align:center}
+.gs-wnote,.gc-wnote{font-size:12px;line-height:1.45;color:#6b4a12;background:#fff6e5;border:1px solid #f4dfb5;border-radius:10px;padding:8px 10px;margin:8px 0 0}
+.gs-wnote[hidden],.gc-wnote[hidden]{display:none!important}
+.gr-it-n .gw-pp{display:block;color:#6b6b6b;font-size:12px;font-weight:400;margin-top:1px}
+.gr-it-p small{display:block;text-align:right;color:#6b6b6b;font-size:11px;font-weight:400}
+.gr-wt{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:10px;border-radius:12px;background:#f6f3ee}
+.gr-wt-l{flex-basis:100%;font-size:13px;font-weight:700;color:#3a3a3a}
+.gr-wt input{flex:1 1 90px;min-width:0;max-width:150px;box-sizing:border-box;font:inherit;font-size:18px;font-weight:700;border:1.5px solid #cfc9c1;border-radius:10px;padding:8px 10px;background:#fff;color:#1b1b1b;-webkit-appearance:none;appearance:none}
+.gr-wt input:focus{outline:2px solid #F4551B;outline-offset:1px;border-color:#F4551B}
+.gr-wt-u{display:inline-flex;flex:none;border:1.5px solid #cfc9c1;border-radius:999px;overflow:hidden;background:#fff}
+.gr-wt-u button{border:0;background:none;font:inherit;font-size:14px;font-weight:700;min-width:44px;min-height:40px;padding:0 12px;color:#3a3a3a;cursor:pointer}
+.gr-wt-u button.on{background:#1b1b1b;color:#fff}
+.gr-wt-r{flex:1 1 auto;text-align:right;font-weight:700;white-space:nowrap}
+.gr-wt-r small{display:block;font-weight:400;color:#6b6b6b;font-size:12px}
+.gr-item.got .gr-wt{background:#e3f3e8}
+.gr-item.out .gr-wt,.gr-item.sub .gr-wt{display:none}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.GGSX_WEIGHT) return;
+  var KG = 2.20462262, UNIT = 'ggsx_wt_unit';
+  var G = W.GGSX_WEIGHT = {
+    size: 'per lb', step: 0.5, start: 1, max: 20,
+    copy: {
+      per: '/lb', sold: 'Sold by weight', about: 'about ', est: 'est. ',
+      note: 'Sold by weight: the price shown is an estimate. Your invoice follows the weight on each store label.',
+      ck: 'Items sold by weight are estimates: your invoice follows the weight on each store label.',
+      label: 'Label weight', ph: '0.00', lb: 'lb', kg: 'kg', perLb: ' per lb',
+      left: 'Type the weight on the label', weighed: 'weighed', notWeighed: 'not weighed', got: 'Got it ✓ · '
+    }
+  };
+  var T = G.copy;
+
+  /* ---------- shared helpers: a basket line { size, n, price }, a product, or an order line [name, size, n, price, rule] ---------- */
+  function sizeOf(x) { return Array.isArray(x) ? x[1] : x && x.size; }
+  G.is = function (x) { return /^\s*per\s*lb\s*$/i.test(String(sizeOf(x) || '')); };
+  G.count = function (x) {
+    var n = Array.isArray(x) ? +x[2] : +(x && x.n);
+    n = n || 0;
+    return G.is(x) ? (n > 0 ? 1 : 0) : n;
+  };
+  G.clamp = function (n) { n = Math.round((+n || 0) * 2) / 2; return Math.max(0, Math.min(G.max, n)); };
+  G.num = function (n) { return String(Math.round((+n || 0) * 100) / 100); };
+  G.lb = function (n) { return G.num(n) + ' lb'; };
+  function round2(x) { return Math.round((+x || 0) * 100) / 100; }
+  function money(x) { return '$' + round2(x).toFixed(2); }
+  G.money = money;
+  /* the weight saved on the run sheet for line i (only counts while the item is ticked Got it) */
+  G.weighed = function (ln, S, i) {
+    var w = S && S.w ? +S.w[i] : 0;
+    return G.is(ln) && w > 0 && (!S.s || S.s[i] === 'got') ? w : 0;
+  };
+  /* the run sheet's value of a line: the weighed price, else quantity × price */
+  G.val = function (ln, S, i) { var w = G.weighed(ln, S, i); return round2((w || +ln[2] || 0) * (+ln[3] || 0)); };
+  /* the shopped summary's text for a line */
+  G.sline = function (ln, i, S) {
+    var name = ln[0] + (ln[1] ? ' ' + ln[1] : '');
+    if (!G.is(ln)) return ln[2] + ' × ' + name;
+    var w = G.weighed(ln, S, i);
+    if (w) return G.num(w) + ' × ' + name + ' — ' + money(w * (+ln[3] || 0)) + ' (' + T.weighed + ')';
+    return T.about + G.lb(ln[2]) + ' × ' + name + (S && S.s && S.s[i] === 'got' ? ' (' + T.notWeighed + ')' : '');
+  };
+  function el(tag, attrs, kids) {
+    var e = D.createElement(tag), k;
+    for (k in attrs || {}) {
+      if (attrs[k] == null) continue;
+      if (k === 'class') e.className = attrs[k];
+      else if (k === 'text') e.textContent = attrs[k];
+      else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function (c) { if (c != null && c !== false) e.appendChild(typeof c === 'string' ? D.createTextNode(c) : c); });
+    return e;
+  }
+
+  /* ---------- Shop Now basket (Shop 2 calls this after drawing the basket) and the checkout ---------- */
+  G.paint = function (root, lines) {
+    if (!root) return;
+    var note = root.querySelector('.gs-cart .gs-note');
+    if (!note) return;
+    var w = root.querySelector('.gs-cart .gs-wnote');
+    if (!w) { w = el('p', { class: 'gs-wnote', text: T.note }); note.parentNode.insertBefore(w, note.nextSibling); }
+    w.hidden = !(lines || []).some(G.is);
+  };
+  D.addEventListener('ggsx-checkout-open', function (e) {
+    var lines = (e.detail && e.detail.lines) || [];
+    setTimeout(function () {
+      var wrap = D.querySelector('.gc-wrap.open') || D.querySelector('.gc-wrap'), est = wrap && wrap.querySelector('.gc-est');
+      if (!est) return;
+      var n = wrap.querySelector('.gc-wnote');
+      if (!n) { n = el('p', { class: 'gc-wnote', text: T.ck }); est.parentNode.insertBefore(n, est.nextSibling); }
+      n.hidden = !lines.some(G.is);
+    }, 0);
+  });
+
+  /* ---------- run sheet: the label weight of each item sold by weight ---------- */
+  function unit() { try { return localStorage.getItem(UNIT) === 'kg' ? 'kg' : 'lb'; } catch (e) { return 'lb'; } }
+  function setUnit(u) { try { localStorage.setItem(UNIT, u); } catch (e) {} }
+  /* "1.62", "1,62" or "1.1 + 0.95" (two packs) */
+  function parse(v) {
+    var parts = String(v || '').replace(/,/g, '.').split('+'), sum = 0, any = false;
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i].replace(/[^0-9.]/g, '');
+      if (!p) continue;
+      var x = parseFloat(p);
+      if (isNaN(x)) return NaN;
+      sum += x; any = true;
+    }
+    return any ? sum : NaN;
+  }
+  function shown(lb, u) { return u === 'kg' ? String(Math.round(lb / KG * 1000) / 1000) : G.num(lb); }
+  G.total = function (wrap, lines, S) {
+    var sm = wrap && wrap.querySelector('.gr-pw small');
+    if (!sm || !lines) return;
+    var t = 0;
+    lines.forEach(function (ln, i) { t += G.val(ln, S, i); });
+    sm.textContent = sm.textContent.replace(/·\s*\$[\d,.]+/, '· ' + money(t));
+  };
+  /* x = { row, line, i, S (the run sheet's ticks), lines, save(), prog() } */
+  G.row = function (x) {
+    var row = x.row, ln = x.line, i = x.i, S = x.S;
+    if (!row || !ln) return;
+    row.setAttribute('data-i', String(i));
+    if (!G.is(ln)) return;
+    S.w = S.w || {};
+    var per = +ln[3] || 0, want = +ln[2] || 0,
+        nm = row.querySelector('.gr-it-n'), b = nm && nm.querySelector('b'), pr = row.querySelector('.gr-it-p');
+    if (b) b.textContent = T.about + G.lb(want) + ' · ';
+    if (nm && b && b.nextSibling && b.nextSibling.nodeType === 3) b.nextSibling.nodeValue = ln[0];
+    if (nm) nm.appendChild(el('span', { class: 'gw-pp', text: money(per) + T.per }));
+    var u = unit(),
+        inp = el('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', placeholder: T.ph, 'aria-label': T.label + ' (' + u + ')' }),
+        res = el('div', { class: 'gr-wt-r' }),
+        bl = el('button', { type: 'button', text: T.lb }), bk = el('button', { type: 'button', text: T.kg }),
+        box = el('div', { class: 'gr-wt' }, [el('span', { class: 'gr-wt-l', text: T.label }), inp, el('div', { class: 'gr-wt-u', role: 'group', 'aria-label': 'Unit' }, [bl, bk]), res]);
+    if (S.w[i] > 0) inp.value = shown(+S.w[i], u);
+    function paint() {
+      var w = G.weighed(ln, S, i), raw = +S.w[i] || 0;
+      bl.classList.toggle('on', u === 'lb'); bk.classList.toggle('on', u === 'kg');
+      inp.setAttribute('aria-label', T.label + ' (' + u + ')');
+      res.innerHTML = '';
+      if (raw > 0) {
+        res.appendChild(D.createTextNode(money(raw * per)));
+        res.appendChild(el('small', { text: G.lb(raw) + ' × ' + money(per) + T.per }));
+      } else res.appendChild(el('small', { text: T.left }));
+      if (pr) {
+        pr.innerHTML = '';
+        pr.appendChild(D.createTextNode(w ? money(w * per) : T.est + money(want * per)));
+        if (w) pr.appendChild(el('small', { text: G.lb(w) }));
+      }
+      if (x.lines) G.total(row.closest('.gr-wrap'), x.lines, S);
+    }
+    function tick() {
+      if (S.s[i]) return;
+      S.s[i] = 'got';
+      row.className = 'gr-item got';
+      Array.prototype.forEach.call(row.querySelectorAll('.gr-st .gr-b'), function (btn) { btn.classList.toggle('on', btn.classList.contains('got')); });
+      if (x.prog) try { x.prog(); } catch (e) {}
+    }
+    inp.addEventListener('input', function () {
+      var v = parse(inp.value), lb = u === 'kg' ? v * KG : v;
+      if (lb > 0 && lb < 200) { S.w[i] = Math.round(lb * 1000) / 1000; tick(); }
+      else if (!String(inp.value).trim()) delete S.w[i];
+      else return;
+      x.save(); paint();
+    });
+    inp.addEventListener('blur', function () { if (S.w[i] > 0) inp.value = shown(+S.w[i], u); });
+    function pick(nu) {
+      if (nu === u) return;
+      u = nu; setUnit(u);
+      if (S.w[i] > 0) inp.value = shown(+S.w[i], u);
+      paint();
+      try { inp.focus(); } catch (e) {}
+    }
+    bl.addEventListener('click', function () { pick('lb'); });
+    bk.addEventListener('click', function () { pick('kg'); });
+    /* Got it / Substituted / Out of stock: the price follows the status */
+    row.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.gr-st')) setTimeout(paint, 0); });
+    var st = row.querySelector('.gr-st');
+    if (st && st.parentNode) st.parentNode.insertBefore(box, st.nextSibling); else row.appendChild(box);
+    paint();
+  };
+
+  /* ---------- the client's live page (Shop 10) ---------- */
+  G.liveRow = function (it, ln) {
+    if (!G.is(ln)) return null;
+    var nm = it.querySelector('.gr-it-n'), b = nm && nm.querySelector('b'), pr = it.querySelector('.gr-it-p');
+    if (b) b.textContent = T.about + G.lb(ln[2]) + ' · ';
+    if (nm && b && b.nextSibling && b.nextSibling.nodeType === 3) b.nextSibling.nodeValue = ln[0];
+    if (nm) nm.appendChild(el('span', { class: 'gw-pp', text: money(+ln[3] || 0) + T.per }));
+    if (pr) pr.textContent = T.est + money((+ln[2] || 0) * (+ln[3] || 0));
+    return { b: b, pr: pr };
+  };
+  G.liveState = function (x, ln, st, w) {
+    if (!G.is(ln) || !x) return;
+    var r = x.wt || (x.wt = { b: x.it.querySelector('.gr-it-n b'), pr: x.it.querySelector('.gr-it-p') });
+    w = st === 'got' ? +w || 0 : 0;
+    if (r.b) r.b.textContent = w ? G.lb(w) + ' · ' : T.about + G.lb(ln[2]) + ' · ';
+    if (r.pr) r.pr.textContent = w ? money(w * (+ln[3] || 0)) : T.est + money((+ln[2] || 0) * (+ln[3] || 0));
+    if (w && x.chip) x.chip.textContent = T.got + G.lb(w) + ' ' + T.weighed;
+  };
+})();
+</script>

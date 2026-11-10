@@ -1,3 +1,4 @@
+<!-- v1.1 (9 Nov 2026, bundle v2.2): GGSX_HOURS.inBasket / closedIn / state / fmt / ready for Shop 45 (estimate line, "As soon as possible"). -->
 <!-- GrocerGoSx Shop 27 Restaurant Hours v1.0 (24 Oct 2026): restaurants with opening hours (Vendors tab, column hours, e.g. 14:00-19:00, island time, every day; blank = no limit) take orders from opening until restaurant_last_order_min (Settings tab, default 60) before closing. Restaurant cards and the menu header say Open or Closed; while closed the menu's Add buttons switch off; at Shop Now checkout a basket holding a closed restaurant's food can't be placed, and delivery windows that don't overlap the restaurant's hours switch off. Needs Shop 3, 5, 6 and 12 above it. Body – end · All pages · Load code on each new page · Essential. -->
 <style>
 .gm-sheet .gs-add[disabled],.gm-sheet .gm-qty button[disabled],.gm-sheet .gm-btn[disabled]{opacity:.45;cursor:not-allowed}
@@ -181,6 +182,9 @@
   D.addEventListener('change', function (e) { if (e.target && e.target.closest && e.target.closest('.gc-wrap')) setTimeout(checkout, 80); }, true);
   W.addEventListener('ggsx-basket', function () { setTimeout(paintAll, 0); });
   setInterval(paintAll, 30000);
+  /* v1.1 (9 Nov 2026, bundle v2.2): for Shop 45 (the basket's estimate line and "As soon as possible") */
+  TXT.inBasket = inBasket; TXT.closedIn = closedIn; TXT.state = state; TXT.fmt = fmt;
+  TXT.ready = function () { return Object.keys(BYID).length > 0; };
   load();
 })();
 </script>

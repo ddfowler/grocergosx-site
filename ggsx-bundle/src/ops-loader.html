@@ -1,0 +1,74 @@
+<!-- GrocerGoSx Ops Loader v1.3 (7 Nov 2026, bundle v2.1: app v1.1.2, whose "Confirmed" message is written from what the client chose at checkout: arrival, flight, stocking, access) · v1.2 (4 Nov 2026, bundle v1.8: app v1.1.1, whose "Use the run sheet" also applies the label weights of items sold by weight) · v1.1 (2 Nov 2026, bundle v1.4: app v1.1.0; v1.0 = 1 Nov 2026, bundle v1.3; bundle-only module, like Shop 39): opens Dwayne's phone app
+     "GrocerGoSx Orders" at grocergosx.com/shop-now#ops (orders board, run sheet, invoices). The app itself is a separate file in the
+     Media Manager (folder "Site code bundle", ggsx-ops-v<version>.txt) and is only downloaded on #ops, or on a run sheet that was
+     opened from the app (#r/… or #run/… while this tab carries the app's return mark), so ordinary visitors never load it.
+     While it loads, an orange cover hides the shop page and the site's intro screen is skipped. #ops on any other page goes to
+     /shop-now#ops. It also keeps the phone's "install app" offer for the app's Settings screen.
+     Settings: GGSX_OPS_CFG below (app = the app file, api = the GrocerGoSx Orders API web app, icons = the Orders app icons). -->
+<style>
+html.ggsx-ops-on .ga-card,html.ggsx-ops-on .ga-dim,html.ggsx-ops-on .ga-sheet{display:none!important}
+</style>
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxOpsLoader) return;
+  W.__ggsxOpsLoader = 1;
+  var C = W.GGSX_OPS_CFG = W.GGSX_OPS_CFG || {
+    app: 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_bc1f24b95d5549aeb29d2dba7efe87a6.txt',   /* ggsx-ops-v1.1.2.txt (Media → Site code bundle; Confirmed message from the checkout answers); v1.1.1 = …/ugd/85c3c2_3295b726db7e42fd8b856d6fd3f5fe69.txt, v1.1.0 = …/ugd/85c3c2_4651d1773f054be098f8870d334f76ed.txt, v1.0.0 = …/ugd/85c3c2_43929f9165d54e21b4f52ec71c1d4eae.txt */
+    api: 'https://script.google.com/macros/s/AKfycbyzSHe21jDLXEG1W_RXslzCIy3Wamqi52UU18JfjmqeXy8BJ0OQqNjrFApbUigKzy7s/exec',   /* GrocerGoSx Orders API (Apps Script, grocergosx@gmail.com) */
+    page: '/shop-now',
+    icons: {                                     /* the Orders app icons (Media → Site code bundle, ggsx-orders-icon-*.png) */
+      180: 'https://static.wixstatic.com/media/85c3c2_56ca6f64212f4688aba74828c47f0789~mv2.png',
+      192: 'https://static.wixstatic.com/media/85c3c2_fbecc503a0604b44926da995d8400017~mv2.png',
+      512: 'https://static.wixstatic.com/media/85c3c2_89b00ced87bc47b18b9d394e15d0ba12~mv2.png'
+    }
+  };
+  function ss(k) { try { return W.sessionStorage.getItem(k); } catch (e) { return null; } }
+  function want() {
+    var h = location.hash || '';
+    if (/^#ops(\/|$)/.test(h)) return 'ops';
+    if (/^#(r|run)\/[A-Za-z0-9_-]/.test(h) && ss('ggsx_ops_ret')) return 'run';
+    return '';
+  }
+  function cover() {
+    if (D.getElementById('ggo') || D.getElementById('ggo-cover') || !D.body) return;
+    var c = D.createElement('div');
+    c.id = 'ggo-cover';
+    c.setAttribute('style', 'position:fixed;top:0;right:0;bottom:0;left:0;z-index:9600;background:#F4551B;display:flex;align-items:center;justify-content:center');
+    c.innerHTML = '<style>@keyframes ggo-c{to{transform:rotate(360deg)}}</style><div style="width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:ggo-c .8s linear infinite"></div>';
+    D.body.appendChild(c);
+    setTimeout(function () {
+      if (c.parentNode && !W.GGSX_OPS) c.innerHTML = '<p style="max-width:300px;margin:0;padding:24px;color:#fff;font:600 16px/1.4 -apple-system,Arial,sans-serif;text-align:center">The Orders app did not load. Check the connection, then reload the page.</p>';
+    }, 20000);
+  }
+  function skipSplash() {
+    var s = D.getElementById('ggsx-splash');
+    if (s) { try { s.click(); } catch (e) {} s.style.display = 'none'; }
+  }
+  function load() {
+    if (W.GGSX_OPS || W.__ggsxOpsLoading) return;
+    if (!/^https?:/.test(C.app || '')) { try { console.warn('[GGSX ops] no app file set'); } catch (e) {} return; }
+    W.__ggsxOpsLoading = 1;
+    var s = D.createElement('script');
+    s.src = C.app;
+    s.async = true;
+    s.charset = 'utf-8';
+    s.onload = function () { if (s.parentNode) s.parentNode.removeChild(s); };
+    s.onerror = function () { W.__ggsxOpsLoading = 0; try { console.warn('[GGSX ops] app failed to load: ' + C.app); } catch (e) {} };
+    (D.head || D.body).appendChild(s);
+  }
+  function check() {
+    var w = want();
+    if (!w || W.GGSX_OPS) return;
+    if (location.pathname.replace(/\/+$/, '') !== C.page) { if (w === 'ops') location.replace(C.page + location.search + location.hash); return; }
+    if (w === 'ops') { D.documentElement.classList.add('ggsx-ops-on'); cover(); skipSplash(); }
+    load();
+  }
+  /* Chrome's own install offer: kept for the app's Settings screen when it came for the app's manifest */
+  W.addEventListener('beforeinstallprompt', function (e) {
+    W.__ggsxOpsBIP = { e: e, ops: !!W.GGSX_OPS && D.documentElement.classList.contains('ggsx-ops-on') };
+  });
+  check();
+  W.addEventListener('hashchange', check);
+})();
+</script>

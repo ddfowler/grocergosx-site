@@ -1,53 +1,141 @@
-<!-- GrocerGoSx Bundle Loader v1.2 (1 Nov 2026; bundle v1.2 — nothing piles up on page changes any more: one copy of each listener, the phone bars and the checkout window, and the site map row stays at the bottom; the loader also drops its copy of the code from the page once it has run. Previous pair (v1.1): gzip 85c3c2_06805e22cc8c4ab0886515e9abf10877.txt, plain 85c3c2_18dbe117ace64e60ba953b18652cbfd7.txt; v1.0: gzip 85c3c2_d2afda9e935446149673f46b8d91ab29.txt, plain 85c3c2_804de5b6f4324218bba9512cf2d22eda.txt). Loads the site's Body-end code from ONE cached file (ggsx-body.js, built from the 60 Body-end
-     snippets, hosted in this site's own Media Manager → folder "Site code bundle") instead of 60 inline snippets, which Wix inlined twice in every
-     page (about 1.3 MB of the HTML, roughly a third of it); the bundle is downloaded once and cached for 180 days.
-     Modern browsers fetch the gzip copy (185 KB) and unpack it with DecompressionStream; older ones load the plain copy (603 KB) as a normal script.
-     Skips itself while the inline snippets are still enabled (window.GGSX_PAGES / __ggsxNote / __ggsxSeo exist), so there is never a double run,
-     and re-runs on each new page like the inline code did. Body end · all pages · load on each new page · Essential.
-     Roll back: put a previous pair of URLs (listed above) back into GZ / PLAIN. Last resort: re-enable ALL 60 inline snippets in Settings →
-     Custom Code and disable this one (that brings back the v1.0 code; never re-enable just one). New build: upload the new .txt files to the
-     "Site code bundle" media folder (files are immutable, so a new build is a new URL) and change GZ / PLAIN below. -->
+<!-- GrocerGoSx Bundle Loader v1.5 (2 Nov 2026, page speed): runs the site code build that the First Paint snippet (head) picked: the core file
+     (ggsx-body) on every page and, on the home page and the code-drawn service pages, that page's group (ggsx-home, ggsx-pages), using the
+     copies First Paint already started downloading. The core file is run in several short steps (it is cut at the /*@@ggsx-yield@@*/ marks
+     between modules, and the page's group runs at /*@@ggsx-group@@*/), so the phone can still draw and react in between; one long run
+     counted as "blocking time" for Google. The other groups are downloaded later, once the page has loaded and the browser is idle,
+     so moving to another page stays instant. Without First Paint v1.1 it runs the built-in build below (v1.4, one file). Previous loader
+     (rev 7, v1.4 only): ggsx-bundle/restore/RESTORE-bundle-loader-rev7-d06df95b.html.
+     Loader v1.4 (2 Nov 2026): bundle v1.4 points the Ops Loader at Orders app v1.1.0. Loader v1.3 (2 Nov 2026): bundle v1.3 adds the Ops Loader
+     module. Loader v1.2 (1 Nov 2026): bundle v1.2, nothing piles up on page changes any more; the loader drops its copy of the code from the
+     page once it has run. Loads the site's Body-end code from cached files in this site's own Media Manager (folder "Site code bundle")
+     instead of 60 inline snippets, which Wix inlined twice in every page. Modern browsers fetch the gzip copies and unpack them with
+     DecompressionStream; older ones load the plain copies as normal scripts. Skips itself while the inline snippets are still enabled
+     (window.GGSX_PAGES / __ggsxNote / __ggsxSeo exist before the site code has run), so there is never a double run, and re-runs on each new
+     page like the inline code did. Body end · all pages · load on each new page · Essential.
+     Roll back: in First Paint set LIVE to the previous build (or open a page with ?ggsx_v=14 to see it in one tab). Last resort: re-enable ALL
+     60 inline snippets in Settings → Custom Code and disable this one (that brings back the v1.0 code; never re-enable just one). -->
 <script>
 (function () {
   var W = window, D = document;
-  var GZ = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_4912c66a5e724b54aab69640835faa41.txt';     /* ggsx-body.js v1.2, gzip (185 KB) */
-  var PLAIN = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_ee95a697328346e3b61f71d0151c8805.txt';  /* ggsx-body.js v1.2, plain (603 KB) */
+  var M = 'https://c1f8709f-fe64-4674-a830-0417bef25a2e.usrfiles.com/ugd/85c3c2_';
+  var OWN = { id: '14', v: '1.4', files: { body: [M + 'f2e52822518449e08c58281866b826c9.txt', M + '935061aaa8034fdbb2467c0c5240deb8.txt'] } };   /* ggsx-body.js v1.4 (gzip, plain) */
   function warn(m, e) { try { console.warn('[GGSX loader] ' + m, e || ''); } catch (x) {} }
-  function inject(code) {
-    var s = D.createElement('script');
-    s.text = code + '\n//# sourceURL=ggsx-body.js';
-    (D.body || D.head).appendChild(s);
-    if (s.parentNode) s.parentNode.removeChild(s);   /* it has run: don't keep another 580 KB copy in the page on every page change */
+  function gzOk() { return !!(W.fetch && W.DecompressionStream && W.Response && W.ReadableStream && W.ReadableStream.prototype.pipeThrough); }
+  function gz(u) {
+    return fetch(u).then(function (r) {
+      if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+      return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text();
+    });
   }
-  function plain() {
+  function inject(code, name) {
     var s = D.createElement('script');
-    s.src = PLAIN;
-    s.async = false;
-    s.onload = function () { if (s.parentNode) s.parentNode.removeChild(s); };
-    s.onerror = function () { warn('bundle failed to load: ' + PLAIN); };
+    s.text = code + '\n//# sourceURL=ggsx-' + name + '.js';
     (D.body || D.head).appendChild(s);
+    if (s.parentNode) s.parentNode.removeChild(s);   /* it has run: don't keep another copy of the code in the page on every page change */
+  }
+  function plain(B, P, name) {
+    var s = D.createElement('script');
+    s.src = P.files[name][1];
+    s.async = false;
+    s.onload = function () { B.ran[name] = 1; if (s.parentNode) s.parentNode.removeChild(s); };
+    s.onerror = function () { warn('site code failed to load: ' + s.src); };
+    (D.body || D.head).appendChild(s);
+  }
+  /* the core file in steps: each part keeps its line numbers (padded with newlines) so errors point at the right line */
+  function cut(code) {
+    var re = /\n\/\*@@ggsx-(yield|group)@@\*\/\n/g, out = [], from = 0, kind = '', nl = 0, m, i;
+    while ((m = re.exec(code))) {
+      out.push({ kind: kind, text: new Array(nl + 1).join('\n') + code.slice(from, m.index) });
+      for (i = code.indexOf('\n', from); i >= 0 && i < m.index + m[0].length; i = code.indexOf('\n', i + 1)) nl++;
+      from = m.index + m[0].length; kind = m[1];
+    }
+    out.push({ kind: kind, text: new Array(nl + 1).join('\n') + code.slice(from) });
+    return out;
+  }
+  function soon(fn) {
+    try { if (W.scheduler && W.scheduler.postTask) { W.scheduler.postTask(fn, { priority: 'user-blocking' }); return; } } catch (e) {}
+    setTimeout(fn, 0);
+  }
+  /* one file's code: kept from an earlier page of this visit, First Paint's early download, or the network */
+  function load(B, P, name) {
+    if (typeof B.code[name] === 'string') return Promise.resolve(B.code[name]);
+    if (B.wait[name]) return B.wait[name];
+    var p = (B.early && B.early[name]) || gz(P.files[name][0]);
+    if (B.early) B.early[name] = null;
+    return (B.wait[name] = p.then(function (code) {
+      if (!code || code.length < 1000) throw new Error('short response');
+      B.code[name] = code; B.wait[name] = null;
+      return code;
+    }, function (e) { B.wait[name] = null; throw e; }));
+  }
+  function idle(B, P) {
+    function fetchRest() {
+      if (B.from === 'plain') return;
+      Object.keys(P.files).forEach(function (name) { if (name !== 'body') load(B, P, name).catch(function () {}); });
+    }
+    function later() { setTimeout(function () { if (W.requestIdleCallback) W.requestIdleCallback(fetchRest, { timeout: 4000 }); else fetchRest(); }, 4000); }
+    if (D.readyState === 'complete') later(); else W.addEventListener('load', later);
   }
   function go() {
-    if (!W.__GGSX_BUNDLE && (W.GGSX_PAGES || W.__ggsxNote || W.__ggsxSeo)) return;   /* inline snippets still active: let them run */
-    var B = W.__GGSX_BUNDLE = W.__GGSX_BUNDLE || { v: '1.2', loader: '1.2' };
-    if (B.code) { inject(B.code); return; }          /* new page in the same visit: re-run the kept code */
-    if (B.loading) return;                           /* first fetch still in flight: it injects when done */
-    if (B.from === 'plain') { plain(); return; }     /* this browser uses the plain file (cached after the first page) */
-    if (W.fetch && W.DecompressionStream && W.Response && W.ReadableStream && W.ReadableStream.prototype.pipeThrough) {
-      B.loading = true;
-      fetch(GZ).then(function (r) {
-        if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
-        return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text();
-      }).then(function (code) {
-        if (!code || code.length < 10000) throw new Error('short response');
-        B.code = code; B.loading = false; B.from = 'gzip';
-        inject(code);
-      }).catch(function (e) {
-        B.loading = false; B.from = 'plain';
-        warn('compressed bundle failed, using the plain file', e);
-        plain();
+    var B = W.__GGSX_BUNDLE || {};
+    if (!B.runs && (W.GGSX_PAGES || W.__ggsxNote || W.__ggsxSeo)) return;   /* inline snippets still active: let them run */
+    W.__GGSX_BUNDLE = B;
+    var P = B.pick || OWN, path = location.pathname.replace(/\/+$/, '') || '/', g = P.group ? P.group(path) : '';
+    var n = B.nav = (B.nav || 0) + 1;
+    B.loader = '1.5';
+    if (!B.code || typeof B.code !== 'object') B.code = {};
+    B.wait = B.wait || {};
+    B.ran = {};
+    if (B.from === 'plain' || !gzOk()) {               /* this browser uses the plain files (cached after the first page) */
+      B.from = 'plain';
+      plain(B, P, 'body');
+      if (g) plain(B, P, g);
+      return;
+    }
+    load(B, P, 'body').then(function (code) {
+      if (n !== B.nav) return;                          /* a newer page took over */
+      B.from = 'gzip';
+      var gp = g ? load(B, P, g) : null, q = [], grouped = false;
+      if (gp) gp.catch(function () {});
+      function group() {
+        grouped = true;
+        return gp.then(function (c2) {
+          var parts = cut(c2);
+          return new Promise(function (done) {
+            (function next() {
+              var part = parts.shift();
+              if (n !== B.nav || !part) { if (n === B.nav) B.ran[g] = 1; return done(); }
+              inject(part.text, g);
+              if (parts.length) soon(next); else next();
+            })();
+          });
+        }, function (e) {
+          if (n !== B.nav) return;
+          warn('compressed ' + g + ' code failed, using the plain file', e);
+          plain(B, P, g);
+        });
+      }
+      cut(code).forEach(function (part) {
+        if (part.kind === 'group' && gp) q.push(group);
+        q.push(function () { inject(part.text, 'body'); });
       });
-    } else { B.from = 'plain'; plain(); }
+      if (gp) q.push(function () { if (!grouped) return group(); });
+      q.push(function () { B.ran.body = 1; });
+      (function step() {
+        if (n !== B.nav) return;
+        var f = q.shift(), r;
+        if (!f) return;
+        r = f();
+        if (r && r.then) r.then(function () { soon(step); }); else soon(step);
+      })();
+    }).catch(function (e) {
+      if (n !== B.nav) return;
+      warn('compressed site code failed, using the plain files', e);
+      B.from = 'plain';
+      if (!B.ran.body) plain(B, P, 'body');
+      if (g && !B.ran[g]) plain(B, P, g);
+    });
+    if (!B.idle) { B.idle = 1; idle(B, P); }
   }
   setTimeout(go, 0);   /* after every inline script on the page has run */
 })();

@@ -5,6 +5,10 @@
 const fs = require('fs');
 const path = require('path');
 const acorn = require('acorn');
+// v1.5: each module's script is minified on its own (whitespace, comments, local names; nothing else), so every module still starts on
+// its own line after its ===== marker and the tests can tell which module a line belongs to. MINIFY=0 node build.js … builds it unminified.
+const MINIFY = process.env.MINIFY !== '0';
+const terser = MINIFY ? require('terser') : null;
 
 const root = __dirname;
 const order = JSON.parse(fs.readFileSync(path.join(root, 'order.json'), 'utf8'));
@@ -41,7 +45,8 @@ function topLevelInfo(code) {
   return { lexical, vars, funcs, classes, strict, statements: ast.body.length };
 }
 
-const parts = [];
+const coreParts = [];
+const parts = coreParts;
 parts.push(`/*! GrocerGoSx site code bundle v${version} — built ${new Date().toISOString()} from ${order.length} modules in ggsx-bundle/src (the 60 former Body-end Custom Code snippets, kept disabled in Wix as restore copies, plus bundle-only modules). The bundle runs again on every page change; since v1.2 each module's window/document listeners and observers are tracked, and when a module registers the same one again on the next page, the copy from its previous run is removed, so nothing piles up. */`);
 parts.push(`(function(){var W=window;W.__GGSX_BUNDLE=W.__GGSX_BUNDLE||{};W.__GGSX_BUNDLE.v=${JSON.stringify(version)};W.__GGSX_BUNDLE.runs=(W.__GGSX_BUNDLE.runs||0)+1;})();`);
 // v1.2: per-module registration tracking. __ggsxB(key) / __ggsxE(key) bracket each module's synchronous run; listeners added to
@@ -112,9 +117,34 @@ parts.push(`function __ggsxCss(attrs, css) {
 
 const report = [];
 const allLexical = {};
+// v1.5: page groups. Modules listed in groups.json go to their own file (dist/ggsx-<group>.js), which the loader runs after the core
+// file only on that group's pages; everything else is the core file (dist/ggsx-body.js), run on every page.
+const groups = fs.existsSync(path.join(root, 'groups.json')) ? JSON.parse(fs.readFileSync(path.join(root, 'groups.json'), 'utf8')) : {};
+// v1.5: the core file is cut into several tasks at module boundaries (/*@@ggsx-yield@@*/), and the page's group runs at /*@@ggsx-group@@*/.
+// The loader splits the code at these marks; each part still starts on the same line as in the file.
+const RUN = groups.run || null;
+delete groups.run;
+const groupOf = {};
+for (const g in groups) for (const id of groups[g].modules) groupOf[id] = g;
+const gparts = {};
+for (const g in groups) gparts[g] = [];
+let sinceGroup = -1;
 for (const [id, name] of order) {
   const html = fs.readFileSync(path.join(root, 'src', id + '.html'), 'utf8');
   const meta = JSON.parse(fs.readFileSync(path.join(root, 'src', id + '.json'), 'utf8'));
+  const parts = groupOf[id] ? gparts[groupOf[id]] : coreParts;
+  if (RUN && !groupOf[id] && coreParts.length && coreParts.lastMarkerFor !== id) {
+    // marks go before this core module, after the previous core module
+    const prev = coreParts.prevCore;
+    if (prev && RUN.groupAfter === prev) { coreParts.push('/*@@ggsx-group@@*/'); sinceGroup = 0; }
+    else if (prev && ((RUN.yieldAfter || []).indexOf(prev) >= 0 || (sinceGroup >= 0 && ++sinceGroup % (RUN.every || 5) === 0))) coreParts.push('/*@@ggsx-yield@@*/');
+  }
+  if (!groupOf[id]) coreParts.prevCore = id;
+  else {   // a mark inside a group file, after the modules listed in the group's yieldAfter
+    const gp = gparts[groupOf[id]], gy = groups[groupOf[id]].yieldAfter || [];
+    if (gp.prevMod && gy.indexOf(gp.prevMod) >= 0) gp.push('/*@@ggsx-yield@@*/');
+    gp.prevMod = id;
+  }
   parts.push(`\n/* ===== ${meta.name} (${id}, rev ${meta.revision}) ===== */`);
   let scriptNo = 0;
   for (const b of blocks(html)) {
@@ -144,22 +174,42 @@ for (const [id, name] of order) {
     for (const n of info.lexical.concat(info.classes)) { (allLexical[n] = allLexical[n] || []).push(name); }
     const needsBare = info.lexical.length || info.funcs.length || info.classes.length;
     report.push(`${needsBare ? 'BARE' : 'WRAP'} ${name}: stmts=${info.statements} var=[${info.vars.join(',')}] lexical=[${info.lexical.join(',')}] funcs=[${info.funcs.join(',')}] strict=${info.strict}`);
-    if (needsBare) parts.push(code.trim());   // bare scripts keep global semantics and are not tracked
+    let out = code.trim();
+    if (MINIFY && !needsBare) {
+      const r = terser.minify_sync(out, { ecma: 5, compress: false, mangle: true, format: { comments: false } });
+      if (r && r.code) out = r.code;
+    }
+    if (needsBare) parts.push(out);   // bare scripts keep global semantics and are not tracked
     else {
       const key = JSON.stringify(id + '#' + (scriptNo++));
-      parts.push(`__ggsxB(${key});\ntry {\n${code.trim()}\n} catch (e) { try { console.warn('[GGSX bundle] ${name.replace(/'/g, "\\'")}', e); } catch (e2) {} }\n__ggsxE(${key});`);
+      parts.push(`__ggsxB(${key});\ntry {\n${out}\n} catch (e) { try { console.warn('[GGSX bundle] ${name.replace(/'/g, "\\'")}', e); } catch (e2) {} }\n__ggsxE(${key});`);
     }
   }
 }
-const bundle = parts.join('\n') + '\n';
-// validate whole bundle
-try { acorn.parse(bundle, { ecmaVersion: 'latest', sourceType: 'script' }); report.push('BUNDLE PARSES OK'); } catch (e) { report.push('BUNDLE PARSE ERROR: ' + e.message); }
+const files = { body: coreParts.join('\n') + '\n' };
+for (const g in groups) {
+  const names = groups[g].modules.map(id => (order.find(o => o[0] === id) || [id, id])[1]);
+  // no wrapper around the modules: the loader may run the file in parts (cut at /*@@ggsx-yield@@*/). Without the core file first, the
+  // first module's __ggsxB() call stops each part (ReferenceError), so nothing half-runs.
+  files[g] = `/*! GrocerGoSx site code bundle v${version} — ${g} group (${names.join(', ')}), run after the core file (ggsx-body) on ${groups[g].paths.join(' ')} */\n` +
+    gparts[g].join('\n') + '\n';
+}
+// validate every file, and core + each group together (they share one global scope)
+for (const f in files) {
+  try { acorn.parse(files[f], { ecmaVersion: 'latest', sourceType: 'script' }); report.push(`${f.toUpperCase()} PARSES OK`); } catch (e) { report.push(`${f.toUpperCase()} PARSE ERROR: ` + e.message); }
+}
+report.push(Object.keys(files).length > 1 ? 'BUNDLE PARSES OK (' + Object.keys(files).join(' + ') + ')' : 'BUNDLE PARSES OK');
 for (const n in allLexical) if (allLexical[n].length > 1) report.push(`DUPLICATE top-level lexical ${n}: ${allLexical[n].join(' | ')}`);
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
-fs.writeFileSync(path.join(root, 'dist', 'ggsx-body.js'), bundle);
-const gz = require('zlib').gzipSync(Buffer.from(bundle, 'utf8'), { level: 9 });
-fs.writeFileSync(path.join(root, 'dist', 'ggsx-body.js.gz'), gz);
-fs.writeFileSync(path.join(root, 'dist', 'build-report.txt'), report.join('\n') + '\n');
+for (const f of fs.readdirSync(path.join(root, 'dist'))) if (/^ggsx-(?!body)[a-z]+\.js(\.gz)?$/.test(f)) fs.unlinkSync(path.join(root, 'dist', f));   // groups of an earlier build
+const sizes = [];
+for (const f in files) {
+  const name = 'ggsx-' + f + '.js', buf = Buffer.from(files[f], 'utf8'), gz = require('zlib').gzipSync(buf, { level: 9 });
+  fs.writeFileSync(path.join(root, 'dist', name), buf);
+  fs.writeFileSync(path.join(root, 'dist', name + '.gz'), gz);
+  sizes.push(`${name}: ${buf.length} bytes, gzip ${gz.length}`);
+}
+fs.writeFileSync(path.join(root, 'dist', 'build-report.txt'), report.concat(sizes).join('\n') + '\n');
 console.log(report.join('\n'));
-console.log('bundle chars:', bundle.length, 'bytes:', Buffer.byteLength(bundle), 'gzip bytes:', gz.length);
-console.log('Upload dist/ggsx-body.js as ggsx-body-v' + version + '.txt and dist/ggsx-body.js.gz as ggsx-body-v' + version + '.gz.txt (Media Manager → Site code bundle), then update GZ/PLAIN in loader.html.');
+console.log(sizes.join('\n'));
+console.log('Upload each dist/ggsx-<name>.js as ggsx-<name>-v' + version + '.txt and its .gz as ggsx-<name>-v' + version + '.gz.txt (Media Manager → Site code bundle), then put the URLs into BUILDS in the First Paint snippet (see README).');

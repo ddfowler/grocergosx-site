@@ -1,0 +1,236 @@
+<!-- GrocerGoSx Shop 34 Fees & Prices from Settings v1.7 (1 Nov 2026: KEYS fallback defaults = current Settings; v1.6 had 80/70/120/100/25/onTop 0/1.3/1.2). Head, all pages, each new page, Essential. Settings tab → window.GGSX_FEESET (fees; F.r(planned, run) = service rate, F.d(planned, french) = delivery fee, delivery_fee_planned v1.6), {{key}} / {{Phrase}} page wording, fresh sheet on a refresh, shelf-price re-check of Products rows. -->
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxFeeset || !W.fetch) return;
+  W.__ggsxFeeset = 1;
+  var SHEET = '1-h6W54Wbscz_5zMAVU0myRr0PCYoVW_sJZo4XWe2MXE';
+  var LIQ = /^(beer & seltzers|wine|spirits \/ liquor)$/i, MIX = /^mixers & bar essentials$/i;
+  var KEYS = {
+    rate: ['service_fee_rate', 0.15], sf: ['shopping_fee', 0.25], pf: ['planned_fee', 0.15], smin: ['service_fee_min', 0], ph: ['planned_hours', 48], max: ['service_fee_max', 200],
+    minOrder: ['min_order', 0], del: [['delivery_fee', 'delivery_in_fee'], 30], delFr: [['delivery_fee_french', 'delivery_in_fee_french'], 35], onTop: ['delivery_on_top', 1], dp: ['delivery_fee_planned', 20], dpf: ['delivery_fee_planned_french', 25],
+    pickup: ['restaurant_pickup_fee', 20], stop: ['errand_stop_fee', 25], laundryWay: ['laundry_fee_each_way', 20], laundryLb: ['laundry_per_lb', 2.95],
+    rmin: ['restaurant_only_fee', 10], rminFr: ['restaurant_only_fee_french', 20], rdel: ['restaurant_only_delivery', 25], rdelFr: ['restaurant_only_delivery_french', 25],
+    food: ['catalogue_markup', 1.5], drink: ['liquor_markup', 1.4]
+  };
+
+  var FRESH = false, STAMP = Date.now();
+  try {
+    var nav = W.performance && performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    FRESH = nav ? nav.type === 'reload' : !!(W.performance && performance.navigation && performance.navigation.type === 1);
+  } catch (e) {}
+  if (FRESH) [W.sessionStorage, W.localStorage].forEach(function (st) {
+    try {
+      for (var i = st.length - 1; i >= 0; i--) {
+        var key = st.key(i);
+        if (/^ggsx_(more_cache|shop_cache|home_cache|pg_)/.test(key)) st.removeItem(key);
+      }
+    } catch (e) {}
+  });
+  function fresh(url) { return /[?&]t=[^&]*/.test(url) ? url.replace(/([?&])t=[^&]*/, '$1t=' + STAMP) : url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + STAMP; }
+
+  var F = W.GGSX_FEESET = {}, k;
+  for (k in KEYS) F[k] = KEYS[k][1];
+  function derive() {
+    F.rateStd = F.sf <= 1 ? F.sf : F.rate; F.ratePlan = F.pf <= 1 ? F.pf : F.rate;
+    F.min = F.sf <= 1 ? F.smin : F.sf; F.planned = F.pf <= 1 ? F.smin : F.pf;
+    F.dPlan = F.dp >= 0 ? F.dp : F.del; F.dPlanFr = F.dpf >= 0 ? F.dpf : F.delFr;
+  }
+  F.r = function (planned, run) { return run ? (planned ? F.ratePlan : F.rateStd) : F.rate; };
+  F.d = function (planned, french) { return planned ? (french ? F.dPlanFr : F.dPlan) : (french ? F.delFr : F.del); };
+  derive();
+  var of = W.fetch;
+
+  function num(v, d) {
+    var s = String(v == null ? '' : v), x = parseFloat(s.replace(/[^0-9.\-]/g, ''));
+    return isNaN(x) || x < 0 ? d : (s.indexOf('%') >= 0 ? x / 100 : x);
+  }
+  function apply(s) {
+    for (var k in KEYS) {
+      var names = [].concat(KEYS[k][0]), v, i;
+      for (i = 0; i < names.length; i++) if (s[names[i]] != null && String(s[names[i]]).trim() !== '') { v = s[names[i]]; break; }
+      F[k] = k === 'onTop' ? (/^(1|true|yes|y|on|x)$/i.test(String(v == null ? '' : v).trim()) ? 1 : 0) : num(v, KEYS[k][1]);
+    }
+    derive();
+    F.loaded = 1;
+  }
+  function near(x) {
+    var b = Math.floor(x), c = [b - 0.01, b + 0.49, b + 0.99], best = c[0], i;
+    for (i = 1; i < 3; i++) if (Math.abs(c[i] - x) <= Math.abs(best - x) + 1e-9) best = c[i];
+    return Math.max(0.49, Math.round(best * 100) / 100);
+  }
+  function parse(text) {
+    var rows = [], row = [], cell = '', q = false, i, ch;
+    for (i = 0; i < text.length; i++) {
+      ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+  function line(r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }
+
+  var setP = null;
+  function settings() {
+    if (setP) return setP;
+    if (!FRESH) try {
+      var c = JSON.parse(sessionStorage.getItem('ggsx_more_cache') || 'null');
+      if (c && c.d && c.d.set && Date.now() - c.t < 6e5) return (setP = Promise.resolve(c.d.set));
+    } catch (e) {}
+    setP = of.call(W, 'https://docs.google.com/spreadsheets/d/' + SHEET + '/gviz/tq?tqx=out:csv&headers=1&sheet=Settings&t=' + (FRESH ? STAMP : Math.floor(Date.now() / 6e4)), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (t) { var s = {}; parse(t).slice(1).forEach(function (r) { if (r[0]) s[r[0].trim()] = (r[1] || '').trim(); }); return s; })
+      .catch(function () { return {}; });
+    return setP;
+  }
+
+  function reprice(text) {
+    var rows = parse(text);
+    if (rows.length < 2) return text;
+    var h = rows[0].map(function (x) { return x.trim().toLowerCase(); }), ip = h.indexOf('price'), is = h.indexOf('shelf_price'), ic = h.indexOf('category'), isub = h.indexOf('subcategory');
+    if (ip < 0 || is < 0) return text;
+    for (var i = 1; i < rows.length; i++) {
+      var r = rows[i], dr = ic >= 0 && LIQ.test((r[ic] || '').trim()) && !(isub >= 0 && MIX.test((r[isub] || '').trim()));
+      var sp = num(r[is], 0);
+      if (sp > 0 && r.length > ip) r[ip] = near(sp * (dr ? F.drink : F.food)).toFixed(2);
+    }
+    return rows.map(line).join('\n');
+  }
+
+  W.fetch = function (input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url) || '';
+    var sheet = url.indexOf(SHEET) >= 0 && url.indexOf('/gviz/tq') >= 0, args = arguments;
+    if (sheet && FRESH && typeof input === 'string') args = [fresh(url), init || { cache: 'no-store' }];
+    if (!sheet || !/[?&]sheet=Products(&|$)/.test(url) || url.indexOf('out:csv') < 0) return of.apply(this, args);
+    return Promise.all([of.apply(this, args), settings()]).then(function (a) {
+      var res = a[0];
+      apply(a[1]);
+      if (!res.ok) return res;
+      return res.text().then(function (t) {
+        var out = t;
+        try { out = reprice(t); } catch (e) {}
+        return new Response(out, { status: res.status, statusText: res.statusText, headers: res.headers });
+      });
+    });
+  };
+
+
+  var FMT = {
+    service_fee_rate: ['rate', 'pct'], shopping_fee: ['sf', 'rm'], planned_fee: ['pf', 'rm'], service_fee_min: ['smin', '$'], planned_hours: ['ph', 'n'], service_fee_max: ['max', '$'],
+    min_order: ['minOrder', '$'], delivery_fee: ['del', '$'], delivery_fee_french: ['delFr', '$'], delivery_fee_planned: ['dPlan', '$'], delivery_fee_planned_french: ['dPlanFr', '$'], delivery_in_fee: ['del', '$'], delivery_in_fee_french: ['delFr', '$'],
+    restaurant_pickup_fee: ['pickup', '$'], errand_stop_fee: ['stop', '$'], laundry_fee_each_way: ['laundryWay', '$'], laundry_per_lb: ['laundryLb', '$'],
+    restaurant_only_fee: ['rmin', '$'], restaurant_only_fee_french: ['rminFr', '$'], restaurant_only_delivery: ['rdel', '$'], restaurant_only_delivery_french: ['rdelFr', '$'],
+    catalogue_markup: ['food', 'up'], liquor_markup: ['drink', 'up']
+  };
+  function money(v) { return '$' + (v % 1 ? v.toFixed(2) : String(v)); }
+  function pct(v) { return Math.round(v * 1000) / 10 + '%'; }
+  function rates() { return F.ratePlan !== F.rateStd ? pct(F.rateStd) + ' (' + pct(F.ratePlan) + ' when you book ' + F.ph + ' hours ahead)' : pct(F.rateStd); }
+  function delStd() { return F.del === F.delFr ? money(F.del) : money(F.del) + ' (' + money(F.delFr) + ' on the French side)'; }
+  function delPlan() { return F.dPlan === F.del && F.dPlanFr === F.delFr ? '' : money(F.dPlan) + (F.dPlanFr !== F.dPlan ? ' Dutch side, ' + money(F.dPlanFr) + ' French side' : ''); }
+  function ahead() { return ' when you book ' + F.ph + ' hours ahead'; }
+  var PHRASE = {
+    run_rate: function () { return pct(F.rateStd); },
+    run_rates: rates,
+    fee_limits: function () {
+      var t = [];
+      if (F.ratePlan !== F.rateStd) t.push(pct(F.ratePlan) + ' when you book ' + F.ph + ' hours ahead');
+      if (F.min > 0) t.push('never less than ' + money(F.min) + (F.planned > 0 && F.planned !== F.min ? ' (' + money(F.planned) + ' when you book ' + F.ph + ' hours ahead)' : ''));
+      else if (F.planned > 0) t.push('at least ' + money(F.planned) + ' when you book ' + F.ph + ' hours ahead');
+      if (F.max > 0) t.push('never more than ' + money(F.max));
+      return t.length > 1 ? t.slice(0, -1).join(', ') + ' and ' + t[t.length - 1] : (t[0] || 'with no minimum');
+    },
+    fee_min_short: function () {
+      var t = [];
+      if (F.ratePlan !== F.rateStd) t.push(pct(F.ratePlan) + ' when booked ' + F.ph + ' hours ahead');
+      if (F.min > 0) t.push('minimum ' + money(F.min) + (F.planned > 0 && F.planned !== F.min ? ', or ' + money(F.planned) + ' when booked ' + F.ph + ' hours ahead' : ''));
+      else if (F.planned > 0) t.push('minimum ' + money(F.planned) + ' when booked ' + F.ph + ' hours ahead');
+      return t.join('; ') || 'no minimum';
+    },
+    partner_fee: function () {
+      if (F.ratePlan !== F.rateStd) return 'a ' + pct(F.ratePlan) + ' service fee instead of ' + pct(F.rateStd);
+      if (F.planned !== F.min) return 'a ' + money(F.planned) + ' minimum service fee instead of ' + money(F.min);
+      return 'the booked-ahead service fee';
+    },
+    delivery_value: function () { return F.onTop ? money(F.del) + (delPlan() ? ' (' + delPlan() + ' booked ' + F.ph + ' hours ahead)' : '') : money(F.del) + ', included'; },
+    delivery_how: function () { return F.onTop ? 'added on top of the service fee' : 'part of the service fee, not added on top'; },
+    delivery_how_full: function () { return F.onTop ? "it's added on top of the service fee" : "it's part of the service fee above, not added on top; a restaurant-only order adds it to its own fee"; },
+    delivery_anywhere: function () { return F.onTop ? 'delivery is ' + delStd() + ' anywhere on the island' + (delPlan() ? ' (' + delPlan() + ahead() + ')' : '') : 'delivery is included anywhere on the island'; },
+    delivery_chip: function () { return F.onTop ? money(F.del) + ' delivery' : 'delivery included'; },
+    delivery_chip_fr: function () { return F.onTop ? money(F.delFr) + ' delivery' : 'delivery included'; },
+    with_delivery: function () { return F.onTop ? 'plus ' + delStd() + ' delivery' + (delPlan() ? ' (' + delPlan() + ahead() + ')' : '') : 'with delivery included'; },
+    delivery_short: function () { return F.onTop ? 'plus ' + money(F.del) + ' delivery' : 'delivery included'; },
+    fee_and_delivery: function () {
+      var pr = F.ratePlan !== F.rateStd, pd = delPlan();
+      if (F.onTop) return 'a service fee of ' + pct(F.rateStd) + ' and a ' + delStd() + ' delivery fee' + (pr || pd ? ' (' + (pr && pd ? pct(F.ratePlan) + ' and ' + pd : pr ? pct(F.ratePlan) + ' service fee' : pd + ' delivery') + ahead() + ')' : '');
+      return 'a fee of ' + rates() + ' that includes a ' + money(F.del) + ' delivery fee (a restaurant-only order pays its ' + money(F.rdel) + ' delivery on top of its own minimum fee)';
+    },
+    delivery_sentence: function () { return F.onTop ? 'delivery is added on top, and checkout shows both amounts' : 'it includes the ' + money(F.del) + ' delivery fee, and checkout shows both amounts'; },
+    delivery_faq: function () { return F.onTop ? 'delivery is added on top: at checkout you see the service fee, the delivery fee and your total' : 'it includes a ' + money(F.del) + ' delivery fee: at checkout you see the service fee and the delivery fee, and your total'; }
+  };
+  var SKIP = /^(SCRIPT|STYLE|TEXTAREA|TEMPLATE|NOSCRIPT)$/;
+  function known(key) { var k = key.charAt(0).toLowerCase() + key.slice(1); return PHRASE[k] || FMT[k] ? k : null; }
+  function show(key) {
+    var k = known(key), out, f, v;
+    if (!k) return '';
+    if (PHRASE[k]) out = PHRASE[k]();
+    else {
+      f = FMT[k]; v = F[f[0]];
+      out = f[1] === 'pct' || (f[1] === 'rm' && v <= 1) ? pct(v) : f[1] === 'up' ? Math.round((v - 1) * 1000) / 10 + '%' : f[1] === 'n' ? String(v) : money(v);
+    }
+    return /^[A-Z]/.test(key) ? out.charAt(0).toUpperCase() + out.slice(1) : out;
+  }
+  function swap(node) {
+    var parts = node.nodeValue.split(/(\{\{\w+\}\})/), frag = D.createDocumentFragment(), any = false;
+    parts.forEach(function (p) {
+      var m = /^\{\{(\w+)\}\}$/.exec(p);
+      if (m && known(m[1])) {
+        var sp = D.createElement('span');
+        sp.setAttribute('data-gfs', m[1]);
+        sp.textContent = show(m[1]);
+        frag.appendChild(sp);
+        any = true;
+      } else if (p) frag.appendChild(D.createTextNode(p));
+    });
+    if (any && node.parentNode) node.parentNode.replaceChild(frag, node);
+  }
+  function scan(root) {
+    if (!root) return;
+    if (root.nodeType === 3) { if (root.nodeValue.indexOf('{{') >= 0 && root.parentNode && !SKIP.test(root.parentNode.nodeName)) swap(root); return; }
+    if (root.nodeType !== 1 || SKIP.test(root.nodeName) || (root.textContent || '').indexOf('{{') < 0) return;
+    var w = D.createTreeWalker(root, 4, null), list = [], n;
+    while ((n = w.nextNode())) if (n.nodeValue.indexOf('{{') >= 0 && !SKIP.test(n.parentNode.nodeName)) list.push(n);
+    list.forEach(swap);
+  }
+  function refresh() {
+    Array.prototype.forEach.call(D.querySelectorAll('[data-gfs]'), function (sp) {
+      var k = sp.getAttribute('data-gfs');
+      if (known(k) && sp.textContent !== show(k)) sp.textContent = show(k);
+    });
+  }
+  (function observe() {
+    if (!D.documentElement) return setTimeout(observe, 0);
+    new MutationObserver(function (ms) {
+      for (var i = 0; i < ms.length; i++) for (var j = 0; j < ms[i].addedNodes.length; j++) scan(ms[i].addedNodes[j]);
+    }).observe(D.documentElement, { childList: true, subtree: true });
+  })();
+  if (D.readyState !== 'loading') scan(D.body); else D.addEventListener('DOMContentLoaded', function () { scan(D.body); });
+
+  settings().then(function (s) {
+    apply(s);
+    refresh();
+    try { D.dispatchEvent(new CustomEvent('ggsx-fees', { detail: F })); } catch (e) {}
+    function redraw() {
+      var el = D.querySelector('.gp-calc input');
+      if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', function () { setTimeout(redraw, 300); });
+    else redraw();
+    setTimeout(redraw, 2500);
+  });
+  W.GGSX_PRICES = { near: near, reprice: reprice, show: show, scan: scan, refresh: refresh };
+})();
+</script>

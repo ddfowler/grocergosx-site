@@ -1,13 +1,17 @@
 WRAP Run Builder 1 Config & Style: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP App Shell: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 1 Config & Style: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 42 Sold by Weight: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 43 Search Help: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 2 Engine: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Header Basket & Store Links: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 3 Checkout: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 4 Substitutions & Run Sheet: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 5 Restaurants & Pharmacy: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 6 Restaurant Menu: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 41 Rentals 1 Config: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Home 1 Config & Style: stmts=2 var=[] lexical=[] funcs=[] strict=false
+WRAP Home Snapshot: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Home 2 Engine: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Partner Links: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Pages 2 Engine: stmts=1 var=[] lexical=[] funcs=[] strict=false
@@ -22,6 +26,10 @@ WRAP Shop 9 Live Run Sheet: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 10 Client Live Page: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 11 Restaurant & Pharmacy Pages: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 12 Checkout Polish: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 44 Shopping Hours: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 45 Basket Estimate & ASAP: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 45 Basket Estimate & ASAP: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 46 Saved Basket Links: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 13 Order Changes Core: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 14 Order Changes: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 15 Order Editor: stmts=1 var=[] lexical=[] funcs=[] strict=false
@@ -60,4 +68,15 @@ WRAP Shop 37 Live Driver Map: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 38 Run Sheet Aisles: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP SEO Content: stmts=1 var=[] lexical=[] funcs=[] strict=false
 WRAP Shop 39 Department Menu: stmts=1 var=[] lexical=[] funcs=[] strict=false
-BUNDLE PARSES OK
+WRAP GrocerGoSx Ops Loader: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 41 Rentals 2 Page: stmts=1 var=[] lexical=[] funcs=[] strict=false
+WRAP Shop 41 Rentals 3 Checkout: stmts=1 var=[] lexical=[] funcs=[] strict=false
+BODY PARSES OK
+HOME PARSES OK
+PAGES PARSES OK
+RENTALS PARSES OK
+BUNDLE PARSES OK (body + home + pages + rentals)
+ggsx-body.js: 475359 bytes, gzip 149922
+ggsx-home.js: 63933 bytes, gzip 21078
+ggsx-pages.js: 90263 bytes, gzip 30086
+ggsx-rentals.js: 30884 bytes, gzip 10689

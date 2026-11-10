@@ -1,0 +1,532 @@
+<!-- v1.8 (4 Nov 2026): items sold by weight (size "per lb" on the Products tab), see Shop 42 Sold by Weight: a weighed line counts as one item -->
+<!-- GrocerGoSx Shop 41 Rentals 2 Page v1.0 (4 Nov 2026, bundle v1.6; bundle-only module in the "rentals" group: it is downloaded and run on
+     /rentals only, see groups.json and GROUPS in First Paint): fills the blank Wix page grocergosx.com/rentals with the rental catalogue from
+     the Rentals tab of the Vendors & Menus sheet (cached 2 minutes; a page refresh reads it again): 1 · start and end date (rental_lead_days,
+     rental_max_days, window_days), 2 · the items by category with their 3-day and week prices and the price for the chosen dates, an Add
+     button / quantity stepper (qty caps one booking; qty 0 = fully booked; no prices = on request) that writes rental lines straight into the
+     shared basket, and a "Your rental" estimate (rentals, service fee and delivery fee from GGSX_FEESET as at checkout, rental collection by
+     side). One rental period per basket: rentals for other dates offer "Use those dates" / "Move them to these dates". Its wording is
+     GGSX_RENTALS.page below. Needs Shop 41 Rentals 1 Config (GGSX_RENTALS.fn) and Shop 5 (GGSX_MORE). Prices: up to 3 days = price_3day, 4–7 days = price_week, longer = the week price per full
+     week + the 3-day or week price for the days left over. -->
+<style>
+#ggsx-rentals{--o:#F4551B;--od:#d9420d;--t:#0e7490;--bg:#f6f3ee;--ink:#1b1b1b;--mute:#6b6b6b;--line:#e9e4dd;width:100%;background:var(--bg);color:var(--ink);font-family:"Avenir Light",avenir-lt-w01_35-light1475496,Avenir,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.45;text-align:left;padding:36px 0 84px;-webkit-font-smoothing:antialiased}
+#ggsx-rentals,#ggsx-rentals *{box-sizing:border-box}
+#ggsx-rentals [hidden]{display:none!important}
+#ggsx-rentals .gr-w{max-width:1080px;margin:0 auto;padding:0 24px}
+#ggsx-rentals h1,#ggsx-rentals h2,#ggsx-rentals h3{font-family:Benzin,sans-serif;font-weight:700;color:var(--ink);line-height:1.15;letter-spacing:0;margin:0}
+#ggsx-rentals h1{font-size:40px;margin:0 0 10px}
+#ggsx-rentals p{margin:0}
+#ggsx-rentals button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;margin:0}
+#ggsx-rentals button:disabled{cursor:default;opacity:.5}
+#ggsx-rentals :focus-visible{outline:3px solid var(--o);outline-offset:2px}
+#ggsx-rentals .gr-eb{display:inline-block;margin:0 0 14px;padding:6px 12px;border-radius:999px;background:#e3f2f5;color:var(--t);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+#ggsx-rentals .gr-eb a{color:inherit;text-decoration:none}
+#ggsx-rentals .gr-eb a:hover{text-decoration:underline}
+#ggsx-rentals .gr-lead{font-size:17px;color:#444;max-width:760px;margin:0 0 16px}
+#ggsx-rentals .gr-note{max-width:760px;margin:0 0 22px;font-size:14px;color:#3a3a3a;background:#fff;border:1.5px solid var(--line);border-left:4px solid var(--t);border-radius:12px;padding:10px 14px}
+#ggsx-rentals .gr-note a{color:var(--o);font-weight:700;text-decoration:none;white-space:nowrap}
+#ggsx-rentals .gr-bask{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:#fff1ea;border:1.5px solid #f6c9b3;border-radius:16px;padding:10px 14px;margin:0 0 18px}
+#ggsx-rentals .gr-bask span{font-weight:700}
+#ggsx-rentals .gr-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+#ggsx-rentals .gr-main{display:flex;flex-direction:column;gap:20px;min-width:0}
+#ggsx-rentals .gr-card{background:#fff;border:1.5px solid var(--line);border-radius:20px;padding:22px}
+#ggsx-rentals h3{display:flex;align-items:center;gap:10px;font-size:17px;margin:0 0 12px}
+#ggsx-rentals h3 i{display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--o);color:#fff;font:700 13px/1 Arial,sans-serif}
+#ggsx-rentals .gr-drow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#ggsx-rentals .gr-drow label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:#3a3a3a;min-width:0}
+#ggsx-rentals input{width:100%;font:inherit;font-weight:400;font-size:16px;color:var(--ink);background:#fff;border:1.5px solid #cfc9c1;border-radius:12px;padding:11px 12px;min-height:46px;outline:0;-webkit-appearance:none;appearance:none;margin:0}
+#ggsx-rentals input:focus{border-color:var(--o)}
+#ggsx-rentals input.bad{border-color:#d93025;background:#fff6f5}
+#ggsx-rentals .gr-dsum{margin-top:12px;font-size:14px;color:#3a3a3a}
+#ggsx-rentals .gr-dsum b{color:var(--od)}
+#ggsx-rentals .gr-dsum.bad{color:#d93025;font-weight:700}
+#ggsx-rentals .gr-hint{margin-top:6px;color:var(--mute);font-size:13px}
+#ggsx-rentals .gr-warn{margin-top:14px;background:#fff7e6;border:1.5px solid #f3d19b;border-radius:12px;padding:10px 12px;font-size:14px;color:#5c3b00}
+#ggsx-rentals .gr-wb{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+#ggsx-rentals .gr-cats{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+#ggsx-rentals .gr-cat{border:1.5px solid #ddd6cc;background:#fff;border-radius:999px;padding:0 16px;min-height:40px;font-size:14px;font-weight:700;color:var(--mute)}
+#ggsx-rentals .gr-cat.on{background:var(--o);border-color:var(--o);color:#fff}
+#ggsx-rentals .gr-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#ggsx-rentals .gr-item{display:grid;grid-template-columns:84px minmax(0,1fr);gap:4px 12px;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:12px;align-items:start}
+#ggsx-rentals .gr-item.on{border-color:var(--o);box-shadow:inset 0 0 0 1px var(--o)}
+#ggsx-rentals .gr-pic{width:84px;height:84px;border-radius:12px;background:#fff1ea;color:var(--o);display:flex;align-items:center;justify-content:center;overflow:hidden}
+#ggsx-rentals .gr-pic img{width:100%;height:100%;object-fit:contain;background:#fff}
+#ggsx-rentals .gr-nm{font-weight:700;font-size:15px;line-height:1.3}
+#ggsx-rentals .gr-sz{color:var(--mute);font-weight:400;white-space:nowrap}
+#ggsx-rentals .gr-ds{color:var(--mute);font-size:13px;margin-top:2px}
+#ggsx-rentals .gr-pr{font-size:13px;margin-top:6px;color:#3a3a3a}
+#ggsx-rentals .gr-yr{font-size:14px;font-weight:700;color:var(--od);margin-top:2px}
+#ggsx-rentals .gr-act{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px dashed var(--line);padding-top:10px;margin-top:8px;min-height:51px}
+#ggsx-rentals .gr-add{min-height:42px;padding:0 20px;border:0;border-radius:999px;background:var(--o);color:#fff;font-weight:700;font-size:14px}
+#ggsx-rentals .gr-add:hover{background:var(--od)}
+#ggsx-rentals .gr-step{display:inline-flex;align-items:center;border:1.5px solid #ddd6cc;border-radius:999px;overflow:hidden;background:#fff}
+#ggsx-rentals .gr-step button{width:42px;height:40px;border:0;background:#fff;font:700 20px/1 Arial,sans-serif;color:var(--ink);padding:0}
+#ggsx-rentals .gr-step span{min-width:28px;text-align:center;font-weight:700}
+#ggsx-rentals .gr-lim{font-size:12px;color:var(--mute)}
+#ggsx-rentals .gr-out{font-size:13px;font-weight:700;color:var(--mute)}
+#ggsx-rentals .gr-loading,#ggsx-rentals .gr-empty{color:var(--mute);font-size:14px;padding:8px 0}
+#ggsx-rentals .gr-est{position:sticky;top:96px}
+#ggsx-rentals .gr-est h2{font-size:20px;margin:0 0 12px}
+#ggsx-rentals .gr-lbl{display:block;font-size:13px;font-weight:700;color:#3a3a3a;margin:0 0 6px}
+#ggsx-rentals .gr-seg{display:inline-flex;border:1.5px solid #ddd6cc;border-radius:999px;overflow:hidden;background:#fff;margin:0 0 14px}
+#ggsx-rentals .gr-seg button{border:0;background:#fff;padding:0 14px;min-height:40px;font-size:13px;font-weight:700;color:var(--mute)}
+#ggsx-rentals .gr-seg button.on{background:var(--o);color:#fff}
+#ggsx-rentals .gr-rows div{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:14px}
+#ggsx-rentals .gr-rows b{white-space:nowrap;text-align:right}
+#ggsx-rentals .gr-rows .gr-ln{font-size:13px;color:#3a3a3a;padding:3px 0}
+#ggsx-rentals .gr-rows .gr-ln span{min-width:0}
+#ggsx-rentals .gr-rows .gr-sub{border-top:1px solid var(--line);margin-top:6px;padding-top:8px;font-weight:700}
+#ggsx-rentals .gr-rows .gr-tot{border-top:1px solid var(--line);margin-top:6px;padding-top:10px;font-size:17px}
+#ggsx-rentals .gr-tot b{color:var(--o)}
+#ggsx-rentals .gr-period{font-size:13px;color:var(--t);font-weight:700;margin:0 0 8px}
+#ggsx-rentals .gr-small{margin:10px 0 14px;color:var(--mute);font-size:12.5px;line-height:1.45}
+#ggsx-rentals .gr-msg{font-size:14px;font-weight:700;margin:0 0 10px}
+#ggsx-rentals .gr-msg:empty{display:none}
+#ggsx-rentals .gr-msg.ok{color:#1e7a3a}
+#ggsx-rentals .gr-msg.bad{color:#d93025}
+#ggsx-rentals .gr-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border:0;border-radius:999px;background:var(--o);color:#fff;font-weight:700;font-size:15px;text-align:center;transition:background .15s}
+#ggsx-rentals .gr-btn:hover{background:var(--od)}
+#ggsx-rentals .gr-btn.gr-s{background:#fff;color:var(--ink);border:1.5px solid #d8d1c8}
+#ggsx-rentals .gr-btn.gr-s:hover{border-color:var(--ink)}
+#ggsx-rentals .gr-est .gr-btn{width:100%}
+#ggsx-rentals .gr-est .gr-btn+.gr-btn{margin-top:8px}
+#ggsx-rentals .gr-warn .gr-btn{min-height:40px;font-size:14px;padding:0 16px}
+#ggsx-rentals .gr-h2{font-size:24px;margin:40px 0 14px}
+#ggsx-rentals .gr-how{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+#ggsx-rentals .gr-how li{display:flex;flex-direction:column;gap:4px;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:16px;margin:0}
+#ggsx-rentals .gr-how i{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#e3f2f5;color:var(--t);font:700 14px/1 Arial,sans-serif;margin:0 0 6px}
+#ggsx-rentals .gr-how span,#ggsx-rentals .gr-rule,#ggsx-rentals .gr-cross{color:var(--mute);font-size:14px}
+#ggsx-rentals .gr-rule{margin:16px 0 0;max-width:760px}
+#ggsx-rentals .gr-cross{margin:22px 0 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+#ggsx-rentals .gr-cross a{font-weight:700;color:var(--o);text-decoration:none;white-space:nowrap}
+#ggsx-rentals .gr-mbar{display:none}
+@media (max-width:860px){
+#ggsx-rentals{padding:18px 0 150px}
+#ggsx-rentals .gr-w{padding:0 16px}
+#ggsx-rentals h1{font-size:28px}
+#ggsx-rentals .gr-lead{font-size:15px}
+#ggsx-rentals .gr-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+#ggsx-rentals .gr-main{gap:14px}
+#ggsx-rentals .gr-card{padding:16px;border-radius:18px}
+#ggsx-rentals .gr-items,#ggsx-rentals .gr-how{grid-template-columns:minmax(0,1fr)}
+#ggsx-rentals .gr-item{grid-template-columns:72px minmax(0,1fr)}
+#ggsx-rentals .gr-pic{width:72px;height:72px}
+#ggsx-rentals .gr-est{position:static}
+#ggsx-rentals .gr-bask .gr-btn{width:100%}
+#ggsx-rentals .gr-h2{font-size:21px;margin:30px 0 12px}
+#ggsx-rentals .gr-mbar{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:8000;align-items:center;justify-content:space-between;gap:10px;background:#1b1b1b;color:#fff;border-radius:16px;padding:8px 8px 8px 16px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-weight:700;font-size:14px}
+#ggsx-rentals .gr-mbar.on{display:flex}
+#ggsx-rentals .gr-mbar .gr-btn{min-height:42px;font-size:14px;padding:0 18px}
+html.ggsx-inapp #ggsx-rentals .gr-mbar{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+}
+</style>
+<script>
+(function () {
+  var W = window, D = document, R = W.GGSX_RENTALS, F = R && R.fn;
+  if (!F || W.__ggsxRentalsPage) return;
+  W.__ggsxRentalsPage = 1;
+  var C = R.page = {
+    crumb: 'Concierge services', crumbHref: '/concierge-services', crumbEnd: ' › Rentals',
+    title: 'Rentals, delivered to your stay',
+    lead: 'Coolers and folding tables for the beach, the boat or a party. We bring them on your start date and collect them when you’re done, anywhere on the island.',
+    noteT: 'On its own or with your order.',
+    note: ' Rentals go in the same basket as your groceries, restaurant or pharmacy order. Need beach chairs, umbrellas, a crib or a stroller? ',
+    noteLink: 'Message us', waText: 'Hi GrocerGoSx, I’d like to rent beach or baby equipment for my stay.',
+    s1: 'Your dates', start: 'Start date', end: 'End date',
+    dHint: 'We deliver on the start date and collect on the end date. Both count as rental days.',
+    dNone: 'Pick a start and end date to see your prices.',
+    tooSoon: 'The earliest start date is {d}.', tooFar: 'That start date is too far ahead to book online. Message us and we’ll arrange it.',
+    endBefore: 'The end date can’t be before the start date.', tooLong: 'Rentals can be booked for up to {n} days online. For longer, message us.',
+    t3: '3-day price', tw: 'week price', wk1: ' week', wks: ' weeks',
+    s2: 'Pick your gear', all: 'All',
+    p3: '3 days ', pw: 'Week ', yours: 'Your dates: ', onReq: 'Price on request',
+    add: 'Add', minus: 'One less', plus: 'One more', upTo: 'Up to {n}', out: 'Fully booked',
+    pickFirst: 'Pick your dates first.', loading: 'Loading rentals…', fail: 'Couldn’t load the rentals. Please refresh.',
+    none: 'No rentals are available to book right now. Message us and we’ll help.', saveFail: 'That didn’t save. Please try again.',
+    conflict: 'Your basket already has rentals for {p}. Rentals in one order share the same dates.',
+    conflictAdd: 'Your basket has rentals for other dates: use those dates or move them first.',
+    useThose: 'Use those dates', moveThem: 'Move them to these dates',
+    stale: 'The dates of the rentals in your basket ({p}) are no longer available. Pick new dates and move them.',
+    moved: 'Your rentals now run {p}.', gone: 'Some rentals are no longer offered and were taken out of your basket.',
+    estTitle: 'Your rental', estEmpty: 'Nothing added yet. Pick your dates, then add the gear you need.',
+    sideLbl: 'Delivering to', dutch: 'Dutch side', french: 'French side',
+    rentTot: 'Rentals', fee: 'Service fee', del: 'Delivery fee', delShared: 'with your order', coll: 'Rental collection', total: 'Estimated total',
+    smallPlanOn: 'Booked {ph}+ hours ahead: the service fee is {pf} and delivery {dp}.',
+    smallPlan: 'Same-day and next-day rates. Booked {ph}+ hours ahead, the service fee is {pf} and delivery {dp}.',
+    smallRate: 'The service fee is {rate} of the rentals.',
+    small: 'Prices include taxes; checkout shows the final fees. Nothing is charged now: we confirm by message, then send your invoice.',
+    smallShared: 'Your basket has other items too, so one delivery and one service fee cover the whole order at checkout.',
+    go: 'View basket & checkout', shopG: 'Shop groceries', mbarGo: 'Checkout',
+    inBasket: ' in your basket', item: ' item', items: ' items', rental: ' rental', rentals: ' rentals',
+    howT: 'How it works',
+    how: [['Pick dates and gear', 'Up to 3 days or by the week. Longer rentals add weeks.'],
+      ['We deliver on day one', 'To your villa, condo, hotel or boat, in the window you choose at checkout.'],
+      ['We collect at the end', 'On your end date. Your invoice follows by message.']],
+    rule: 'How rental prices work: up to 3 days is the 3-day price and 4 to 7 days the week price. Longer rentals pay the week price for each full week, plus the 3-day or week price for the days left over. The start and end dates both count.',
+    oneRun: 'Everything goes in one basket:',
+    links: [['Shop groceries', '/shop-now'], ['Restaurants', '/restaurants'], ['Pharmacy', '/pharmacy'], ['Laundry', '/laundry'], ['Errands', '/errands']],
+    line: R.copy.line
+  };
+  var CACHE = 'ggsx_pg_rentals', S = { root: null, els: {}, items: null, wait: null, cat: 'all', side: 'd', start: '', end: '', msg: ['', ''] };
+  var el = F.el, round = F.round, money = F.money, money0 = F.money0, pct = F.pct, num = F.num, truthy = F.truthy, setting = F.setting, collFee = F.collFee,
+    maxDays = F.maxDays, dayNo = F.dayNo, addDays = F.addDays, pretty = F.pretty, daysOf = F.daysOf, daysTxt = F.daysTxt, periodTxt = F.periodTxt,
+    minStart = F.minStart, maxStart = F.maxStart, tooSoon = F.tooSoon, basket = F.basket, save = F.save, lines = F.lines, isRent = F.isRent, info = F.info,
+    periodOf = F.periodOf, lineId = F.lineId, sizeTxt = F.sizeTxt;
+  function svg(paths) {
+    var ns = 'http://www.w3.org/2000/svg', s = D.createElementNS(ns, 'svg');
+    [['viewBox', '0 0 24 24'], ['width', '34'], ['height', '34'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.6'], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round'], ['aria-hidden', 'true']].forEach(function (a) { s.setAttribute(a[0], a[1]); });
+    paths.forEach(function (d) { var p = D.createElementNS(ns, 'path'); p.setAttribute('d', d); s.appendChild(p); });
+    return s;
+  }
+  var ICONS = {
+    coolers: ['M3 7.5h18v3H3z', 'M4 10.5h16v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z', 'M9 7.5V5.5h6v2', 'M10 14h4'],
+    tables: ['M2.5 8h19v2.5h-19z', 'M5 10.5 4 20', 'M19 10.5l1 9.5', 'M6.5 15h11'],
+    beach: ['M12 3.5a8.5 8.5 0 0 1 8.5 8.5h-17A8.5 8.5 0 0 1 12 3.5z', 'M12 12v6.5a2 2 0 0 1-4 0'],
+    baby: ['M3 5h2.5l2 8.5h9.5l2-6.5H7', 'M9 19.5a1.5 1.5 0 1 0 0-.01', 'M16.5 19.5a1.5 1.5 0 1 0 0-.01'],
+    other: ['M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z', 'M3.5 7.5 12 12l8.5-4.5', 'M12 12v9']
+  };
+  function icon(cat) { var k = String(cat || '').toLowerCase(); return svg(ICONS[k] || (/cool/.test(k) ? ICONS.coolers : /table/.test(k) ? ICONS.tables : /beach|umbrella|chair/.test(k) ? ICONS.beach : /baby|crib|stroller/.test(k) ? ICONS.baby : ICONS.other)); }
+  function imgUrl(it, px) {
+    if (!it.photo) return '';
+    try { if (W.GGSX_MORE && W.GGSX_MORE.img) return W.GGSX_MORE.img(it.photo, px || 240); } catch (e) {}
+    return it.photo;
+  }
+
+  function maxQty(it) { return it.qty >= 0 ? Math.min(it.qty, 99) : 99; }
+  /* ---------- prices ---------- */
+  function tiers(it) { var a = it.p3, b = it.pw; if (!(a > 0)) a = b; if (!(b > 0)) b = a; return [a > 0 ? a : 0, b > 0 ? b : 0]; }
+  function priceFor(it, days) {
+    var p = tiers(it), a = p[0], b = p[1];
+    if (!(a > 0) || !(days > 0)) return 0;
+    if (days <= 3) return a;
+    if (days <= 7) return b;
+    var w = Math.floor(days / 7), r = days - 7 * w;
+    return round(w * b + (r === 0 ? 0 : r <= 3 ? a : b));
+  }
+  function tierTxt(days) {
+    if (days <= 3) return C.t3;
+    if (days <= 7) return C.tw;
+    var w = Math.floor(days / 7), r = days - 7 * w;
+    return w + (w === 1 ? C.wk1 : C.wks) + (r === 0 ? '' : ' + ' + (r <= 3 ? C.t3 : C.tw));
+  }
+
+  /* ---------- the Rentals tab ---------- */
+  function byId(id) { var i, L = S.items || []; for (i = 0; i < L.length; i++) if (L[i].id === id) return L[i]; return null; }
+  function loadItems() {
+    if (S.items) return Promise.resolve(S.items);
+    try {
+      var c = JSON.parse(sessionStorage.getItem(CACHE) || 'null');
+      if (c && c.t && Date.now() - c.t < 12e4 && c.d) { S.items = c.d; return Promise.resolve(c.d); }
+    } catch (e) {}
+    if (S.wait) return S.wait;
+    var url = 'https://docs.google.com/spreadsheets/d/' + R.sheetId + '/gviz/tq?tqx=out:json&headers=1&sheet=' + encodeURIComponent(R.tab) + '&t=' + Math.floor(Date.now() / 6e4);
+    S.wait = fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }).then(function (t) {
+      var tb = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).table, cols = tb.cols.map(function (c) { return String(c.label || '').trim().toLowerCase(); }), list = [], seen = {};
+      tb.rows.forEach(function (r) {
+        var o = {};
+        cols.forEach(function (c, i) { var v = r.c && r.c[i]; o[c] = v && v.v != null ? String(v.v).trim() : ''; });
+        var id = String(o.id || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+        if (!id || seen[id] || !o.item || !truthy(o.active)) return;
+        seen[id] = 1;
+        var q = num(o.qty);
+        list.push({ id: id, cat: o.category || '', name: o.item, size: o.size || '', desc: o.description || '', photo: o.photo || '', p3: num(o.price_3day), pw: num(o.price_week), qty: isNaN(q) ? -1 : Math.max(0, Math.floor(q)) });
+      });
+      S.items = list; S.wait = null;
+      try { sessionStorage.setItem(CACHE, JSON.stringify({ t: Date.now(), d: list })); } catch (e) {}
+      return list;
+    }, function (e) { S.wait = null; throw e; });
+    return S.wait;
+  }
+
+  /* ---------- the page ---------- */
+  function here() { var p = location.pathname.toLowerCase(); while (p.length > 1 && p.charAt(p.length - 1) === '/') p = p.slice(0, -1); return p === R.path; }
+  function go(u) { location.assign(u); }
+  function note(t, k) { S.msg = [t || '', k || '']; if (S.els.msg) { S.els.msg.textContent = S.msg[0]; S.els.msg.className = 'gr-msg' + (S.msg[1] ? ' ' + S.msg[1] : ''); } }
+  function cur() {
+    var a = S.start, b = S.end;
+    if (!a || !b) return { ok: false, why: '' };
+    if (tooSoon(a)) return { ok: false, why: C.tooSoon.replace('{d}', pretty(minStart())), bad: 'start' };
+    if (dayNo(a) > dayNo(maxStart())) return { ok: false, why: C.tooFar, bad: 'start' };
+    var d = daysOf(a, b);
+    if (d < 1) return { ok: false, why: C.endBefore, bad: 'end' };
+    if (d > maxDays()) return { ok: false, why: C.tooLong.replace('{n}', maxDays()), bad: 'end' };
+    return { ok: true, start: a, end: b, days: d };
+  }
+  function setQty(it, n) {
+    var p = cur();
+    if (!p.ok) { note(p.why || C.pickFirst, 'bad'); try { (p.bad === 'end' ? S.els.end : S.els.start).focus(); } catch (e) {} return; }
+    var b = basket(), bp = periodOf(lines(b));
+    if (bp && (bp.start !== p.start || bp.end !== p.end)) { note(C.conflictAdd, 'bad'); return; }
+    n = Math.max(0, Math.min(maxQty(it), n | 0));
+    var id = lineId(it.id, p.start, p.end), l = b.items[id], o = 0, k;
+    for (k in b.items) o = Math.max(o, +(b.items[k] || {}).o || 0);
+    if (!n) delete b.items[id];
+    else if (l) { l.n = n; l.price = priceFor(it, p.days); l.size = sizeTxt(p.start, p.end); }
+    else b.items[id] = { id: id, n: n, name: C.line + it.name + (it.size ? ' ' + it.size : ''), size: sizeTxt(p.start, p.end), price: priceFor(it, p.days), img: imgUrl(it, 240), o: o + 1, rent: { item: it.id, start: p.start, end: p.end, days: p.days } };
+    if (!save(b)) { note(C.saveFail, 'bad'); return; }
+    note('');
+    paint();
+  }
+  function moveTo(p) {
+    if (!S.items) return;
+    var b = basket(), k, l, it, i, gone = 0, next = {}, id;
+    for (k in b.items) {
+      l = b.items[k];
+      if (!isRent(l)) continue;
+      delete b.items[k];
+      i = info(l); it = byId(i.item);
+      if (!it || !(tiers(it)[0] > 0)) { gone++; continue; }
+      id = lineId(it.id, p.start, p.end);
+      if (next[id]) { next[id].n = Math.min(maxQty(it), next[id].n + l.n); continue; }
+      next[id] = { id: id, n: Math.min(maxQty(it), l.n), name: C.line + it.name + (it.size ? ' ' + it.size : ''), size: sizeTxt(p.start, p.end), price: priceFor(it, p.days), img: l.img || imgUrl(it, 240), o: l.o || 0, rent: { item: it.id, start: p.start, end: p.end, days: p.days } };
+    }
+    for (id in next) b.items[id] = next[id];
+    if (!save(b)) { note(C.saveFail, 'bad'); return; }
+    note(gone ? C.gone : C.moved.replace('{p}', periodTxt(p.start, p.end)), gone ? 'bad' : 'ok');
+    paint();
+  }
+  function useBasketDates() {
+    var bp = periodOf(lines());
+    if (!bp) return;
+    S.start = bp.start; S.end = bp.end;
+    S.els.start.value = bp.start; S.els.end.value = bp.end;
+    note('');
+    paint();
+  }
+  function onDate(which) {
+    var a = S.els.start.value, b = S.els.end.value;
+    if (which === 'start' && a) {
+      if (!b || dayNo(b) < dayNo(a)) { b = addDays(a, 2); S.els.end.value = b; }
+      else if (daysOf(a, b) > maxDays()) { b = addDays(a, maxDays() - 1); S.els.end.value = b; }
+    }
+    S.start = a; S.end = b;
+    note('');
+    paint();
+  }
+  function seg(map, list, on, pick) {
+    var w = el('div', { class: 'gr-seg', role: 'group' });
+    list.forEach(function (x) { var b = el('button', { type: 'button', text: x[1], 'aria-pressed': 'false', onclick: function () { pick(x[0]); } }); map[x[0]] = b; w.appendChild(b); });
+    return w;
+  }
+  function build() {
+    var E = S.els = { cards: {}, side: {} }, root = el('section', { id: 'ggsx-rentals' }), w = el('div', { class: 'gr-w' }), wa = 'https://wa.me/' + R.wa + '?text=' + encodeURIComponent(C.waText);
+    root.appendChild(w);
+    w.appendChild(el('p', { class: 'gr-eb' }, [el('a', { href: C.crumbHref, text: C.crumb }), C.crumbEnd]));
+    w.appendChild(el('h1', { text: C.title }));
+    w.appendChild(el('p', { class: 'gr-lead', text: C.lead }));
+    w.appendChild(el('p', { class: 'gr-note' }, [el('b', { text: C.noteT }), C.note, el('a', { href: wa, target: '_blank', rel: 'noopener', text: C.noteLink })]));
+    E.strip = el('div', { class: 'gr-bask', hidden: 'hidden' }, [el('span'), el('button', { type: 'button', class: 'gr-btn gr-s', text: C.go, onclick: function () { go(R.shop + '#basket'); } })]);
+    w.appendChild(E.strip);
+    /* 1 · dates */
+    E.start = el('input', { type: 'date', 'aria-label': C.start });
+    E.end = el('input', { type: 'date', 'aria-label': C.end });
+    ['input', 'change'].forEach(function (ev) {
+      E.start.addEventListener(ev, function () { onDate('start'); });
+      E.end.addEventListener(ev, function () { onDate('end'); });
+    });
+    E.dsum = el('p', { class: 'gr-dsum', 'aria-live': 'polite' });
+    E.warnTxt = el('p');
+    E.useBtn = el('button', { type: 'button', class: 'gr-btn gr-s', text: C.useThose, onclick: useBasketDates });
+    E.moveBtn = el('button', { type: 'button', class: 'gr-btn', text: C.moveThem, onclick: function () { var p = cur(); if (p.ok) moveTo(p); } });
+    E.warn = el('div', { class: 'gr-warn', role: 'status', hidden: 'hidden' }, [E.warnTxt, el('div', { class: 'gr-wb' }, [E.useBtn, E.moveBtn])]);
+    var dates = el('div', { class: 'gr-card gr-dates' }, [
+      el('h3', {}, [el('i', { text: '1' }), C.s1]),
+      el('div', { class: 'gr-drow' }, [el('label', {}, [el('span', { text: C.start }), E.start]), el('label', {}, [el('span', { text: C.end }), E.end])]),
+      el('p', { class: 'gr-hint', text: C.dHint }), E.dsum, E.warn]);
+    /* 2 · gear */
+    E.cats = el('div', { class: 'gr-cats', role: 'group', hidden: 'hidden' });
+    E.list = el('div', { class: 'gr-items' }, [el('p', { class: 'gr-loading', text: C.loading })]);
+    var gear = el('div', { class: 'gr-card' }, [el('h3', {}, [el('i', { text: '2' }), C.s2]), E.cats, E.list]);
+    /* the estimate */
+    E.period = el('p', { class: 'gr-period', hidden: 'hidden' });
+    E.rows = el('div', { class: 'gr-rows' });
+    E.small = el('p', { class: 'gr-small' });
+    E.msg = el('div', { class: 'gr-msg', role: 'status' });
+    E.go = el('button', { type: 'button', class: 'gr-btn', text: C.go, onclick: function () { go(R.shop + '#basket'); } });
+    var est = el('aside', { class: 'gr-card gr-est' }, [el('h2', { text: C.estTitle }), el('span', { class: 'gr-lbl', text: C.sideLbl }),
+      seg(E.side, [['d', C.dutch], ['f', C.french]], S.side, function (k) { S.side = k; paint(); }),
+      E.period, E.rows, E.small, E.msg, E.go, el('button', { type: 'button', class: 'gr-btn gr-s', text: C.shopG, onclick: function () { go(R.shop); } })]);
+    w.appendChild(el('div', { class: 'gr-grid' }, [el('div', { class: 'gr-main' }, [dates, gear]), est]));
+    w.appendChild(el('h2', { class: 'gr-h2', text: C.howT }));
+    w.appendChild(el('ol', { class: 'gr-how' }, C.how.map(function (h, i) { return el('li', {}, [el('i', { text: String(i + 1) }), el('b', { text: h[0] }), el('span', { text: h[1] })]); })));
+    w.appendChild(el('p', { class: 'gr-rule', text: C.rule }));
+    w.appendChild(el('p', { class: 'gr-cross' }, [C.oneRun].concat(C.links.map(function (x) { return el('a', { href: x[1], text: x[0] }); }))));
+    E.mbarTxt = el('span');
+    E.mbar = el('div', { class: 'gr-mbar', role: 'region', 'aria-label': C.estTitle }, [E.mbarTxt, el('button', { type: 'button', class: 'gr-btn', text: C.mbarGo, onclick: function () { go(R.shop + '#basket'); } })]);
+    root.appendChild(E.mbar);
+    /* the dates already in the basket */
+    var bp = periodOf(lines());
+    if (bp && !tooSoon(bp.start)) { S.start = bp.start; S.end = bp.end; E.start.value = bp.start; E.end.value = bp.end; }
+    S.root = root;
+  }
+  function renderItems() {
+    var E = S.els, L = S.items || [], cats = [];
+    if (!E.list) return;
+    L.forEach(function (it) { var c = it.cat || ''; if (c && cats.indexOf(c) < 0) cats.push(c); });
+    if (S.cat !== 'all' && cats.indexOf(S.cat) < 0) S.cat = 'all';
+    E.cats.innerHTML = '';
+    E.cats.hidden = cats.length < 2;
+    if (cats.length > 1) [['all', C.all]].concat(cats.map(function (c) { return [c, c]; })).forEach(function (c) {
+      E.cats.appendChild(el('button', { type: 'button', class: 'gr-cat' + (S.cat === c[0] ? ' on' : ''), 'aria-pressed': S.cat === c[0] ? 'true' : 'false', text: c[1], onclick: function () { S.cat = c[0]; renderItems(); paint(); } }));
+    });
+    E.list.innerHTML = '';
+    E.cards = {};
+    if (!L.length) { E.list.appendChild(el('p', { class: 'gr-empty', text: C.none })); return; }
+    L.forEach(function (it) {
+      if (S.cat !== 'all' && it.cat !== S.cat) return;
+      var pic = el('div', { class: 'gr-pic' }), u = imgUrl(it, 240), p = tiers(it);
+      if (u) {
+        var img = el('img', { src: u, alt: it.name + (it.size ? ' ' + it.size : ''), loading: 'lazy' });
+        img.addEventListener('error', function () { pic.innerHTML = ''; pic.appendChild(icon(it.cat)); });
+        pic.appendChild(img);
+      } else pic.appendChild(icon(it.cat));
+      var yr = el('p', { class: 'gr-yr', hidden: 'hidden' }), act = el('div', { class: 'gr-act' }), card;
+      card = el('div', { class: 'gr-item', 'data-id': it.id }, [pic, el('div', {}, [
+        el('p', { class: 'gr-nm' }, [it.name + (it.size ? ' ' : ''), it.size ? el('span', { class: 'gr-sz', text: it.size }) : null]),
+        it.desc ? el('p', { class: 'gr-ds', text: it.desc }) : null,
+        el('p', { class: 'gr-pr', text: p[0] > 0 ? C.p3 + money0(p[0]) + ' · ' + C.pw + money0(p[1]) : C.onReq }), yr]), act]);
+      E.cards[it.id] = { card: card, yr: yr, act: act, it: it, n: -1, k: '' };
+      E.list.appendChild(card);
+    });
+  }
+  function paintCard(c, p, qty, blocked) {
+    var it = c.it, t = tiers(it), key = [qty, p.ok ? p.start + p.end : '', blocked ? 1 : 0].join('|');
+    c.card.classList.toggle('on', qty > 0);
+    if (p.ok && t[0] > 0) { c.yr.textContent = C.yours + money(priceFor(it, p.days)); c.yr.hidden = false; } else c.yr.hidden = true;
+    if (c.k === key) return;
+    c.k = key;
+    var focus = c.act.contains(D.activeElement) ? D.activeElement.getAttribute('data-a') : '';
+    c.act.innerHTML = '';
+    if (!(t[0] > 0)) { c.act.appendChild(el('span', { class: 'gr-out', text: C.onReq })); return; }
+    if (it.qty === 0) { c.act.appendChild(el('span', { class: 'gr-out', text: C.out })); return; }
+    c.act.appendChild(el('span', { class: 'gr-lim', text: it.qty > 0 ? C.upTo.replace('{n}', it.qty) : '' }));
+    if (qty > 0) {
+      var st = el('div', { class: 'gr-step' }, [
+        el('button', { type: 'button', 'data-a': 'm', 'aria-label': C.minus + ': ' + it.name, text: '−', onclick: function () { setQty(it, qty - 1); } }),
+        el('span', { 'aria-live': 'polite', text: String(qty) }),
+        el('button', { type: 'button', 'data-a': 'p', 'aria-label': C.plus + ': ' + it.name, text: '+', disabled: qty >= maxQty(it) ? 'disabled' : null, onclick: function () { setQty(it, qty + 1); } })]);
+      c.act.appendChild(st);
+    } else c.act.appendChild(el('button', { type: 'button', class: 'gr-add', 'data-a': 'p', text: C.add, disabled: blocked ? 'disabled' : null, 'aria-label': C.add + ': ' + it.name, onclick: function () { setQty(it, 1); } }));
+    if (focus) { var f = c.act.querySelector('[data-a="' + focus + '"]') || c.act.querySelector('button'); if (f) try { f.focus(); } catch (e) {} }
+  }
+  function fees(sub, start, hasOther) {
+    var F = W.GGSX_FEESET || null, pl = planned(start), fr = S.side === 'f';
+    var rate = F && F.r ? F.r(pl, true) : (pl ? .15 : .25), mn = F ? (pl ? F.planned : F.min) || 0 : 0, mx = F && F.max > 0 ? F.max : 200;
+    var fee = round(sub * rate), del = 0;
+    if (!hasOther) {
+      fee = Math.min(Math.max(fee, mn), mx);
+      del = F && F.d ? F.d(pl, fr) : (pl ? (fr ? 25 : 20) : (fr ? 35 : 30));
+      if (F && F.onTop === 0) { var x = Math.min(del, fee); fee = round(fee - x); del = x; }
+    }
+    var coll = collFee(fr ? 'f' : 'd');
+    return { fee: fee, del: del, coll: coll, total: round(sub + fee + del + coll), pl: pl, rate: rate };
+  }
+  function planned(start) {
+    try { if (W.GGSX_REF && W.GGSX_REF.get().name) return true; } catch (e) {}
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start || '');
+    if (!m) return false;
+    var F = W.GGSX_FEESET, ph = F && F.ph > 0 ? F.ph : setting('planned_hours', 48);
+    return new Date(+m[1], m[2] - 1, +m[3], 8, 30) - Date.now() >= ph * 36e5;
+  }
+  function smallTxt(rate, hasOther, pl) {
+    var F = W.GGSX_FEESET, t;
+    if (F && F.loaded && (F.ratePlan !== F.rateStd || F.dPlan !== F.del || F.dPlanFr !== F.delFr)) {
+      var dp = money0(F.dPlan) + (F.dPlanFr !== F.dPlan ? ' (' + money0(F.dPlanFr) + ' French side)' : '');
+      t = (pl ? C.smallPlanOn : C.smallPlan).replace('{ph}', F.ph).replace('{pf}', pct(F.ratePlan)).replace('{dp}', dp);
+    } else t = C.smallRate.replace('{rate}', pct(rate));
+    return (hasOther ? C.smallShared + ' ' : '') + t + ' ' + C.small;
+  }
+  function paint() {
+    var E = S.els;
+    if (!S.root || !E.start) return;
+    var b = basket(), all = lines(b), rent = all.filter(isRent), bp = periodOf(all), p = cur(), mn = minStart();
+    /* date limits and the summary */
+    E.start.min = mn; E.start.max = maxStart();
+    E.end.min = S.start && !tooSoon(S.start) ? S.start : mn;
+    E.end.max = S.start ? addDays(S.start, maxDays() - 1) : '';
+    E.start.classList.toggle('bad', !p.ok && p.bad === 'start');
+    E.end.classList.toggle('bad', !p.ok && p.bad === 'end');
+    E.dsum.className = 'gr-dsum' + (!p.ok && p.why ? ' bad' : '');
+    E.dsum.innerHTML = '';
+    if (p.ok) { E.dsum.appendChild(el('b', { text: daysTxt(p.days) })); E.dsum.appendChild(D.createTextNode(' · ' + periodTxt(p.start, p.end) + ' · ' + tierTxt(p.days))); }
+    else E.dsum.textContent = p.why || C.dNone;
+    /* the basket holds rentals for other dates */
+    var other = bp && (!p.ok || bp.start !== p.start || bp.end !== p.end), stale = bp && tooSoon(bp.start);
+    E.warn.hidden = !other || (!p.ok && !stale);
+    if (!E.warn.hidden) {
+      E.warnTxt.textContent = (stale ? C.stale : C.conflict).replace('{p}', periodTxt(bp.start, bp.end));
+      E.useBtn.hidden = !!stale;
+      E.moveBtn.hidden = !p.ok;
+      E.moveBtn.disabled = !S.items;
+      E.moveBtn.textContent = C.moveThem;
+    }
+    var blocked = !!(other && p.ok);
+    /* the cards */
+    var k, c, qty;
+    for (k in E.cards) {
+      c = E.cards[k]; qty = 0;
+      if (p.ok) { var l = b.items[lineId(c.it.id, p.start, p.end)]; qty = l && l.n > 0 ? l.n : 0; }
+      paintCard(c, p, qty, blocked);
+    }
+    /* the estimate: the rentals for the dates shown, else the ones in the basket */
+    var per = p.ok && !blocked ? p : bp, mine = per ? rent.filter(function (l) { var i = info(l); return i.start === per.start && i.end === per.end; }) : [];
+    var hasOther = all.some(function (l) { return !isRent(l); }), sub = 0, n = 0;
+    mine.forEach(function (l) { sub += l.n * (+l.price || 0); n += l.n; });
+    sub = round(sub);
+    for (k in E.side) { E.side[k].classList.toggle('on', S.side === k); E.side[k].setAttribute('aria-pressed', S.side === k ? 'true' : 'false'); }
+    E.period.hidden = !mine.length;
+    if (mine.length) E.period.textContent = daysTxt(daysOf(per.start, per.end)) + ' · ' + periodTxt(per.start, per.end);
+    E.rows.innerHTML = '';
+    var f = fees(sub, per ? per.start : '', hasOther);
+    if (!mine.length) E.rows.appendChild(el('p', { class: 'gr-empty', text: C.estEmpty }));
+    else {
+      mine.sort(function (x, y) { return (x.o || 0) - (y.o || 0); }).forEach(function (l) {
+        E.rows.appendChild(el('div', { class: 'gr-ln' }, [el('span', { text: l.n + ' × ' + String(l.name || '').replace(C.line, '') }), el('b', { text: money(l.n * (+l.price || 0)) })]));
+      });
+      [[C.rentTot, money(sub), 'gr-sub'], [C.fee, money(f.fee)], [C.del, hasOther ? C.delShared : money(f.del)], [C.coll, money(f.coll)],
+        [C.total, money(hasOther ? round(sub + f.fee + f.coll) : f.total), 'gr-tot']].forEach(function (r) {
+        E.rows.appendChild(el('div', { class: r[2] || null }, [el('span', { text: r[0] }), el('b', { text: r[1] })]));
+      });
+    }
+    E.small.textContent = smallTxt(f.rate, hasOther && mine.length > 0, f.pl);
+    E.go.disabled = !all.length;
+    /* basket strip and the phone bar */
+    var bn = 0, bs = 0;
+    all.forEach(function (l) { bn += W.GGSX_WEIGHT ? W.GGSX_WEIGHT.count(l) : l.n; bs += l.n * (+l.price || 0); });
+    E.strip.hidden = !bn;
+    if (bn) E.strip.firstChild.textContent = bn + (bn === 1 ? C.item : C.items) + ' · ' + money(bs) + C.inBasket;
+    E.mbar.classList.toggle('on', n > 0);
+    if (n) E.mbarTxt.textContent = n + (n === 1 ? C.rental : C.rentals) + ' · ' + money(sub);
+    if (S.msg[0] && E.msg.textContent !== S.msg[0]) note(S.msg[0], S.msg[1]);
+  }
+  function mount() {
+    if (!here()) { if (S.root) { if (S.root.parentNode) S.root.parentNode.removeChild(S.root); S.root = null; S.els = {}; } return; }
+    if (S.root && D.body.contains(S.root)) return;
+    var host = D.querySelector('main[id^=PAGE_SECTIONS] > section') || D.querySelector('main > section') || D.querySelector('#SITE_PAGES > div') || D.querySelector('main');
+    if (!host) return;
+    if (!S.root) build();
+    host.appendChild(S.root);
+    Array.prototype.forEach.call(host.children, function (c) { if (c !== S.root) { c.style.minHeight = '0'; c.style.height = '0'; c.style.overflow = 'hidden'; } });
+    if (S.items) renderItems();
+    paint();
+    loadItems().then(function () { if (!S.root) return; renderItems(); paint(); }, function () {
+      if (S.els.list) { S.els.list.innerHTML = ''; S.els.list.appendChild(el('p', { class: 'gr-empty', text: C.fail })); }
+    });
+    var M = W.GGSX_MORE;
+    if (M && M.load) M.load().then(function () { paint(); }, function () {});
+  }
+
+
+  /* ---------- wiring (once per visit; the observer follows page changes) ---------- */
+  W.addEventListener('ggsx-basket', function () { if (S.root) setTimeout(paint, 0); });
+  W.addEventListener('storage', function (e) { if (e.key === F.KEY && S.root) setTimeout(paint, 0); });
+  D.addEventListener('ggsx-fees', function () { if (S.root) paint(); });
+  var q = false;
+  new MutationObserver(function () {
+    if (q) return;
+    q = true;
+    (W.requestAnimationFrame || setTimeout)(function () { q = false; mount(); });
+  }).observe(D.documentElement, { childList: true, subtree: true });
+  if (D.body) mount(); else D.addEventListener('DOMContentLoaded', mount);
+})();
+</script>

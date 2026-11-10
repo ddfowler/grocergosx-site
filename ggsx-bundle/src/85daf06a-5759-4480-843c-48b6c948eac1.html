@@ -1,3 +1,4 @@
+<!-- v1.6 (9 Nov 2026, bundle v2.2): planned() follows window.GGSX_PLAN_FORCE (Shop 45's basket line) and GGSX_CHECKOUT.planned() (Shop 23 "Dates not set yet?" = booked ahead); GGSX_FEE_SPLIT.kind(lines). -->
 <!-- GrocerGoSx Shop 33 Fee Split & Checkout Totals v1.5 (25 Oct 2026: booked-ahead delivery fee, delivery_fee_planned / delivery_fee_planned_french · v1.4: shopping_fee / planned_fee typed as a percentage are the run's rate (Shop 3 gets it through GGSX_MORE.setting), service_fee_min the $ minimum · v1.3: delivery_on_top on the Settings tab, 1 = delivery added on top of the service fee, 0 = taken out of it; reads delivery_fee / delivery_fee_french, old names as a fallback · v1.2: the note under the totals is built from the Settings, rate included, and reads well when a minimum is 0). v1.0: every run except a restaurant-only one shows its fee in two parts: a Delivery Fee (Settings tab delivery_in_fee / delivery_in_fee_french, $25) taken out of the service fee, and the service fee for the rest; the total does not change (15% of the order, min shopping_fee $80 / planned_fee $70, max service_fee_max $120), so $80 shows as $25 delivery + $55 service. Restaurant-only runs keep Shop 26's own minimum with restaurant_only_delivery on top. Checkout: wraps GGSX_CHECKOUT.delFee (Shop 26) and sets GGSX_CHECKOUT.delIn for Shop 3 v1.15; order editor: wraps GGSX_EDIT.h.estimate (Shop 13). v1.1: the totals read simply: Basket, Service fee, Delivery fee (and any restaurant stops), then the Total bar (Shop 25 wording set here: Total, taxes included); the Total (service excl.) row is hidden; one short note under the totals explains the fee (restaurant-only orders get their own note, so Shop 26's 'Restaurant order' line is hidden; a client-code line stays). The /pricing estimator (Pages 7) gets the same labels. Wording: window.GGSX_FEE_SPLIT. Needs Shop 3, 5, 13, 25 and 26 above it. Switch it off to go back to one fee line (delivery Free). Body – end · All pages · Load code on each new page · Essential. -->
 <style>.gc-wrap .gc-est .gfs-hide,.gp-cout .gfs-hide{display:none!important}.gc-wrap .gfs-note{margin:8px 2px 0;font-size:12px;line-height:1.45;color:#6b6b6b}.gc-wrap .gfs-note[hidden]{display:none}</style>
 <script>
@@ -16,6 +17,7 @@
     run: 'Prices include taxes. Service and delivery together are 15% of your basket, never less than {min} ({planned} when you book 48 hours ahead) and never more than {max}.',
     rest: 'Menu prices, taxes included. Restaurant orders: 15% service fee, at least {rmin} ({rminFr} on the French side), plus {rdel} delivery.'
   };
+  TXT.kind = kind;   /* v1.6 (9 Nov 2026): restaurant-only check for Shop 45 */
   if (W.GGSX_TOTAL) { W.GGSX_TOTAL.label = TXT.total; W.GGSX_TOTAL.sub = TXT.sub; }   /* Shop 25's Total bar */
 
   function num(v, d) { var s = String(v == null ? '' : v), x = parseFloat(s); return x >= 0 ? (/%/.test(s) ? x / 100 : x) : d; }   /* '15%' = 0.15; 0 counts */
@@ -61,6 +63,8 @@
   /* Shop 3 asks GGSX_MORE.setting for service_fee_rate, shopping_fee and planned_fee: answer with this run's rate and $ minimum */
   function planned() {   /* as Shop 3 works it out: a partner link, or a delivery window planned_hours or more ahead */
     try { if (W.GGSX_REF && W.GGSX_REF.get().name) return true; } catch (e) {}
+    if (W.GGSX_PLAN_FORCE != null) return !!W.GGSX_PLAN_FORCE;   /* v1.6: the basket's estimate line (Shop 45) asks for one rate */
+    try { var CK = W.GGSX_CHECKOUT; if (CK && CK.planned && CK.planned()) return true; } catch (e) {}   /* v1.6: dates to confirm (Shop 23) */
     var f = D.querySelector('.gc-wrap'), d = f && f.querySelector('input[name=date]'), w = f && f.querySelector('select[name=win]');
     var n = /^(\d{4})-(\d{2})-(\d{2})/.exec(d ? d.value : ''), a = /(\d{1,2}):(\d{2})/.exec(w ? w.value : '');
     return !!n && new Date(+n[1], n[2] - 1, +n[3], a ? +a[1] : 8, a ? +a[2] : 30) - Date.now() >= S.ph * 36e5;

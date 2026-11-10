@@ -1,0 +1,178 @@
+<!-- GrocerGoSx Shop 41 Rentals 3 Checkout v1.0 (4 Nov 2026, bundle v1.6; bundle-only module, core file, the last module so it wraps the others):
+     rentals at Shop Now checkout (Shop 3) and in the order editor (Shop 13). Rental lines take the normal service fee and delivery fee; this adds
+     a "Rental collection" fee per order with rentals (rental_collection_fee, or rental_collection_fee_french when the island side is French;
+     one per end date), on top of the extraFees chain of Shop 5, 24 Laundry 3 and 36 Errands 3 (its setter passes Shop 5's re-assignments on).
+     A basket with only rentals: delivery date = the rental start (locked, with a hint), "Delivery date (rental start)" label and the rentals
+     intro line. Nothing to shop (only rentals, laundry or errands): the "If something is unavailable" question and the per-item list are
+     hidden; rental rows are never in the per-item list (Shop 4). Rental dates that are now too soon (before today + rental_lead_days) block
+     Place order with a link back to /rentals; with groceries delivered on another day, a note says the rental comes on its start date.
+     The order editor's estimate (GGSX_EDIT.h.estimate) adds the collection fee for orders with "Rental: " lines. Page wording:
+     {{rental_collection}} ("$20 ($25 on the French side)"), {{rental_collection_fee}}, {{rental_collection_fee_french}} are filled from the
+     Settings tab wherever they appear, like Shop 34 does for the other fees. Needs Shop 41 Rentals 1 Config. -->
+<style>
+.gc-wrap .gr-ck-hint{display:block;font-weight:400;font-size:12px;line-height:1.4;color:#6b6b6b}
+.gc-wrap .gr-ck-hint[hidden],.gc-wrap .gr-ck-warn[hidden]{display:none}
+.gc-wrap .gr-ck-warn{background:#fff7e6;border:1px solid #f3d19b;color:#5c3b00;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.45}
+.gc-wrap .gr-ck-warn a{color:#F4551B;font-weight:700}
+.gc-wrap input[name=date][data-gr-lock]{background:#f6f3ee;color:#3a3a3a}
+</style>
+<script>
+(function () {
+  var W = window, D = document, R = W.GGSX_RENTALS, F = R && R.fn;
+  if (!F || W.__ggsxRentalsCk) return;
+  W.__ggsxRentalsCk = 1;
+  var C = R.copy;
+  var el = F.el, round = F.round, money0 = F.money0, collFee = F.collFee, pretty = F.pretty, tooSoon = F.tooSoon, lines = F.lines, isRent = F.isRent,
+    isLaundry = F.isLaundry, isErrand = F.isErrand, info = F.info, periodOf = F.periodOf;
+  /* ---------- checkout (Shop 3) ---------- */
+  function collections(ls) { var ends = {}, n = 0; (ls || []).filter(isRent).forEach(function (l) { var e = info(l).end || 'x'; if (!ends[e]) { ends[e] = 1; n++; } }); return n; }
+  function hookCheckout() {
+    var CK = W.GGSX_CHECKOUT;
+    if (!CK || CK.__rentals) return;
+    CK.__rentals = 1;
+    var d = Object.getOwnPropertyDescriptor(CK, 'extraFees'), val = d && !d.get ? d.value : null;
+    var mine = function (ls, side) {
+      var out = [];
+      try { var f = d && d.get ? d.get.call(CK) : val; out = (f ? f(ls, side) : []) || []; } catch (e) {}
+      var n = collections(ls);
+      if (n > 0) out = out.concat([{ label: n > 1 ? R.ck.colls + n : R.ck.coll, amount: round(n * collFee(side)) }]);
+      return out;
+    };
+    try {
+      Object.defineProperty(CK, 'extraFees', { configurable: true, enumerable: true,
+        get: function () { return mine; },
+        set: function (f) { if (f === mine) return; if (d && d.set) d.set.call(CK, f); else val = f; } });
+    } catch (e) { val = CK.extraFees; CK.extraFees = mine; }
+  }
+  function hookEditor() {
+    var E = W.GGSX_EDIT, H = E && E.h;
+    if (!H || !H.estimate || H.__rentals) return !!(H && H.__rentals);
+    H.__rentals = 1;
+    var base = H.estimate;
+    H.estimate = function (ls, side) {
+      var t = base.apply(this, arguments);
+      try {
+        if (t && ls && ls.some(function (l) { return /^rental: /i.test(String(l && l[0] || '')); })) {
+          var c = collFee(side);
+          t.extra = round((+t.extra || 0) + c);
+          t.total = round((+t.total || 0) + c);
+        }
+      } catch (e) {}
+      return t;
+    };
+    return true;
+  }
+  function swapText(node, text, on) {
+    if (!node) return;
+    if (!node.hasAttribute('data-gr')) node.setAttribute('data-gr', node.textContent);
+    if (on) { if (node.textContent !== text) node.textContent = text; }
+    else if (node.textContent === text) node.textContent = node.getAttribute('data-gr');
+  }
+  function hideMine(node, on) {
+    if (!node) return;
+    if (on) { if (node.style.display !== 'none') { node.style.display = 'none'; node.setAttribute('data-gr-hid', '1'); } }
+    else if (node.getAttribute('data-gr-hid')) { node.style.display = ''; node.removeAttribute('data-gr-hid'); }
+  }
+  function fire(inp) { ['input', 'change'].forEach(function (t) { try { inp.dispatchEvent(new Event(t, { bubbles: true })); } catch (e) {} }); }
+  var CKS = { saved: null, busy: false };
+  function ckPaint() {
+    var form = D.querySelector('.gc-wrap .gc-form');
+    if (!form || CKS.busy) return;
+    CKS.busy = true;
+    try {
+      var ls = lines(), rent = ls.filter(isRent), only = rent.length > 0 && ls.every(isRent), noShop = rent.length > 0 && ls.every(function (l) { return isRent(l) || isLaundry(l) || isErrand(l); });
+      var per = periodOf(ls), stale = !!(per && tooSoon(per.start)), K = R.ck, DY = W.GGSX_DYN;
+      var date = form.querySelector('input[name=date]'), lab = date && date.closest ? date.closest('label') : null, subs = form.querySelector('select[name=subs]');
+      if (DY) {
+        if (!CKS.saved) CKS.saved = { h: DY.dateHere, a: DY.dateArrive };
+        if (only) { DY.dateHere = K.date; DY.dateArrive = K.date; }
+        else if (DY.dateHere === K.date) { DY.dateHere = CKS.saved.h; DY.dateArrive = CKS.saved.a; }
+      }
+      swapText(lab && lab.querySelector('span'), K.date, only);
+      swapText(D.querySelector('.gc-wrap .gc-lead'), K.lead, only);
+      hideMine(subs && subs.closest ? subs.closest('label') : null, noShop);
+      hideMine(form.querySelector('.gc-pi'), noShop);
+      Array.prototype.forEach.call(form.querySelectorAll('.gc-pi-r'), function (r) { if ((r.textContent || '').indexOf('× ' + C.line) >= 0) r.style.display = 'none'; });
+      var hint = form.querySelector('.gr-ck-hint'), warn = form.querySelector('.gr-ck-warn');
+      if (!hint && lab) { hint = el('small', { class: 'gr-ck-hint', hidden: 'hidden' }); lab.appendChild(hint); }
+      if (!warn) { warn = el('div', { class: 'gr-ck-warn', role: 'status', hidden: 'hidden' }); var est = form.querySelector('.gc-est'); if (est && est.parentNode === form) form.insertBefore(warn, est); else form.appendChild(warn); }
+      if (date) {
+        if (only && per && !stale) {
+          if (date.value !== per.start) { date.value = per.start; fire(date); }
+          date.readOnly = true; date.setAttribute('data-gr-lock', '1');
+        } else if (date.getAttribute('data-gr-lock')) { date.readOnly = false; date.removeAttribute('data-gr-lock'); }
+      }
+      if (hint) { hint.textContent = only && per && !stale ? K.hint : ''; hint.hidden = !hint.textContent; }
+      warn.innerHTML = '';
+      if (rent.length && stale) { warn.appendChild(D.createTextNode(K.stale + ' ')); warn.appendChild(el('a', { href: R.path, text: K.staleLink })); }
+      else if (rent.length && !only && per && date && date.value && date.value !== per.start) warn.textContent = K.diff.replace('{d}', pretty(per.start));
+      warn.hidden = !warn.firstChild;
+    } catch (e) { try { console.warn('[GGSX rentals] checkout', e); } catch (x) {} }
+    CKS.busy = false;
+  }
+  function later(fn) { setTimeout(fn, 0); }
+
+  /* ---------- {{rental_…}} wording on the pages ---------- */
+  var PH = {
+    rental_collection: function () { var a = collFee('d'), b = collFee('f'); return money0(a) + (b !== a ? ' (' + money0(b) + ' on the French side)' : ''); },
+    rental_collection_fee: function () { return money0(collFee('d')); },
+    rental_collection_fee_french: function () { return money0(collFee('f')); }
+  }, SKIP = /^(SCRIPT|STYLE|TEXTAREA|TEMPLATE|NOSCRIPT)$/, phLoad = false;
+  function phSwap(node) {
+    var parts = node.nodeValue.split(/(\{\{rental_\w+\}\})/), frag = D.createDocumentFragment(), any = false;
+    parts.forEach(function (x) {
+      var m = /^\{\{(rental_\w+)\}\}$/.exec(x);
+      if (m && PH[m[1]]) { var sp = D.createElement('span'); sp.setAttribute('data-grph', m[1]); sp.textContent = PH[m[1]](); frag.appendChild(sp); any = true; }
+      else if (x) frag.appendChild(D.createTextNode(x));
+    });
+    if (any && node.parentNode) {
+      node.parentNode.replaceChild(frag, node);
+      if (!phLoad && W.GGSX_MORE && W.GGSX_MORE.load) { phLoad = true; W.GGSX_MORE.load().then(phRefresh, function () {}); }
+    }
+  }
+  function phScan(root) {
+    if (!root) return;
+    if (root.nodeType === 3) { if (root.nodeValue.indexOf('{{rental_') >= 0 && root.parentNode && !SKIP.test(root.parentNode.nodeName)) phSwap(root); return; }
+    if (root.nodeType !== 1 || SKIP.test(root.nodeName) || (root.textContent || '').indexOf('{{rental_') < 0) return;
+    var tw = D.createTreeWalker(root, 4, null), list = [], n;
+    while ((n = tw.nextNode())) if (n.nodeValue.indexOf('{{rental_') >= 0 && !SKIP.test(n.parentNode.nodeName)) list.push(n);
+    list.forEach(phSwap);
+  }
+  function phRefresh() { Array.prototype.forEach.call(D.querySelectorAll('[data-grph]'), function (sp) { var k = sp.getAttribute('data-grph'), v = PH[k] ? PH[k]() : ''; if (v && sp.textContent !== v) sp.textContent = v; }); }
+
+  /* ---------- wiring (once per visit; the observers follow page changes) ---------- */
+  hookCheckout();
+  D.addEventListener('ggsx-checkout-build', function () { hookCheckout(); later(ckPaint); });
+  D.addEventListener('ggsx-checkout-open', function () { hookCheckout(); hookEditor(); later(ckPaint); });
+  W.addEventListener('ggsx-basket', function () { later(ckPaint); });
+  D.addEventListener('change', function (e) { var t = e.target; if (t && t.name === 'date' && t.closest && t.closest('.gc-wrap .gc-form')) later(ckPaint); }, true);
+  D.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (!f || !f.classList || !f.classList.contains('gc-form')) return;
+    var per = periodOf(lines());
+    if (per && tooSoon(per.start)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      ckPaint();
+      var w = f.querySelector('.gr-ck-warn');
+      if (w) try { w.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) {}
+    }
+  }, true);
+  D.addEventListener('ggsx-fees', phRefresh);
+  /* Shop 23 rewrites the date label when an "Are you on the island yet?" choice is tapped */
+  D.addEventListener('click', function (e) { var t = e.target; if (t && t.closest && t.closest('.gc-wrap .gc-chip')) later(ckPaint); }, true);
+  (function retry(n) { if (!hookEditor() && n < 20) setTimeout(function () { retry(n + 1); }, 500); })(0);
+  var q = false;
+  new MutationObserver(function (ms) {
+    for (var i = 0; i < ms.length; i++) for (var j = 0; j < ms[i].addedNodes.length; j++) phScan(ms[i].addedNodes[j]);
+    if (q) return;
+    q = true;
+    (W.requestAnimationFrame || setTimeout)(function () {
+      q = false;
+      /* the checkout and the order editor are new objects after a page change (Shop 3 and Shop 13 run on every page) */
+      hookCheckout(); hookEditor();
+    });
+  }).observe(D.documentElement, { childList: true, subtree: true });
+  if (D.body) phScan(D.body); else D.addEventListener('DOMContentLoaded', function () { phScan(D.body); });
+})();
+</script>

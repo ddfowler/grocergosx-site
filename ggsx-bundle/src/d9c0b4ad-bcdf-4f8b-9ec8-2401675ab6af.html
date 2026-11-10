@@ -1,3 +1,4 @@
+<!-- v1.1 (9 Nov 2026, bundle v2.2): "Dates not set yet?" for arriving guests and hosts (Settings dates_later, 0 = off). On: the date, window, flight and landing time step aside, the address and the handling question are optional, and the order goes in with the window "Dates to confirm by message", no date, the address "To confirm by message" when blank and the booked-ahead rate (GGSX_CHECKOUT.optional / planned / prefill, Shop 3 v1.18). The note block reads "[For guest X. ]Arriving." then any handling / access lines, then "Dates to confirm by message." -->
 <!-- GrocerGoSx Shop 23 Dynamic Checkout v1.0 (23 Oct 2026): the checkout opens with contact details and one question ("Are you on the island yet?"); the rest of the form appears once it is answered. Arriving guests, and hosts ordering for a guest, then choose "Stock the unit before arrival" or "Wait until check-in", how we get in, and can add an optional flight number and landing time. The answers are written at the top of the order notes, so they show in the order emails, the run sheet, the client's live page and the Admin app. Needs Shop 3. Wording and options: window.GGSX_DYN below. -->
 <script>
 window.GGSX_DYN = {
@@ -43,6 +44,15 @@ window.GGSX_DYN = {
     stock: "Stock the unit before arrival.",
     wait: "Wait until check-in, then deliver (they'll message when they're in).",
     access: "Access: "
+  },
+  later: {
+    t: "Dates not set yet?",
+    d: "Send your list now. We'll confirm the day with you by message",
+    win: "Dates to confirm by message",
+    address: "To confirm by message",
+    note: "Dates to confirm by message.",
+    addrLabel: "Delivery address (if you know it)",
+    addrHint: "Villa, hotel or boat, or tell us later"
   }
 };
 </script>
@@ -69,6 +79,9 @@ window.GGSX_DYN = {
 .gc-dyn-help:empty{display:none}
 .gc-dyn-err{color:#d93025;font-size:14px;font-weight:400;line-height:1.4}
 .gc-dyn-err:empty{display:none}
+.gc-later .gc-chip{border-style:dashed}
+.gc-later .gc-chip[aria-checked="true"]{border-style:solid}
+.gc-form .gc-later-off{display:none!important}
 @media (max-width:860px){.gc-chips,.gc-chips.c2{grid-template-columns:1fr}}
 </style>
 <script>
@@ -132,15 +145,42 @@ window.GGSX_DYN = {
     });
   }
 
+  /* v1.1: "Dates not set yet?" (Settings dates_later, default on) */
+  function laterOn() {
+    try { var M = window.GGSX_MORE; return !(M && M.setting) || M.setting("dates_later", 1) !== 0; } catch (e) { return true; }
+  }
+  function isLater() {
+    return !!(S.form && (st.anchor === "arrive" || st.anchor === "guest") && st.later && laterOn());
+  }
+  function fire(i) {
+    if (!i) return;
+    ["input", "change"].forEach(function (t) { try { i.dispatchEvent(new Event(t, { bubbles: true })); } catch (e) {} });
+  }
+  function toggleLater() {
+    st.later = !st.later;
+    if (st.later && S.in) {
+      if (S.in.date) S.in.date.value = "";
+      if (S.in.win) S.in.win.value = "";
+    }
+    clearErr();
+    apply();
+    fire(S.in && S.in.date);   /* the estimate (booked-ahead rate) and the window list repaint */
+  }
+
   function apply() {
     if (!S.form) return;
-    var a = st.anchor, arr = a === "arrive" || a === "guest", stock = arr && st.handle === "stock";
+    var a = st.anchor, arr = a === "arrive" || a === "guest", stock = arr && st.handle === "stock", later = isLater();
     S.form.classList.toggle("gc-dyn-wait", !a);
+    show(G.later, arr && laterOn());
+    if (G.laterBtn) G.laterBtn.setAttribute("aria-checked", later ? "true" : "false");
     show(G.guest, a === "guest");
     show(G.handle, arr);
     show(G.access, stock);
     show(G.det, stock && st.access && st.access !== "tbd");
-    show(G.flight, arr);
+    show(G.flight, arr && !later);
+    [S.in && S.in.date, S.in && S.in.win].forEach(function (i) { var f = i && i.closest(".gc-f"); if (f) f.classList.toggle("gc-later-off", later); });
+    if (S.addrLbl) S.addrLbl.textContent = later ? cfg.later.addrLabel : S.addrBase;
+    if (S.in && S.in.address) S.in.address.placeholder = later ? cfg.later.addrHint : S.addrPh;
     if (S.dateLbl) S.dateLbl.textContent = arr ? cfg.dateArrive : cfg.dateHere;
     if (S.help) S.help.textContent = (arr && cfg.windowHelp[st.handle]) || "";
     var o = find(cfg.accessOpts, st.access || "");
@@ -152,6 +192,7 @@ window.GGSX_DYN = {
     if (!a) return [E.anchor, G.anchor];
     if (a === "here") return null;
     if (a === "guest" && !(st.guest || "").trim()) return [E.guest, G.guest];
+    if (isLater()) return null;   /* v1.1: handling and access are confirmed by message with the dates */
     if (!st.handle) return [E.handle, G.handle];
     if (st.handle === "stock" && !st.access) return [E.access, G.access];
     return null;
@@ -171,11 +212,12 @@ window.GGSX_DYN = {
     var a = st.anchor, N = cfg.notes, L = [], line, ds, t, o;
     if (!a) return "";
     if (a === "here") return N.here || "";
+    var later = isLater();
     line = (a === "guest" ? "For guest " + (st.guest || "").trim() + ". " : "") + "Arriving";
-    ds = fmtDate(S.in.date.value);
+    ds = later ? "" : fmtDate(S.in.date.value);
     if (ds) line += " " + ds;
-    if ((st.flight || "").trim()) line += ", flight " + st.flight.trim();
-    t = fmtTime(st.land);
+    if (!later && (st.flight || "").trim()) line += ", flight " + st.flight.trim();
+    t = later ? "" : fmtTime(st.land);
     if (t) line += ", lands " + t;
     L.push(line + ".");
     if (N[st.handle]) L.push(N[st.handle]);
@@ -183,6 +225,7 @@ window.GGSX_DYN = {
       o = find(cfg.accessOpts, st.access);
       L.push(N.access + (o ? o.t.toLowerCase() : st.access) + ((st.accessDet || "").trim() ? " (" + st.accessDet.trim() + ")" : "") + ".");
     }
+    if (later) L.push(cfg.later.note);
     return L.join("\n");
   }
 
@@ -192,6 +235,9 @@ window.GGSX_DYN = {
     var dyn;
     try {
       G.anchor = chips(cfg.anchor, cfg.anchorOpts, "anchor");
+      G.laterBtn = el("button", { type: "button", class: "gc-chip", role: "checkbox", "aria-checked": "false", onclick: toggleLater },
+        [el("b", { text: cfg.later.t }), el("small", { text: cfg.later.d })]);
+      G.later = el("div", { class: "gc-grp gc-sub gc-later" }, [el("div", { class: "gc-chips" }, [G.laterBtn])]);
       G.guest = label(cfg.guest, S.guestInp = input("ggsx_guest", "text", cfg.guestHint, "guest"));
       G.guest.classList.add("gc-sub");
       G.handle = chips(cfg.handle, cfg.handleOpts, "handle", " gc-sub");
@@ -203,7 +249,11 @@ window.GGSX_DYN = {
         label(cfg.landing, S.landInp = input("ggsx_land", "time", null, "land"), true)
       ]);
       S.dynErr = el("div", { class: "gc-dyn-err", role: "alert" });
-      dyn = el("div", { class: "gc-dyn" }, [G.anchor, G.guest, G.handle, G.access, G.det, G.flight, S.dynErr]);
+      dyn = el("div", { class: "gc-dyn" }, [G.anchor, G.later, G.guest, G.handle, G.access, G.det, G.flight, S.dynErr]);
+      var af = I.address.closest(".gc-f");
+      S.addrLbl = af ? af.querySelector("span") : null;
+      S.addrBase = S.addrLbl ? S.addrLbl.textContent : "";
+      S.addrPh = I.address.getAttribute("placeholder") || "";
       form.insertBefore(dyn, I.address.closest(".gc-f"));
       S.help = el("small", { class: "gc-dyn-help" });
       I.win.closest(".gc-f").appendChild(S.help);
@@ -223,6 +273,23 @@ window.GGSX_DYN = {
     clearErr();
     apply();
   }
+
+  /* v1.1: the checkout asks these when it checks and sends the order (Shop 3 v1.18) */
+  (function hooks() {
+    var CK = window.GGSX_CHECKOUT;
+    if (!CK || CK.__dynLater) return;
+    CK.__dynLater = 1;
+    var opt0 = CK.optional, plan0 = CK.planned, pre0 = CK.prefill;
+    CK.optional = function () { var a = (opt0 && opt0()) || []; return isLater() ? a.concat(["address", "date", "win"]) : a; };
+    CK.planned = function () { return isLater() || !!(plan0 && plan0()); };
+    CK.prefill = function (C, k, f) {
+      if (pre0) { try { pre0(C, k, f); } catch (e) {} }
+      if (!isLater() || !C || !k) return;
+      delete C[k.date];   /* no date at all: the form's date field is optional since 9 Nov 2026 */
+      C[k.win] = cfg.later.win;
+      if (!String(C[k.address] || "").trim()) C[k.address] = cfg.later.address;
+    };
+  })();
 
   D.addEventListener("ggsx-checkout-build", function (ev) { var d = ev.detail || {}; build(d.form, d.inputs); });
   D.addEventListener("ggsx-checkout-sent", reset);

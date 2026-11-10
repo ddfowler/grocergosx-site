@@ -1,3 +1,4 @@
+<!-- v1.8 (4 Nov 2026): items sold by weight (size "per lb" on the Products tab), see Shop 42 Sold by Weight: the label weights follow the items -->
 <!-- GrocerGoSx Shop 14 Order Changes v1.0 (18 Oct 2026): lets the client (live page, /shop-now#track/…) and the shopper (run sheet,
      /shop-now#run/…) change an order after it's placed. The current list is saved, signed, on the order's CMS record (edits / esig / eat);
      every link to the order — old emails included — opens, reads it and shows the current list, and the run sheet's ticks follow the
@@ -18,7 +19,7 @@
   function migrate(cur, P2, newL) {
     var m = mapping(cur.lines, newL), S = null, L = null, lk = 'ggsx_live_' + cur.K.id;
     try { S = JSON.parse(localStorage.getItem(skey(cur.P)) || 'null'); } catch (e) {}
-    if (S) try { localStorage.setItem(skey(P2), JSON.stringify({ s: remap(S.s, m), n: remap(S.n, m), p: remap(S.p, m) })); } catch (e) {}
+    if (S) try { localStorage.setItem(skey(P2), JSON.stringify({ s: remap(S.s, m), n: remap(S.n, m), p: remap(S.p, m), w: remap(S.w, m) })); } catch (e) {}
     try { L = JSON.parse(localStorage.getItem(lk) || 'null'); } catch (e) {}
     if (L) try { localStorage.setItem(lk, JSON.stringify({ em: remap(L.em, m), ms: remap(L.ms, m) })); } catch (e) {}
   }
@@ -145,7 +146,7 @@
       data.esig = sig;
       var S = cur.remote;
       if (S && (Object.keys(S.s || {}).length || Object.keys(S.n || {}).length)) {
-        var m = mapping(old, newLines), ns = { v: 1, s: remap(S.s, m), n: remap(S.n, m), p: remap(S.p, m), em: remap(S.em, m), ms: remap(S.ms, m), u: t }, st = JSON.stringify(ns);
+        var m = mapping(old, newLines), ns = { v: 1, s: remap(S.s, m), n: remap(S.n, m), p: remap(S.p, m), w: remap(S.w, m), em: remap(S.em, m), ms: remap(S.ms, m), u: t }, st = JSON.stringify(ns);
         return C.sign(cur.K, st).then(function (s2) { data.state = st; data.sig = s2; data.at = t; cur.remote = ns; });
       }
     }).then(function () { return C.store(cur.K.id, data); }).then(function () {

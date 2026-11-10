@@ -1,0 +1,54 @@
+{
+ "run": {
+  "note": "How the loader runs the core file: it splits it at these module boundaries into separate tasks (so the phone stays responsive), and runs the page's group at the groupAfter point.",
+  "yieldAfter": [
+   "089c0fed-855a-4e35-8f6e-fcbb9b91bfa7"
+  ],
+  "groupAfter": "4106abf3-b013-4dc0-9f91-0a70a02d382f",
+  "every": 5
+ },
+ "home": {
+  "paths": [
+   "/"
+  ],
+  "modules": [
+   "66348b98-2e16-404f-ba13-5a9f89505ed0",
+   "home-snapshot",
+   "33f1b3a3-eacb-417e-8058-133a7ada3557",
+   "e7aea37f-6ec7-48af-8458-4e41987207b7"
+  ],
+  "yieldAfter": [
+   "66348b98-2e16-404f-ba13-5a9f89505ed0"
+  ]
+ },
+ "pages": {
+  "paths": [
+   "/villa-stocking",
+   "/stocking-packages",
+   "/pricing",
+   "/service-area",
+   "/yacht-provisioning",
+   "/partners",
+   "/services-hub",
+   "/concierge-services"
+  ],
+  "modules": [
+   "86b8c204-87a2-48fd-a7b2-bf7ca042b038",
+   "4535b87e-8cb0-41c5-a02c-b4f6f7fe5dd6",
+   "1da7615f-93f9-4952-af04-df827390463a",
+   "d63d0170-b5a8-437c-88dc-994a121cc99c",
+   "a9a4947a-ae8e-4ea1-b898-ca85734873af",
+   "ef7d8ac8-952d-410d-a1a2-6adb4c853ed6",
+   "f4c1b654-4cb2-42e5-a756-c76f77913d66",
+   "d6ec509a-e96e-4380-ac3a-1977105bfdb0"
+  ]
+ },
+ "rentals": {
+  "paths": [
+   "/rentals"
+  ],
+  "modules": [
+   "shop41-rentals-page"
+  ]
+ }
+}

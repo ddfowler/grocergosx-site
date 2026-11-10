@@ -3,18 +3,18 @@
 // usage: node tests/pileup-audit.js <bundle.js> <bundle.js.gz> <loader.html> [navs]
 const fs = require('fs');
 const { chromium } = require('playwright');
-const [bundlePath, gzPath, loaderPath, navsArg] = process.argv.slice(2);
+// v1.5: the first argument can also be a dist folder with several files (ggsx-body + groups): node <test> dist loader.html [navs]
+const L = require('./lib');
+let args = process.argv.slice(2), files, bodies = {};
+if (fs.statSync(args[0]).isDirectory()) { const d = L.distFiles(args[0], 'http://ggsx.test'); files = d.files; bodies = d.bodies; args = [null, null].concat(args.slice(1)); }
+else { files = { body: ['http://ggsx.test/__bundle.gz', 'http://ggsx.test/__bundle.js'] }; bodies = { '/__bundle.gz': fs.readFileSync(args[1]), '/__bundle.js': fs.readFileSync(args[0]) }; }
+const [, , loaderPath, navsArg] = args;
 const NAVS = +(navsArg || 4);
-const plain = fs.readFileSync(bundlePath);
-const gz = fs.readFileSync(gzPath);
-let loaderHtml = fs.readFileSync(loaderPath, 'utf8');
-let loaderJs = /<script>([\s\S]*?)<\/script>/.exec(loaderHtml)[1];
-loaderJs = loaderJs.replace(/var GZ = '[^']+'/, "var GZ = 'http://ggsx.test/__bundle.gz'").replace(/var PLAIN = '[^']+'/, "var PLAIN = 'http://ggsx.test/__bundle.js'");
-// section line map
-const lines = plain.toString('utf8').split('\n');
+const loaderJs = L.loaderJs(loaderPath, files);
+// section line map, per file: "body:123" -> module name
 const sections = [];
-lines.forEach((l, i) => { const m = /^\/\* ===== (.+?) \(([^,]+), rev/.exec(l); if (m) sections.push({ line: i + 1, name: m[1] }); });
-function sectionOf(line) { let s = '(prelude)'; for (const x of sections) { if (x.line <= line) s = x.name; else break; } return s; }
+for (const k in bodies) if (/\.js$/.test(k)) bodies[k].toString('utf8').split('\n').forEach((l, i) => { const m = /^\/\* ===== (.+?) \(([^,]+), rev/.exec(l); if (m) sections.push({ file: k.replace(/^\/__f\//, '').replace(/^\/__bundle/, 'body').replace(/\.js$/, ''), line: i + 1, name: m[1] }); });
+function sectionOf(key) { const p = String(key).split(':'), f = p.length > 1 ? p[0] : 'body', line = +(p.length > 1 ? p[1] : p[0]); let s = '(prelude)'; for (const x of sections) { if (x.file !== f) continue; if (x.line <= line) s = x.name; else break; } return s; }
 
 const HTML = `<!doctype html><html><head><meta charset="utf-8"><title>harness</title></head><body>
 <div id="SITE_CONTAINER"><div id="main_MF"><div id="site-root"><div id="masterPage"><div id="SITE_PAGES"></div></div></div></div></div>
@@ -38,8 +38,7 @@ document.getElementById('SITE_PAGES').appendChild(window.__mkPage('home'));
   await page.route('**/*', route => {
     const u = route.request().url();
     if (/grocergosx\.com/i.test(u)) return route.abort();
-    if (u === 'http://ggsx.test/__bundle.gz') return route.fulfill({ status: 200, contentType: 'text/plain', body: gz, headers: { 'access-control-allow-origin': '*' } });
-    if (u === 'http://ggsx.test/__bundle.js') return route.fulfill({ status: 200, contentType: 'text/plain', body: plain });
+    if (u.startsWith('http://ggsx.test/__') && bodies[new URL(u).pathname]) return route.fulfill({ status: 200, contentType: 'text/plain', body: bodies[new URL(u).pathname], headers: { 'access-control-allow-origin': '*' } });
     if (u.startsWith('http://ggsx.test/')) {
       if (route.request().resourceType() === 'document') return route.fulfill({ status: 200, contentType: 'text/html', body: HTML });
       return route.fulfill({ status: 404, body: '' });
@@ -48,7 +47,7 @@ document.getElementById('SITE_PAGES').appendChild(window.__mkPage('home'));
   });
   await page.addInitScript(() => {
     const R = window.__reg = { mo: [], ev: [], iv: [] };
-    const st = () => (new Error().stack || '').split('\n').filter(l => /ggsx-body\.js:\d+/.test(l)).map(l => +/ggsx-body\.js:(\d+)/.exec(l)[1])[0] || 0;
+    const st = () => (new Error().stack || '').split('\n').filter(l => /ggsx-[a-z]+\.js:\d+/.test(l)).map(l => { const m = /ggsx-([a-z]+)\.js:(\d+)/.exec(l); return m[1] + ':' + m[2]; })[0] || 0;
     const tracked = t => t === window || t === document || t === document.documentElement || (document.body && t === document.body);
     const OM = window.MutationObserver, obs = OM.prototype.observe, dis = OM.prototype.disconnect;
     window.MutationObserver = function (cb) { const o = new OM(cb); o.__line = st(); o.__on = false; R.mo.push(o); return o; };
@@ -103,7 +102,7 @@ document.getElementById('SITE_PAGES').appendChild(window.__mkPage('home'));
     await page.waitForTimeout(1500);
     snaps.push(await snap('after page change ' + (i + 1) + ' (' + p + ')'));
   }
-  const tally = arr => { const t = {}; arr.forEach(x => { const line = +String(x).split('|')[0]; const k = sectionOf(line).replace('GrocerGoSx ', '') + (String(x).includes('|') ? ' [' + String(x).split('|')[1] + ']' : ''); t[k] = (t[k] || 0) + 1; }); return t; };
+  const tally = arr => { const t = {}; arr.forEach(x => { const line = String(x).split('|')[0]; const k = sectionOf(line).replace('GrocerGoSx ', '') + (String(x).includes('|') ? ' [' + String(x).split('|')[1] + ']' : ''); t[k] = (t[k] || 0) + 1; }); return t; };
   console.log('sections:', sections.length);
   for (const s of snaps) console.log(`${s.label}: runs=${s.runs} from=${s.from} scripts=${s.scripts} (${s.scriptKB} KB) styles=${s.styles} | ${s.dup} | SITE_PAGES=${s.spKids.join(',')} | ACTIVE observers=${s.reg.mo.length} listeners=${s.reg.ev.length} intervals=${s.reg.iv.length}`);
   const a = tally(snaps[0].reg.mo), b = tally(snaps[snaps.length - 1].reg.mo);

@@ -1,0 +1,213 @@
+<!-- v1.1 (9 Nov 2026, bundle v2.2): GGSX_SHOPHOURS.load() so Shop 45 can read the shopping hours before the checkout is opened. -->
+<!-- GrocerGoSx Shop 44 Shopping Hours v1.0 (6 Nov 2026, bundle v2.0; bundle-only module, no Custom Code copy; core, right after Shop 12
+     Checkout Polish): grocery orders are shopped on their delivery day, while the supermarkets are open. Dwayne (6 Nov 2026): use the
+     supermarkets' opening hours (Monday to Saturday 8 AM–7 PM, Sunday 9 AM–1 PM) as the shopping window, "not necessarily for delivery … but
+     for shopping". He chose: checkout only offers delivery windows we can shop in time and shows the hours; same-day shopping only (nothing is
+     shopped the day before); the Late Night Snack Run stays, ending at 11 PM.
+     * Which baskets: any basket with shop items (Products tab lines and "Request:" lines). Baskets with only restaurant, pharmacy, laundry,
+       errand or rental lines keep the old rule (lead_hours from now; restaurants also follow Shop 27 Restaurant Hours).
+     * The rule (GGSX_SHOPHOURS.why, asked by Shop 12 for every window): on the delivery day, shopping starts when the supermarkets open (or
+       when the order comes in, if that is later) and has to start by the last call (closing time − shop_last_call_min); the window has to end
+       after that start + lead_hours. With the sheet's values: Monday to Saturday the first window has to end after 11 AM and an order after
+       6 PM goes to the next day; Sunday after noon, and an order after noon goes to Monday. A closed day (a holiday row) has no grocery window.
+     * Late Night Snack Run: on Thursday, Friday and Saturday a basket with only snacks, drinks and ice (GGSX_SHOPHOURS.snack: the drinks
+       departments, the snack aisles of Pantry, ice cream, bagged ice; Shop 2's GGSX_SHOP_API.product gives each line's department) can still
+       get that evening's window after shopping hours if it ends more than snack_lead_hours from now (the window's end counts as snack_run_end
+       at the latest): with 1.5 hours and 11 PM, order by 9:30 PM. Its order notes start with "Late Night Snack Run (after supermarket hours)."
+     * At checkout the hint under "Delivery window" says when we shop (worked out from the Settings tab, e.g. "Mon–Sat 8 AM–7 PM, Sun 9 AM–1 PM");
+       a window outside the shopping hours reads "… — outside shopping hours" and can't be picked.
+     * Settings tab, section SHOPPING HOURS (island time, 24-hour clock, 8.5 = 8:30 AM): shop_opens / shop_closes (Monday to Saturday),
+       shop_opens_sun / shop_closes_sun, shop_last_call_min, snack_run_end, snack_lead_hours. Optional rows: shop_opens_sat / shop_closes_sat
+       (or mon, tue, wed, thu, fri) for one weekday; shop_closed_2026-12-25 = 1 for a holiday; shop_opens_2026-12-24 / shop_closes_2026-12-24
+       for a short day. 0 and 0 = closed that day. Values that don't read as hours fall back to the ones below.
+     Needs Shop 3 and Shop 12 v1.1 (which asks GGSX_SHOPHOURS.why / .hint); Shop 2 v2.0 for GGSX_SHOP_API.product. Wording: GGSX_SHOPHOURS.copy. -->
+<script>
+(function () {
+  var W = window, D = document;
+  if (W.__ggsxShopHours) return;
+  W.__ggsxShopHours = 1;
+  var P = W.GGSX_SHOPHOURS = {
+    /* fallbacks (the Settings tab wins): [opens, closes] for each day, 0 = Sunday … 6 = Saturday, hours on a 24-hour clock, island time */
+    week: [[9, 13], [8, 19], [8, 19], [8, 19], [8, 19], [8, 19], [8, 19]],
+    lastCallMin: 60,
+    snack: {
+      days: [4, 5, 6],                 /* Thursday, Friday, Saturday */
+      start: 21, end: 23, leadHours: 1.5,
+      cats: ['Beverages', 'Beer & Seltzers', 'Wine', 'Spirits / Liquor'],
+      subs: ['Pantry > Candy & Chocolate', 'Pantry > Chips & Savory Snacks', 'Pantry > Cookies & Granola Bars', 'Pantry > Crackers',
+             'Pantry > Snacks, Nuts, Chips & Crisps', 'Frozen Foods > Ice Cream & Treats'],
+      ice: /\b(bags? of ice|ice bags?|ice cubes|cubed ice)\b/i       /* bagged ice, in Frozen Foods */
+    },
+    notShop: /^(rest|pharm|rent|laundry|errand):/,                   /* basket lines nobody shops for at a supermarket */
+    copy: {
+      hint: 'We shop on your delivery day, while the supermarkets are open ({hours}), and need at least {h} hours’ notice.',
+      noneToday: 'Today’s shopping hours are over — please pick tomorrow or later.',
+      closed: 'The supermarkets are closed on {day} — please pick another date.',
+      noWindow: 'We can’t shop in time for a delivery on {day} — please pick another date.',
+      snackTonight: 'Your basket is all snacks, drinks and ice, so tonight’s Late Night Snack Run can bring it, until {end} (order by {by}).',
+      snackMaybe: ' Only snacks, drinks and ice? The Late Night Snack Run still delivers tonight until {end} (order by {by}).',
+      outside: ' — outside shopping hours',
+      note: 'Late Night Snack Run (after supermarket hours).',
+      days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      closedWord: 'closed'
+    }
+  };
+  var DAY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'], SET = null;
+
+  /* ---------- settings ---------- */
+  function num(k, def) {
+    var v = SET ? SET[k] : null;
+    if (v == null || String(v).trim() === '') return def;
+    var n = parseFloat(String(v).replace(',', '.'));
+    return isFinite(n) ? n : def;
+  }
+  function pair(a, b, def) {                       /* [opens, closes] in hours: 0 and 0 = closed; anything that isn't hours = the fallback */
+    if (a === 0 && b === 0) return null;
+    if (!(a >= 0 && a < 24 && b > a && b <= 24)) return def;
+    return [a, b];
+  }
+  function dayHours(w) {                           /* a weekday's usual hours, [opens, closes] or null */
+    var f = P.week[w] || null, mon = P.week[1] || f;
+    if (!f) return null;
+    if (w === 0) return pair(num('shop_opens_sun', f[0]), num('shop_closes_sun', f[1]), f);
+    var base = pair(num('shop_opens', mon[0]), num('shop_closes', mon[1]), f);
+    if (!base) base = [num('shop_opens', mon[0]), num('shop_closes', mon[1])];      /* 0/0 for Monday–Saturday: per-day rows may still open a day */
+    var h = pair(num('shop_opens_' + DAY[w], base[0]), num('shop_closes_' + DAY[w], base[1]), base);
+    return h && h[1] > h[0] ? h : null;
+  }
+  function wd(ymd) { var d = new Date(String(ymd) + 'T12:00:00Z'); return isNaN(d) ? -1 : d.getUTCDay(); }
+  function dayNo(ymd) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || ''); return m ? Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5) : null; }
+  /* the supermarkets' hours on that date in minutes, {a: opens, b: closes}, or null when they are closed */
+  function hoursFor(ymd) {
+    var w = wd(ymd);
+    if (w < 0) return null;
+    if (num('shop_closed_' + ymd, 0) >= 1) return null;
+    var h = dayHours(w);
+    h = pair(num('shop_opens_' + ymd, h ? h[0] : 0), num('shop_closes_' + ymd, h ? h[1] : 0), h);
+    return h ? { a: Math.round(h[0] * 60), b: Math.round(h[1] * 60) } : null;
+  }
+  function lastCall() { var m = num('shop_last_call_min', P.lastCallMin); return m >= 0 && m < 600 ? m : P.lastCallMin; }
+  function snackCfg() {
+    var S = P.snack, end = num('snack_run_end', S.end), lead = num('snack_lead_hours', S.leadHours);
+    if (!(end > S.start && end <= 24)) end = S.end;
+    if (!(lead >= 0 && lead <= 12)) lead = S.leadHours;
+    return { days: S.days, start: S.start * 60, end: Math.round(end * 60), lead: Math.round(lead * 60) };
+  }
+  function load() {
+    var M = W.GGSX_MORE;
+    if (!M || !M.load || load.busy) return;
+    load.busy = 1;
+    M.load().then(function (d) {
+      load.busy = 0;
+      SET = (d && d.set) || {};
+      var Pl = W.GGSX_POLISH;
+      if (Pl && Pl.refresh) Pl.refresh();
+    }, function () { load.busy = 0; });
+  }
+
+  /* ---------- the basket ---------- */
+  function lines() {
+    try {
+      var b = JSON.parse(localStorage.getItem('ggsx_basket') || 'null'), out = [], k;
+      if (b && b.items) for (k in b.items) if (b.items[k] && (+b.items[k].n || 0) > 0) out.push(b.items[k]);
+      return out;
+    } catch (e) { return []; }
+  }
+  function isShop(l) {
+    var id = String(l.id || ''), n = String(l.name || '');
+    return !(P.notShop.test(id) || /^(laundry, wash|errand: |rental: )/i.test(n));
+  }
+  function isSnack(l) {
+    var A = W.GGSX_SHOP_API, p = null, S = P.snack;
+    try { p = A && A.product ? A.product(l.id) : null; } catch (e) {}
+    if (!p) return false;
+    var cat = String(p.cat || ''), sub = cat + ' > ' + String(p.sub || '');
+    return S.cats.indexOf(cat) >= 0 || S.subs.indexOf(sub) >= 0 || (cat === 'Frozen Foods' && S.ice.test(String(p.name || '')));
+  }
+  /* 'none' = nothing to shop at a supermarket (the old rule applies), 'snack' = only snacks, drinks and ice, 'shop' = groceries */
+  function kind() {
+    var g = 0, s = 0;
+    lines().forEach(function (l) { if (isShop(l)) { g++; if (isSnack(l)) s++; } });
+    return !g ? 'none' : s === g ? 'snack' : 'shop';
+  }
+
+  /* ---------- the rule ---------- */
+  function shopStart(h, today, t) { return today ? Math.max(h.a, t.mins) : h.a; }
+  function lastStart(h) { return Math.max(h.a, h.b - lastCall()); }
+  function snackOk(ymd, end, t, today) {
+    var S = snackCfg();
+    if (S.days.indexOf(wd(ymd)) < 0 || end <= S.start) return false;
+    return !today || Math.min(end, S.end) > t.mins + S.lead;
+  }
+  /* ymd = delivery date, end = the window's end in minutes, t = island time now {ymd, mins}, leadH = lead_hours.
+     null = the rule doesn't apply to this basket; otherwise {r: '' (fine) | 'late' (inside the lead time) | 'hours' (outside shopping hours), via} */
+  function check(ymd, end, t, leadH) {
+    var k = kind();
+    if (k === 'none') return null;
+    var d = dayNo(ymd), td = dayNo(t && t.ymd);
+    if (d == null || td == null || d < td) return null;
+    var today = d === td, L = (+leadH || 0) * 60, h = hoursFor(ymd);
+    if (h) {
+      var st = shopStart(h, today, t);
+      if (st <= lastStart(h) && end > st + L) return { r: '', via: 'shop', k: k };
+    }
+    if (k === 'snack' && snackOk(ymd, end, t, today)) return { r: '', via: 'snack', k: k };
+    return { r: today && end <= t.mins + L ? 'late' : 'hours', via: '', k: k };
+  }
+
+  /* ---------- wording ---------- */
+  function clock(m) {
+    m = ((Math.round(m) % 1440) + 1440) % 1440;
+    var h = Math.floor(m / 60), mm = m % 60;
+    return (h % 12 || 12) + (mm ? ':' + ('0' + mm).slice(-2) : '') + (h < 12 ? ' AM' : ' PM');
+  }
+  function text() {                                /* "Mon–Sat 8 AM–7 PM, Sun 9 AM–1 PM" */
+    var C = P.copy, order = [1, 2, 3, 4, 5, 6, 0], hs = order.map(dayHours), out = [], i = 0, j;
+    var same = function (x, y) { return (!x && !y) || (x && y && x[0] === y[0] && x[1] === y[1]); };
+    while (i < order.length) {
+      j = i;
+      while (j + 1 < order.length && same(hs[j + 1], hs[i])) j++;
+      out.push(C.days[order[i]] + (j > i ? '–' + C.days[order[j]] : '') + ' ' +
+               (hs[i] ? clock(hs[i][0] * 60) + '–' + clock(hs[i][1] * 60) : C.closedWord));
+      i = j + 1;
+    }
+    return out.join(', ');
+  }
+  function pretty(ymd) { var d = new Date(ymd + 'T12:00:00Z'); return isNaN(d) ? ymd : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+  function fill(s, ymd, leadH) {
+    var S = snackCfg(), h = +leadH || 0;
+    return s.replace('{hours}', text()).replace('{h}', h % 1 ? h : Math.round(h)).replace('{end}', clock(S.end))
+            .replace('{by}', clock(S.end - S.lead)).replace('{day}', pretty(ymd));
+  }
+
+  /* ---------- what Shop 12 asks ---------- */
+  P.why = function (ymd, end, t, leadH) { var c = check(ymd, end, t, leadH); return c ? c.r : undefined; };
+  /* the line under "Delivery window"; undefined = Shop 12's own. any = some window can be picked for that date */
+  P.hint = function (ymd, any, leadH, t) {
+    var k = kind();
+    if (k === 'none' || !t) return undefined;
+    var C = P.copy, d = dayNo(ymd), td = dayNo(t.ymd), today = d === td, h = hoursFor(ymd), S = snackCfg();
+    var shopToday = !!h && shopStart(h, true, t) <= lastStart(h);
+    var snackNight = today && S.days.indexOf(wd(ymd)) >= 0 && t.mins < S.end - S.lead;
+    if (!any) {
+      var tail = k === 'shop' && snackNight && !shopToday ? fill(C.snackMaybe, ymd, leadH) : '';
+      return fill(today && h ? C.noneToday : h ? C.noWindow : C.closed, ymd, leadH) + tail;
+    }
+    if (today && k === 'snack' && !shopToday && snackNight) return fill(C.snackTonight, ymd, leadH);
+    return fill(C.hint, ymd, leadH);
+  };
+  P.check = check; P.kind = kind; P.hoursFor = hoursFor; P.text = text; P.load = load;   /* v1.1 (9 Nov 2026): Shop 45 loads the Settings */
+
+  /* the order notes say when a basket goes with the Late Night Snack Run (Shop 3 sends what this event's detail holds) */
+  D.addEventListener('ggsx-checkout-submit', function (e) {
+    var x = e.detail || {}, f = x.fields, k = x.keys, I = x.inputs, Pl = W.GGSX_POLISH;
+    if (!f || !k || !k.notes || !I || !I.date || !I.win || !Pl || !Pl.now || !Pl.endOf) return;
+    var all = [];
+    Array.prototype.forEach.call(I.win.options || [], function (o) { if (o.value) all.push(o.value); });
+    var c = check(I.date.value, Pl.endOf(I.win.value, all), Pl.now(), Pl.leadHours);
+    if (c && c.via === 'snack') f[k.notes] = P.copy.note + (f[k.notes] ? '\n' + f[k.notes] : '');
+  });
+  D.addEventListener('ggsx-checkout-build', load);
+  D.addEventListener('ggsx-checkout-open', load);
+})();
+</script>

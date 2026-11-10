@@ -1,5 +1,7 @@
 <!-- ============================================================
   GrocerGoSx Splash — branded intro screen for grocergosx.com
+  v10.2 (2 Nov 2026, page speed): the logo's space is kept from the start (aspect-ratio), so the tagline no longer jumps down when the logo arrives.
+  v10.1 (1 Nov 2026): skipped on Dwayne's Orders app (/shop-now#ops) and on shopper run sheets (#r/…, #run/…).
   Where it goes: Wix dashboard → Settings → Custom Code → + Add Custom Code
     Name:        GrocerGoSx Splash
     Add code to: All pages  ·  Load code on each new page
@@ -35,7 +37,7 @@ window.GGSX_SPLASH = {
 #ggsx-splash.is-leaving{opacity:0;pointer-events:none}
 #ggsx-splash .ggsx-in{display:flex;flex-direction:column;align-items:center;gap:16px;padding:0 24px;transition:transform .55s ease}
 #ggsx-splash.is-leaving .ggsx-in{transform:translateY(-10px) scale(1.02)}
-#ggsx-splash img{width:min(62vw,400px);height:auto;display:block;opacity:0;transform:translateY(14px) scale(.98);filter:drop-shadow(0 14px 32px rgba(120,30,0,.28))}
+#ggsx-splash img{width:min(62vw,400px);height:auto;aspect-ratio:900/294;display:block;opacity:0;transform:translateY(14px) scale(.98);filter:drop-shadow(0 14px 32px rgba(120,30,0,.28))}
 #ggsx-splash .ggsx-tag{margin:0;font-size:12px;line-height:1.4;letter-spacing:.24em;text-indent:.24em;text-transform:uppercase;font-weight:700;text-align:center;opacity:0;transform:translateY(8px)}
 #ggsx-splash .ggsx-bar{width:72px;height:2px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden;opacity:0}
 #ggsx-splash .ggsx-bar i{display:block;height:100%;width:100%;background:#fff;transform:translateX(-100%)}
@@ -54,6 +56,7 @@ window.GGSX_SPLASH = {
   if (C.enabled === false) return;
   try {
     if (window.top !== window.self) return;                                  // never inside the Wix Editor / preview frame
+    if (/^#(ops(\/|$)|r\/|run\/)/.test(location.hash)) return;              // v10.1 (1 Nov 2026): never over the Orders app (#ops) or a shopper run sheet (#r/, #run/)
     if (/bot|crawl|spider|slurp|lighthouse|pagespeed|gtmetrix|headless/i.test(navigator.userAgent)) return;
     if (C.skipFromSearch !== false && (/[?&](gclid|gbraid|wbraid|msclkid|fbclid|utm_source)=/i.test(location.search) || /(^|\.)(google|bing|yahoo|duckduckgo|ecosia|yandex|baidu)\.[a-z.]+$/i.test(document.referrer.split('/')[2] || ''))) return;   // from a search engine, Google Maps, an ad or a campaign link: straight to the page
     if (C.pages === 'home' && !/^\/(home\/?)?$/i.test(location.pathname)) return;

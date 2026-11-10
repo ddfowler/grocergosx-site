@@ -1,0 +1,133 @@
+<!-- v1.2 (27 Oct 2026): short run-sheet links too — grocergosx.com/shop-now#r/<code> opens the shopper run sheet (same code and stored row as the client's #t/ tracker link; Shop 8 v1.3 puts it in the checkout's run sheet field instead of the long #run/… link). -->
+<!-- GrocerGoSx Shop 19 Short Tracker Links v1.1 (20 Oct 2026; v1.1: one fixed short link per order, set on the order at checkout by
+     Shop 8 v1.2, so the order email, the GrocerGoSx Admin app and the run sheet all show the same short link): short links to the client's live tracker, like
+     grocergosx.com/shop-now#t/aB3dE9Xy7Qk2, instead of the long /shop-now#track/… link. The run sheet's "Send live link" buttons
+     (Copy, WhatsApp, Text) and the "Follow it live" line use the short link (Shop 9 v1.2). The order behind a short link is stored
+     encrypted in the CMS collection "Short tracker links" (GrocerGoSxShortLinks); the key exists only in the link itself, so the
+     stored rows can't be read without it. Opening a short link turns it back into the full tracker for Shop 10. The short link is
+     worked out from the order itself, so every page that has the order makes the same one. Wix: Settings → Custom Code → Head · All pages · Load code once · Essential. -->
+<script>
+(function () {
+  var W = window;
+  if (W.GGSX_SHORT) return;
+  var CFG = { clientId: 'b0274d30-48b0-4e8d-b352-2f70ff783547', col: 'GrocerGoSxShortLinks',
+              base: 'https://www.grocergosx.com/shop-now#t/', page: '/shop-now', track: '#track/', run: '#run/' };
+  var API = 'https://www.wixapis.com', TOK = 'ggsx_live_tok', ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  var ok = !!(W.crypto && W.crypto.subtle && W.TextEncoder), enc = ok && new TextEncoder(), dec = ok && new TextDecoder();
+
+  function b64(u8) { var s = ''; for (var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function unb64(s) { s = String(s || '').replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+  /* compact synchronous SHA-256 for ASCII strings (tokens are base64url) */
+  function sha256(str) {
+    var K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    var H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    var b = [], i, j, n = str.length;
+    for (i = 0; i < n; i++) b.push(str.charCodeAt(i) & 255);
+    b.push(0x80);
+    while (b.length % 64 !== 56) b.push(0);
+    var bits = n * 8;
+    b.push(0, 0, 0, 0, (bits >>> 24) & 255, (bits >>> 16) & 255, (bits >>> 8) & 255, bits & 255);
+    var w = new Array(64);
+    for (i = 0; i < b.length; i += 64) {
+      for (j = 0; j < 16; j++) w[j] = (b[i + 4 * j] << 24) | (b[i + 4 * j + 1] << 16) | (b[i + 4 * j + 2] << 8) | b[i + 4 * j + 3];
+      for (j = 16; j < 64; j++) {
+        var x = w[j - 15], y = w[j - 2];
+        var s0 = ((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3);
+        var s1 = ((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10);
+        w[j] = (w[j - 16] + s0 + w[j - 7] + s1) | 0;
+      }
+      var a = H[0], c = H[1], d = H[2], e = H[3], f = H[4], g = H[5], h = H[6], k = H[7];
+      for (j = 0; j < 64; j++) {
+        var S1 = ((f >>> 6) | (f << 26)) ^ ((f >>> 11) | (f << 21)) ^ ((f >>> 25) | (f << 7));
+        var t1 = (k + S1 + ((f & g) ^ (~f & h)) + K[j] + w[j]) | 0;
+        var S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+        var t2 = (S0 + ((a & c) ^ (a & d) ^ (c & d))) | 0;
+        k = h; h = g; g = f; f = (e + t1) | 0; e = d; d = c; c = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + c) | 0; H[2] = (H[2] + d) | 0; H[3] = (H[3] + e) | 0;
+      H[4] = (H[4] + f) | 0; H[5] = (H[5] + g) | 0; H[6] = (H[6] + h) | 0; H[7] = (H[7] + k) | 0;
+    }
+    var out = [];
+    for (i = 0; i < 8; i++) out.push((H[i] >>> 24) & 255, (H[i] >>> 16) & 255, (H[i] >>> 8) & 255, H[i] & 255);
+    return out;
+  }
+  function secretFor(P) { var h = sha256('s:' + P), s = ''; for (var i = 0; i < 12; i++) s += ABC[h[i] % ABC.length]; return s; }
+  function forToken(P) { return CFG.base + secretFor(P); }
+  function forRun(P) { return CFG.base.replace('#t/', '#r/') + secretFor(P); }   /* v1.2: short link to the shopper run sheet; same code and stored row as the tracker link */
+  function keys(sec) {   /* the link's secret → the row ID and the AES key (neither reveals the secret) */
+    return Promise.all([crypto.subtle.digest('SHA-256', enc.encode('k:' + sec)), crypto.subtle.digest('SHA-256', enc.encode('i:' + sec))])
+      .then(function (h) {
+        return crypto.subtle.importKey('raw', h[0], 'AES-GCM', false, ['encrypt', 'decrypt'])
+          .then(function (k) { return { key: k, id: 't' + hex(h[1]).slice(0, 23) }; });
+      });
+  }
+  function token(fresh) {   /* visitor access, shared with Shop 8 */
+    var t = null;
+    if (!fresh) try { t = JSON.parse(sessionStorage.getItem(TOK) || 'null'); } catch (e) {}
+    if (t && t.v && t.exp > Date.now() + 60000) return Promise.resolve(t.v);
+    return fetch(API + '/oauth2/token', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ clientId: CFG.clientId, grantType: 'anonymous' }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.access_token) throw new Error('token');
+        try { sessionStorage.setItem(TOK, JSON.stringify({ v: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 })); } catch (e) {}
+        return j.access_token;
+      });
+  }
+  function api(method, path, body, retry) {
+    return token(retry).then(function (t) {
+      return fetch(API + path, { method: method, headers: { 'Content-Type': 'application/json', Authorization: t }, body: body ? JSON.stringify(body) : undefined });
+    }).then(function (r) {
+      if (r.status === 401 && !retry) return api(method, path, body, true);
+      if (!r.ok) throw new Error('wix ' + r.status);
+      return r.json();
+    });
+  }
+
+  /* long tracker link → its short link; makes sure the stored row exists (once per order on this device) */
+  function make(longUrl) {
+    var m = /#(?:track|run)\/([A-Za-z0-9_-]+)/.exec(String(longUrl || ''));
+    if (!m || !ok) return Promise.reject(new Error('cannot shorten'));
+    var P = m[1], sec = secretFor(P), url = CFG.base + sec, ck = 'ggsx_short2:' + sec, have = null;
+    try { have = localStorage.getItem(ck); } catch (e) {}
+    if (have) return Promise.resolve(url);
+    return keys(sec).then(function (K) {
+      var iv = crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, K.key, enc.encode(P)).then(function (ct) {
+        return api('POST', '/wix-data/v2/items', { dataCollectionId: CFG.col,
+          dataItem: { id: K.id, data: { t: b64(iv) + '.' + b64(new Uint8Array(ct)), kind: 'track' } } })
+          .catch(function (err) {   /* already stored (another device or the checkout made it): fine if it reads back */
+            return api('GET', '/wix-data/v2/items/' + K.id + '?dataCollectionId=' + CFG.col).then(function (j) { if (!j.dataItem) throw err; });
+          });
+      });
+    }).then(function () {
+      try { localStorage.setItem(ck, '1'); } catch (e) {}
+      return url;
+    });
+  }
+
+  /* short link opened → the full tracker */
+  function expand() {
+    var m = /^#(t|r)\/([A-Za-z0-9]{8,20})$/.exec(location.hash), kind = m && m[1];
+    if (!m || !ok) return;
+    keys(m[2]).then(function (K) {
+      return api('GET', '/wix-data/v2/items/' + K.id + '?dataCollectionId=' + CFG.col).then(function (j) {
+        var p = String((j.dataItem && j.dataItem.data && j.dataItem.data.t) || '').split('.');
+        return crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(p[0]) }, K.key, unb64(p[1]));
+      });
+    }).then(function (pt) {
+      var P = dec.decode(pt);
+      if (!/^[A-Za-z0-9_-]+$/.test(P)) throw new Error('bad link');
+      var to = (kind === 'r' ? CFG.run : CFG.track) + P;   /* v1.2: #r/ opens the run sheet, #t/ the client's tracker */
+      if (location.pathname.replace(/\/+$/, '') !== CFG.page) { location.replace(CFG.page + to); return; }
+      history.replaceState(null, '', location.pathname + location.search + to);
+      try { W.dispatchEvent(new HashChangeEvent('hashchange')); } catch (e) { W.dispatchEvent(new Event('hashchange')); }
+    }).catch(function () { /* unknown link: leave the page as it is */ });
+  }
+
+  W.GGSX_SHORT = { make: make, expand: expand, forToken: forToken, forRun: forRun };
+  expand();
+  W.addEventListener('hashchange', expand);
+})();
+</script>

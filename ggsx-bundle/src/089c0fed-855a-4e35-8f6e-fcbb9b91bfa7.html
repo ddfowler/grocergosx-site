@@ -1,3 +1,5 @@
+<!-- v1.8 (4 Nov 2026): items sold by weight (size "per lb" on the Products tab), see Shop 42 Sold by Weight: a weighed line counts as one item -->
+<!-- v1.3.5 (2 Nov 2026, page speed): the top-bar logo is loaded at the size it is shown (300 px wide, about 8 KB) instead of the 3741 px original (195 KB) on every page view; it also has a fixed width and height. -->
 <!-- v1.3.4 (1 Nov 2026, bundle v1.2): runs once per visit. The site code runs again on every page change, and each run added another phone top bar, tab bar, search box and More menu (with their listeners) on top of the last ones: 17 of each after 17 pages. The bars already follow page changes through their own observer, so later runs now stop at the first line. -->
 <!-- v1.3.3 (27 Oct 2026): five CSS rules for the Run Builder page (removed from the site on 17 Oct) dropped. -->
 <!-- v1.3.2 (27 Oct 2026): paint() only writes the tab state and basket badge when they change; before, every repaint replaced the badge text, which the Header Basket snippet saw as a page change and answered in kind, so the two repainted each other about 60 times a second on every page. -->
@@ -21,7 +23,7 @@ html.gg-m:not(.ggsx-app) #SITE_CONTAINER{padding-top:calc(56px + env(safe-area-i
 html.gg-m #SITE_CONTAINER{padding-bottom:calc(72px + env(safe-area-inset-bottom,0))}
 html.gg-m:not(.ggsx-app) .gg-top{display:flex;position:fixed;top:0;left:0;right:0;z-index:9000;height:calc(56px + env(safe-area-inset-top,0));padding:env(safe-area-inset-top,0) 6px 0 16px;align-items:center;gap:2px;background:linear-gradient(90deg,#F4581F,#F58453);box-shadow:0 1px 0 rgba(0,0,0,.06)}
 .gg-top .gg-logo{flex:1;min-width:0;display:flex;align-items:center;height:100%;text-decoration:none}
-.gg-top .gg-logo img{height:30px;width:auto;display:block}
+.gg-top .gg-logo img{height:30px;width:auto;aspect-ratio:3741/1222;display:block}
 .gg-ib{width:44px;height:44px;flex:none;border:0;background:none;color:#fff;display:flex;align-items:center;justify-content:center;position:relative;text-decoration:none;cursor:pointer;padding:0;font:inherit;-webkit-tap-highlight-color:transparent}
 .gg-ib svg,.gg-tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .gg-badge{position:absolute;top:4px;right:3px;min-width:18px;height:18px;border-radius:999px;background:#fff;color:#F4551B;font-size:11px;font-weight:700;line-height:18px;text-align:center;padding:0 4px}
@@ -52,7 +54,7 @@ html.gg-m wow-image.gg-round,html.gg-m wow-image.gg-round img{border-radius:16px
   if(window.__ggsxAppShellOn)return;window.__ggsxAppShellOn=1;
   var TABS=[{k:"home",t:"Home",h:"/",i:"home"},{k:"run",t:"Villa",h:"/villa-stocking",i:"run"},{k:"shop",t:"Shop",h:"/shop-now",i:"shop",m:/^\/(shop-now|category|product-page|cart-page)(\/|$)/},{k:"chat",t:"Chat",i:"chat"},{k:"more",t:"More",i:"more"}];
   var EXTRA=[{t:"Shop groceries",h:"/shop-now"},{t:"Restaurants",h:"/restaurants"},{t:"Pharmacy",h:"/pharmacy"},{t:"Villa stocking",h:"/villa-stocking"},{t:"Stocking packages",h:"/stocking-packages"},{t:"Yacht provisioning",h:"/yacht-provisioning"},{t:"For hosts & managers",h:"/partners"},{t:"Pricing & fees",h:"/pricing"},{t:"Service area",h:"/service-area"},{t:"Blog",h:"/blog"}];
-  var WA="590690779119", LOGO="https://static.wixstatic.com/media/85c3c2_862c7c7deba142b5a50ca891db1246aa~mv2.png", BASKET="ggsx_basket", SHOP="/shop-now";
+  var WA="590690779119", LOGO="https://static.wixstatic.com/media/85c3c2_862c7c7deba142b5a50ca891db1246aa~mv2.png/v1/fit/w_300,h_98,q_90,enc_auto/GrocerGoSx-logo.png", BASKET="ggsx_basket", SHOP="/shop-now";
   var ICON={home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
     run:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 13l2 2 4-4"/>',
     shop:'<path d="M6 8h12l1 12H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
@@ -68,7 +70,7 @@ html.gg-m wow-image.gg-round,html.gg-m wow-image.gg-round img{border-radius:16px
   function same(a,b){return(a||"").replace(/\/+$/,"")===(b||"").replace(/\/+$/,"")||(a==="/"&&b==="")}
   function isOn(tab){var p=path();if(tab.m)return tab.m.test(p);return!!tab.h&&(tab.h==="/"?p==="/":same(p,tab.h))}
   function hdr(){return t.querySelector("header")}
-  function basketCount(){try{var b=JSON.parse(localStorage.getItem(BASKET)||"null"),n=0,k;if(b&&b.items)for(k in b.items)n+=b.items[k].n||0;return n}catch(e){return 0}}
+  function basketCount(){try{var b=JSON.parse(localStorage.getItem(BASKET)||"null"),n=0,k;if(b&&b.items)for(k in b.items)n+=window.GGSX_WEIGHT?GGSX_WEIGHT.count(b.items[k]):b.items[k].n||0;return n}catch(e){return 0}}
   function openChat(){var b=t.querySelector(".minimizedButtonV2");if(b){b.click();return}window.open("https://wa.me/"+WA,"_blank","noopener")}
   function account(){var b=hdr()&&hdr().querySelector(".login-social-bar__container");if(!b)return;if(/--login(\s|$)/.test(b.className)){b.click();return}t.documentElement.classList.toggle("gg-hdr");try{t.documentElement.classList.contains("gg-hdr")&&hdr().scrollIntoView()}catch(e){}}
   function menuLinks(){
@@ -85,7 +87,7 @@ html.gg-m wow-image.gg-round,html.gg-m wow-image.gg-round img{border-radius:16px
     var search=h("form",{class:"gg-search",onsubmit:function(e){e.preventDefault();var q=sIn.value.trim();if(q)location.href=SHOP+"#q/"+encodeURIComponent(q)}},[sIn,h("button",{type:"submit",text:"Search"})]);
     window.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a.gg-ib[href$=\"#basket\"]"):null;if(!a)return;e.preventDefault();e.stopPropagation();location.pathname.replace(/\/+$/,"")===SHOP?(location.hash==="#basket"?window.dispatchEvent(new HashChangeEvent("hashchange")):location.hash="basket"):location.href=SHOP+"#basket"},!0);
     var top=h("div",{class:"gg-top"},[
-      h("a",{class:"gg-logo",href:"/","aria-label":"GrocerGoSx home"},[h("img",{src:LOGO,alt:"GrocerGoSx"})]),
+      h("a",{class:"gg-logo",href:"/","aria-label":"GrocerGoSx home"},[h("img",{src:LOGO,alt:"GrocerGoSx",width:"92",height:"30",decoding:"async"})]),
       h("button",{type:"button",class:"gg-ib","aria-label":"Search",onclick:function(){var o=search.classList.toggle("open");o&&setTimeout(function(){try{sIn.focus()}catch(e){}},50)}},[svg("search")]),
       cart=h("a",{class:"gg-ib",href:SHOP+"#basket","aria-label":"Basket"},[svg("shop"),badge]),
       h("button",{type:"button",class:"gg-ib","aria-label":"Account",onclick:account},[svg("user")])

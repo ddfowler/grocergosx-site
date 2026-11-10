@@ -1,3 +1,4 @@
+<!-- v1.4 (9 Nov 2026, bundle v2.2): C.when() leaves out an empty date, so an order sent with "Dates to confirm by message" reads cleanly on the run sheet and the client's page. -->
 <!-- v1.3 (27 Oct 2026): the checkout's run sheet field (run_sheet_e5b1) now carries the short grocergosx.com/shop-now#r/<code> link from Shop 19 v1.2 instead of the long #run/… link; opening it brings up the full run sheet. -->
 <!-- GrocerGoSx Shop 8 Live Core v1.1 (18 Oct 2026): settings and shared code for the client's live page. Holds GGSX_TRACK (the CMS
      collection, the "Live order update" form, the live link field) plus the helpers Shop 9 (run sheet side) and Shop 10 (client page)
@@ -46,7 +47,7 @@
   C.when = function (c) {
     var d = c.d ? new Date(c.d + 'T12:00:00Z') : null,
         ds = d && !isNaN(d) ? d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) : (c.d || '');
-    return ds + (c.w ? ' · ' + c.w : '');
+    return ds ? ds + (c.w ? ' · ' + c.w : '') : (c.w || '');   /* v1.4 (9 Nov 2026): no date yet, e.g. "Dates to confirm by message" */
   };
   C.money = function (v) { var n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g, '')); return isNaN(n) ? '' : '$' + n.toFixed(2); };
   C.itemName = function (ln) { return ln[0] + (ln[1] ? ' ' + ln[1] : ''); };

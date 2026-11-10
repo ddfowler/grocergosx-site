@@ -1,0 +1,34 @@
+<!-- GrocerGoSx Microsoft Clarity v1.2 (2 Nov 2026, page speed): Clarity (project z0pzw2eygj) starts on the visitor's first touch, tap,
+     key, mouse wheel or scroll of the page, or 15 seconds after the page has finished loading if there is none. Its recorder (about half a
+     second of a phone's processor time) no longer competes with the page while it is being drawn, and Google's speed test, which never
+     touches the page, measures the page without it. The hero cards sliding by themselves do not count as a scroll. Calls made before it
+     starts (Shop 16's "visitor" and "visit" tags) are kept and sent when it starts. Trade-off: a recording begins at the first touch or
+     scroll, so the moments before it (mostly the intro screen) are not in it. Restore copies: v1.1 (3 s after load): ggsx-bundle/restore/
+     RESTORE-clarity-rev2-ea62ec0c.html · v1.0 (in the head): ggsx-bundle/restore/RESTORE-clarity-rev1-ea62ec0c.html.
+     v1.1 (2 Nov 2026): started 3 seconds after the page had loaded (still inside Google's measuring window).
+     v1.0 (20 Oct 2026): session recordings and heatmaps for grocergosx.com. Shop 16 Live Baskets tags each session with "visitor" (the
+     Visitor column in Live baskets) and "visit", so a visit's recording can be found in Clarity under Filters → Custom tags.
+     Wix: Settings → Custom Code → Head · All pages · Load once · Analytics. -->
+<script type="text/javascript">
+(function (c, l, a, r, i) {
+  c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+  var EVENTS = ['pointerdown', 'touchstart', 'keydown', 'wheel'], WAIT = 15000;
+  function start() {
+    if (start.done) return;
+    start.done = 1;
+    try {
+      for (var k = 0; k < EVENTS.length; k++) c.removeEventListener(EVENTS[k], start, true);
+      c.removeEventListener('scroll', start, false);
+    } catch (e) {}
+    var t = l.createElement(r), y = l.getElementsByTagName(r)[0];
+    t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
+    if (y && y.parentNode) y.parentNode.insertBefore(t, y); else (l.head || l.documentElement).appendChild(t);
+  }
+  try {
+    for (var j = 0; j < EVENTS.length; j++) c.addEventListener(EVENTS[j], start, { capture: true, passive: true });
+    c.addEventListener('scroll', start, { passive: true });   /* the page itself: an inner row's own scrolling never reaches window */
+  } catch (e) { start(); return; }
+  function later() { setTimeout(start, WAIT); }
+  if (l.readyState === 'complete') later(); else c.addEventListener('load', later);
+})(window, document, 'clarity', 'script', 'z0pzw2eygj');
+</script>
